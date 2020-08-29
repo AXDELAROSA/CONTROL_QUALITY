@@ -1,22 +1,21 @@
 -- //////////////////////////////////////////////////////////////
 -- // ARCHIVO:			
 -- //////////////////////////////////////////////////////////////
--- // BASE DE DATOS:	RH
--- // MODULO:			PUESTO DESCRIPCION
--- // OPERACION:		REGLAS DE NEGOCIO
+-- // BASE DE DATOS:	[DATA_02Pruebas]
+-- // MODULO:			QA INSPECCION DE MATERIAL
+-- // OPERACION:		LIBERACION / STORED PROCEDURE
 -- //////////////////////////////////////////////////////////////
 -- // Autor:			FEG
--- // Fecha creación:	04/FEB/2020
--- ////////////////////////////////////////////////////////////// 
+-- // Fecha creación:	29/AGO/2020
+-- //////////////////////////////////////////////////////////////  
 
-USE [RH]
+USE [DATA_02Pruebas]
 GO
 
 -- //////////////////////////////////////////////////////////////
 
 
 -- //////////////////////////////////////////////////////////////
-
 
 
 
@@ -25,17 +24,23 @@ GO
 -- // STORED PROCEDURE ---> RN_BORRABLE
 -- //////////////////////////////////////////////////////////////
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_PUESTO_ES_MODIFICABLE]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_RN_PUESTO_ES_MODIFICABLE]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_INSPECCION_MATERIAL_VALIDA_PORCENTAJE]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_VALIDA_PORCENTAJE]
 GO
 
 
-CREATE PROCEDURE [dbo].[PG_RN_PUESTO_ES_MODIFICABLE]
+CREATE PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_VALIDA_PORCENTAJE]
 	@PP_K_SISTEMA_EXE				[INT],
 	@PP_K_USUARIO_ACCION			[INT],
 	-- ===========================		
-	@PP_K_PUESTO					[INT],
-	-- ===========================		
+	@PP_INSPECCION_PORCENTAJE			DECIMAL(13,2),
+	-- ============================		
+	@PP_OPCION_1_PORCENTAJE				DECIMAL(13,2),
+	@PP_OPCION_2_PORCENTAJE				DECIMAL(13,2),
+	@PP_OPCION_3_PORCENTAJE				DECIMAL(13,2),
+	@PP_OPCION_4_PORCENTAJE				DECIMAL(13,2),
+	@PP_OPCION_5_PORCENTAJE				DECIMAL(13,2),
+	-- ============================	
 	@OU_RESULTADO_VALIDACION		[VARCHAR] (200)		OUTPUT
 AS
 
@@ -44,129 +49,33 @@ AS
 	SET		@VP_RESULTADO	= ''
 		
 	-- /////////////////////////////////////////////////////
-
-	DECLARE @VP_K_ESTATUS_PUESTO	INT = 0
-	DECLARE @VP_D_ESTATUS_PUESTO	VARCHAR(100)
-
-	SELECT	@VP_K_ESTATUS_PUESTO	=	PUESTO.K_ESTATUS_PUESTO,
-			@VP_D_ESTATUS_PUESTO	=	D_ESTATUS_PUESTO
-											FROM	PUESTO, ESTATUS_PUESTO
-											WHERE	PUESTO.K_ESTATUS_PUESTO=ESTATUS_PUESTO.K_ESTATUS_PUESTO
-											AND		K_PUESTO=@PP_K_PUESTO
-										
-	-- =============================
-	
-	IF @VP_RESULTADO=''
-		IF (@VP_K_ESTATUS_PUESTO = 3 )
-			SET @VP_RESULTADO =  'El [PUESTO] No se puede Modificar su Estatus[(#'+CONVERT(VARCHAR(10),@VP_K_ESTATUS_PUESTO)+')' + @VP_D_ESTATUS_PUESTO + '] NO lo permite.' 
-
-	-- /////////////////////////////////////////////////////
-	
-	SET @OU_RESULTADO_VALIDACION = @VP_RESULTADO
-
-	-- /////////////////////////////////////////////////////
-GO
-
-
-
-
-
-
-
-
--- //////////////////////////////////////////////////////////////
--- // STORED PROCEDURE ---> RN_BORRABLE
--- //////////////////////////////////////////////////////////////
-
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_PUESTO_ES_BORRABLE]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_RN_PUESTO_ES_BORRABLE]
-GO
-
-
-CREATE PROCEDURE [dbo].[PG_RN_PUESTO_ES_BORRABLE]
-	@PP_K_SISTEMA_EXE				[INT],
-	@PP_K_USUARIO_ACCION			[INT],
-	-- ===========================		
-	@PP_K_PUESTO			[INT],
-	-- ===========================		
-	@OU_RESULTADO_VALIDACION		[VARCHAR] (200)		OUTPUT
-AS
-
-	DECLARE @VP_RESULTADO	VARCHAR(300)
-	
-	SET		@VP_RESULTADO	= ''
-		
-	-- /////////////////////////////////////////////////////
-
-	DECLARE @VP_K_ESTATUS_PUESTO	INT = 0
-	DECLARE @VP_D_ESTATUS_PUESTO	VARCHAR(100)
-
-	SELECT	@VP_K_ESTATUS_PUESTO	=	PUESTO.K_ESTATUS_PUESTO,
-			@VP_D_ESTATUS_PUESTO	=	D_ESTATUS_PUESTO
-											FROM	PUESTO, ESTATUS_PUESTO
-											WHERE	PUESTO.K_ESTATUS_PUESTO=ESTATUS_PUESTO.K_ESTATUS_PUESTO
-											AND		K_PUESTO=@PP_K_PUESTO
-	-- =============================
-	
-	IF @VP_RESULTADO=''
-		IF (@VP_K_ESTATUS_PUESTO IN (1, 2))
-			SET @VP_RESULTADO =  'El [PUESTO] No se puede Eliminar su Estatus[(#'+CONVERT(VARCHAR(10),@VP_K_ESTATUS_PUESTO)+')' + @VP_D_ESTATUS_PUESTO + '] NO lo permite.' 
-
-	-- /////////////////////////////////////////////////////
-	
-	SET @OU_RESULTADO_VALIDACION = @VP_RESULTADO
-
-	-- /////////////////////////////////////////////////////
-GO
-
-
-
-
-
--- //////////////////////////////////////////////////////////////
--- // STORED PROCEDURE ---> RN_BORRABLE
--- //////////////////////////////////////////////////////////////
-
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_PUESTO_EXISTE]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_RN_PUESTO_EXISTE]
-GO
-
-
-CREATE PROCEDURE [dbo].[PG_RN_PUESTO_EXISTE]
-	@PP_K_SISTEMA_EXE				[INT],
-	@PP_K_USUARIO_ACCION			[INT],
-	-- ===========================		
-	@PP_K_PUESTO			[INT],
-	-- ===========================		
-	@OU_RESULTADO_VALIDACION		[VARCHAR] (200)		OUTPUT
-AS
-
-	DECLARE @VP_RESULTADO	VARCHAR(300)
-	
-	SET		@VP_RESULTADO	= ''
-		
-	-- /////////////////////////////////////////////////////
-
-	DECLARE @VP_K_PUESTO	INT
-	DECLARE @VP_L_BORRADO			INT
-		
-	SELECT	@VP_K_PUESTO	=	PUESTO.K_PUESTO,
-			@VP_L_BORRADO			=	PUESTO.L_BORRADO
-									FROM	PUESTO
-									WHERE	PUESTO.K_PUESTO=@PP_K_PUESTO 						
 
 	-- ===========================
 
 	IF @VP_RESULTADO=''
-		IF ( @VP_K_PUESTO IS NULL )
-			SET @VP_RESULTADO =  'El [PUESTO] no existe.' 
-	
+		IF ( @PP_INSPECCION_PORCENTAJE <  @PP_OPCION_1_PORCENTAJE )
+			SET @VP_RESULTADO =  'El (%) de la opcion 1 no puede ser mayor al (%) de la inspeccion.' 
 	-- ===========================
 
 	IF @VP_RESULTADO=''
-		IF @VP_L_BORRADO=1
-			SET @VP_RESULTADO =  'El [PUESTO] fue dado de baja.' 
-					
+		IF ( @PP_INSPECCION_PORCENTAJE <  @PP_OPCION_2_PORCENTAJE )
+			SET @VP_RESULTADO =  'El (%) de la opcion 2 no puede ser mayor al (%) de la inspeccion.' 
+	-- ===========================
+	
+	IF @VP_RESULTADO=''
+		IF ( @PP_INSPECCION_PORCENTAJE <  @PP_OPCION_3_PORCENTAJE )
+			SET @VP_RESULTADO =  'El (%) de la opcion 3 no puede ser mayor al (%) de la inspeccion.' 
+	-- ===========================
+
+	IF @VP_RESULTADO=''
+		IF ( @PP_INSPECCION_PORCENTAJE <  @PP_OPCION_4_PORCENTAJE )
+			SET @VP_RESULTADO =  'El (%) de la opcion 4 no puede ser mayor al (%) de la inspeccion.' 
+	-- ===========================
+
+	IF @VP_RESULTADO=''
+		IF ( @PP_INSPECCION_PORCENTAJE <  @PP_OPCION_5_PORCENTAJE )
+			SET @VP_RESULTADO =  'El (%) de la opcion 5 no puede ser mayor al (%) de la inspeccion.' 
+	-- ===========================
 	-- /////////////////////////////////////////////////////
 	
 	SET @OU_RESULTADO_VALIDACION = @VP_RESULTADO
@@ -189,15 +98,23 @@ GO
 -- //////////////////////////////////////////////////////////////
 
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_PUESTO_INSERT]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_RN_PUESTO_INSERT]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_INSPECCION_MATERIAL_INSERT]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_INSERT]
 GO
 
 
-CREATE PROCEDURE [dbo].[PG_RN_PUESTO_INSERT]
+CREATE PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_INSERT]
 	@PP_K_SISTEMA_EXE					[INT],
 	@PP_K_USUARIO_ACCION				[INT],
-	-- ===========================		
+	-- ===========================	
+	@PP_INSPECCION_PORCENTAJE			DECIMAL(13,2),
+	-- ============================		
+	@PP_OPCION_1_PORCENTAJE				DECIMAL(13,2),
+	@PP_OPCION_2_PORCENTAJE				DECIMAL(13,2),
+	@PP_OPCION_3_PORCENTAJE				DECIMAL(13,2),
+	@PP_OPCION_4_PORCENTAJE				DECIMAL(13,2),
+	@PP_OPCION_5_PORCENTAJE				DECIMAL(13,2),
+	-- ============================	
 	@OU_RESULTADO_VALIDACION			[VARCHAR] (200)		OUTPUT
 AS
 
@@ -207,10 +124,12 @@ AS
 		
 	-- ///////////////////////////////////////////
 
-	--IF @VP_RESULTADO=''
-	--	EXECUTE [dbo].[PG_RN_DATA_ACCESO_INSERT]	@PP_L_DEBUG, @PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
-	--												1, -- @PP_K_DATA_SISTEMA,	
-	--												@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
+	IF @VP_RESULTADO=''
+		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_VALIDA_PORCENTAJE]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
+																	PP_INSPECCION_PORCENTAJE, @PP_OPCION_1_PORCENTAJE,
+																	@PP_OPCION_2_PORCENTAJE, @PP_OPCION_3_PORCENTAJE,
+																	@PP_OPCION_4_PORCENTAJE, @PP_OPCION_5_PORCENTAJE,
+																	@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
 	-- ///////////////////////////////////////////
 	
 	IF	@VP_RESULTADO<>''
@@ -232,16 +151,22 @@ GO
 -- //////////////////////////////////////////////////////////////
 
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_PUESTO_UPDATE]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_RN_PUESTO_UPDATE]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_INSPECCION_MATERIAL_UPDATE]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_UPDATE]
 GO
 
 
-CREATE PROCEDURE [dbo].[PG_RN_PUESTO_UPDATE]
+CREATE PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_UPDATE]
 	@PP_K_SISTEMA_EXE					[INT],
 	@PP_K_USUARIO_ACCION				[INT],
 	-- ===========================		
-	@PP_K_PUESTO				[INT],
+	@PP_INSPECCION_PORCENTAJE			DECIMAL(13,2),
+	-- ============================		
+	@PP_OPCION_1_PORCENTAJE				DECIMAL(13,2),
+	@PP_OPCION_2_PORCENTAJE				DECIMAL(13,2),
+	@PP_OPCION_3_PORCENTAJE				DECIMAL(13,2),
+	@PP_OPCION_4_PORCENTAJE				DECIMAL(13,2),
+	@PP_OPCION_5_PORCENTAJE				DECIMAL(13,2),
 	-- ===========================		
 	@OU_RESULTADO_VALIDACION			[VARCHAR] (200)		OUTPUT
 AS
@@ -252,22 +177,12 @@ AS
 		
 	-- ///////////////////////////////////////////
 
-	--IF @VP_RESULTADO=''
-	--	EXECUTE [dbo].[PG_RN_DATA_ACCESO_UPDATE]	@PP_L_DEBUG, @PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
-	--												1, -- @PP_K_DATA_SISTEMA,	
-	--												@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
-	-- //////////////////////////////////////
-
 	IF @VP_RESULTADO=''
-		EXECUTE [dbo].[PG_RN_PUESTO_EXISTE]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
-														@PP_K_PUESTO,	 
-														@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
-	-- //////////////////////////////////////
-
-	IF @VP_RESULTADO=''
-		EXECUTE [dbo].[PG_RN_PUESTO_ES_MODIFICABLE]	 @PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
-																@PP_K_PUESTO,	 
-																@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
+		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_VALIDA_PORCENTAJE]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
+																	PP_INSPECCION_PORCENTAJE, @PP_OPCION_1_PORCENTAJE,
+																	@PP_OPCION_2_PORCENTAJE, @PP_OPCION_3_PORCENTAJE,
+																	@PP_OPCION_4_PORCENTAJE, @PP_OPCION_5_PORCENTAJE,
+																	@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
 	
 	-- //////////////////////////////////////
 
@@ -291,53 +206,53 @@ GO
 -- //////////////////////////////////////////////////////////////
 
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_PUESTO_DELETE]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_RN_PUESTO_DELETE]
-GO
+--IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_INSPECCION_MATERIAL_DELETE]') AND type in (N'P', N'PC'))
+--	DROP PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_DELETE]
+--GO
 
 
-CREATE PROCEDURE [dbo].[PG_RN_PUESTO_DELETE]
-	@PP_K_SISTEMA_EXE					[INT],
-	@PP_K_USUARIO_ACCION				[INT],
-	-- ===========================		
-	@PP_K_PUESTO							[INT],	
-	-- ===========================		
-	@OU_RESULTADO_VALIDACION			[VARCHAR] (200)		OUTPUT
-AS
+--CREATE PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_DELETE]
+--	@PP_K_SISTEMA_EXE					[INT],
+--	@PP_K_USUARIO_ACCION				[INT],
+--	-- ===========================		
+--	@PP_K_INSPECCION_MATERIAL							[INT],	
+--	-- ===========================		
+--	@OU_RESULTADO_VALIDACION			[VARCHAR] (200)		OUTPUT
+--AS
 
-	DECLARE @VP_RESULTADO	VARCHAR(300)
+--	DECLARE @VP_RESULTADO	VARCHAR(300)
 	
-	SET		@VP_RESULTADO	= ''
+--	SET		@VP_RESULTADO	= ''
 		
-	-- ///////////////////////////////////////////
+--	-- ///////////////////////////////////////////
 
-	--IF @VP_RESULTADO=''
-	--	EXECUTE [dbo].[PG_RN_DATA_ACCESO_DELETE]		@PP_L_DEBUG, @PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
-	--													1, -- @PP_K_DATA_SISTEMA,	
-	--													@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
-	-- ///////////////////////////////////////////
+--	--IF @VP_RESULTADO=''
+--	--	EXECUTE [dbo].[PG_RN_DATA_ACCESO_DELETE]		@PP_L_DEBUG, @PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
+--	--													1, -- @PP_K_DATA_SISTEMA,	
+--	--													@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
+--	-- ///////////////////////////////////////////
 
-	IF @VP_RESULTADO=''
-		EXECUTE [dbo].[PG_RN_PUESTO_EXISTE]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
-															@PP_K_PUESTO,	 
-															@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
-	-- ///////////////////////////////////////////
+--	IF @VP_RESULTADO=''
+--		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_EXISTE]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
+--															@PP_K_INSPECCION_MATERIAL,	 
+--															@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
+--	-- ///////////////////////////////////////////
 
-	IF @VP_RESULTADO=''
-		EXECUTE [dbo].[PG_RN_PUESTO_ES_BORRABLE]	 @PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
-															@PP_K_PUESTO,	 
-															@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
-	-- ///////////////////////////////////////////
+--	IF @VP_RESULTADO=''
+--		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_ES_BORRABLE]	 @PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
+--															@PP_K_INSPECCION_MATERIAL,	 
+--															@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
+--	-- ///////////////////////////////////////////
 
-	IF	@VP_RESULTADO<>''
-		SET	@VP_RESULTADO = @VP_RESULTADO + ' //DEL//'
+--	IF	@VP_RESULTADO<>''
+--		SET	@VP_RESULTADO = @VP_RESULTADO + ' //DEL//'
 	
-	-- ///////////////////////////////////////////
+--	-- ///////////////////////////////////////////
 		
-	SET @OU_RESULTADO_VALIDACION = @VP_RESULTADO
+--	SET @OU_RESULTADO_VALIDACION = @VP_RESULTADO
 
-	-- /////////////////////////////////////////////////////
-GO
+--	-- /////////////////////////////////////////////////////
+--GO
 
 
 
