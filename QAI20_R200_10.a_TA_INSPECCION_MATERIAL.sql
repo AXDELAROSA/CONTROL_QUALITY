@@ -37,14 +37,9 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[TIPO_I
 	DROP TABLE [dbo].[TIPO_INSPECCION_MATERIAL]
 GO
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[INSPECCION_OPCION_CALCULO]') AND type in (N'U'))
-	DROP TABLE [dbo].[INSPECCION_OPCION_CALCULO]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[INSPECCION_OPCION]') AND type in (N'U'))
+	DROP TABLE [dbo].[INSPECCION_OPCION]
 GO
-
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[INSPECCION_OPCION_MULTIPLE]') AND type in (N'U'))
-	DROP TABLE [dbo].[INSPECCION_OPCION_MULTIPLE]
-GO
-
 
 
 -- //////////////////////////////////////////////////////////////
@@ -149,7 +144,7 @@ SET NOCOUNT ON
 -- ===============================================
 
 EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 1, 'OPCION MULTIPLE',							'OPC_MULT',	1, '', 1
-EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 2, 'CALCULO/OPERACION ',						'CAL_OPE',	2, '', 1
+EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 2, 'EVALUACION',								'EVALCION',	2, '', 1
 GO
 -- ===============================================
 SET NOCOUNT OFF
@@ -344,39 +339,8 @@ GO
 -- // INSPECCION_MATERIAL_OPCION
 -- //////////////////////////////////////////////////////////////
 
-CREATE TABLE [dbo].[INSPECCION_OPCION_MULTIPLE] (
-	[K_INSPECCION_OPCION_MULTIPLE]		[INT]			NOT NULL,
-	-- =================================
-	[K_INSPECCION_MATERIAL]				[INT]			NOT NULL,
-	-- =================================		
-	[OPCION_1]							VARCHAR(100)	DEFAULT '',
-	[OPCION_1_PORCENTAJE]				DECIMAL(13,2)	DEFAULT 0,
-	[OPCION_2]							VARCHAR(100)	DEFAULT '',
-	[OPCION_2_PORCENTAJE]				DECIMAL(13,2)	DEFAULT 0,
-	[OPCION_3]							VARCHAR(100)	DEFAULT '',
-	[OPCION_3_PORCENTAJE]				DECIMAL(13,2)	DEFAULT 0,
-	[OPCION_4]							VARCHAR(100)	DEFAULT '',
-	[OPCION_4_PORCENTAJE]				DECIMAL(13,2)	DEFAULT 0,
-	[OPCION_5]							VARCHAR(100)	DEFAULT '',
-	[OPCION_5_PORCENTAJE]				DECIMAL(13,2)	DEFAULT 0
-)ON [PRIMARY]	
-GO
-
--- //////////////////////////////////////////////////////
-
-ALTER TABLE [dbo].[INSPECCION_OPCION_MULTIPLE]
-	ADD CONSTRAINT [PK_INSPECCION_OPCION_MULTIPLE]
-		PRIMARY KEY CLUSTERED ([K_INSPECCION_OPCION_MULTIPLE])
-GO
-
-
-
--- //////////////////////////////////////////////////////////////
--- // INSPECCION_MATERIAL_CALCULO_OPERACION
--- //////////////////////////////////////////////////////////////
-
-CREATE TABLE [dbo].[INSPECCION_OPCION_CALCULO] (
-	[K_INSPECCION_OPCION_CALCULO]		[INT]			NOT NULL,
+CREATE TABLE [dbo].[INSPECCION_OPCION] (
+	[K_INSPECCION_OPCION]				[INT]			NOT NULL,
 	-- =================================
 	[K_INSPECCION_MATERIAL]				[INT]			NOT NULL,
 	-- =================================		
@@ -390,11 +354,10 @@ GO
 
 -- //////////////////////////////////////////////////////
 
-ALTER TABLE [dbo].[INSPECCION_OPCION_CALCULO]
-	ADD CONSTRAINT [PK_INSPECCION_OPCION_CALCULO]
-		PRIMARY KEY CLUSTERED ([K_INSPECCION_OPCION_CALCULO])
+ALTER TABLE [dbo].[INSPECCION_OPCION]
+	ADD CONSTRAINT [PK_INSPECCION_OPCION]
+		PRIMARY KEY CLUSTERED ([K_INSPECCION_OPCION])
 GO
-
 
 
 
