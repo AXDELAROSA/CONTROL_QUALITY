@@ -152,6 +152,7 @@ CREATE PROCEDURE [dbo].[PG_SK_INSPECCION_MATERIAL_X_NUMERO_PARTE_CON_OPCION]
 AS
 
 	DECLARE @VP_MENSAJE						VARCHAR(300) = ''
+	-- ////////////////////////////////////////////////
 
 	IF @PP_TIPO_MOVIMIENTO = 1
 		SELECT	TOP 1
@@ -173,8 +174,12 @@ AS
 		AND		INSPECCION_MATERIAL.NUMERO_PARTE=@PP_NUMERO_PARTE
 		AND		INSPECCION_MATERIAL.K_INSPECCION_MATERIAL > ( CASE	WHEN @PP_PRIMER_INSPECCION = 1	THEN 0
 																	ELSE @PP_K_INSPECCION_MATERIAL END )
+		-- =============================
+		AND		ESTATUS_INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL = 1 -- ACTIVA
+		-- =============================
 		ORDER BY INSPECCION_MATERIAL.K_INSPECCION_MATERIAL ASC
 
+	-- ////////////////////////////////////////////////
 	IF @PP_TIPO_MOVIMIENTO = 0
 		SELECT	TOP 1
 				INSPECCION_MATERIAL.*,
@@ -195,6 +200,9 @@ AS
 		AND		INSPECCION_MATERIAL.NUMERO_PARTE=@PP_NUMERO_PARTE
 		AND		INSPECCION_MATERIAL.K_INSPECCION_MATERIAL < ( CASE	WHEN @PP_PRIMER_INSPECCION = 1	THEN 0
 																	ELSE @PP_K_INSPECCION_MATERIAL END )
+		-- =============================
+		AND		ESTATUS_INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL = 1 -- ACTIVA
+		-- =============================
 		ORDER BY INSPECCION_MATERIAL.K_INSPECCION_MATERIAL DESC
 
 	-- ////////////////////////////////////////////////
@@ -267,6 +275,7 @@ CREATE PROCEDURE [dbo].[PG_IN_INSPECCION_MATERIAL]
 	@PP_K_USUARIO_ACCION				INT,
 	-- ===========================	
 	@PP_NUMERO_PARTE					VARCHAR(100),
+	@PP_PORCENTAJE_APROBATORIO			DECIMAL(13,2),
 	@PP_K_TIPO_INSPECCION_MATERIAL		INT,
 	-- ===========================	
 	@PP_INSPECCION						VARCHAR(255),
@@ -318,6 +327,7 @@ AS
 						[K_TIPO_INSPECCION_MATERIAL],
 						[K_ESTATUS_INSPECCION_MATERIAL],
 						[NUMERO_PARTE],
+						[PORCENTAJE_APROBATORIO],
 						-- ===========================
 						[INSPECCION],
 						[INSPECCION_PORCENTAJE],
@@ -331,6 +341,7 @@ AS
 						@PP_K_TIPO_INSPECCION_MATERIAL,
 						1, -- ACTIVA
 						@PP_NUMERO_PARTE,
+						@PP_PORCENTAJE_APROBATORIO,
 						-- ===========================
 						@PP_INSPECCION,
 						@PP_INSPECCION_PORCENTAJE,
@@ -383,6 +394,15 @@ AS
 								@PP_OPCION_5,
 								@PP_OPCION_5_PORCENTAJE	)
 					END
+
+				-- /////////////SE ACTUALIZAN EL PORCENTAJE DE APROBACION PARA TOLAS LAS INSPECCIONES CON EL NUMERO DE PARTE//////////////////////////////
+				UPDATE	INSPECCION_MATERIAL
+					SET	[PORCENTAJE_APROBATORIO]	= @PP_PORCENTAJE_APROBATORIO
+				WHERE NUMERO_PARTE = @PP_NUMERO_PARTE
+
+				IF @@ROWCOUNT = 0
+					RAISERROR ('ERROR: No se Actualizo el PORCENTAJE_APROBATORIO en [INSPECCION_MATERIAL] ', 16, 1 ) --MENSAJE - Severity -State.
+				--=====================================================	
 				-- //////////////////////////////////////////////////////////////
 
 			COMMIT TRANSACTION 
@@ -432,6 +452,7 @@ CREATE PROCEDURE [dbo].[PG_UP_INSPECCION_MATERIAL]
 	@PP_K_INSPECCION_MATERIAL			INT,
 	-- ===========================	
 	@PP_NUMERO_PARTE					VARCHAR(100),
+	@PP_PORCENTAJE_APROBATORIO			DECIMAL(13,2),
 	@PP_K_TIPO_INSPECCION_MATERIAL		INT,
 	-- ===========================	
 	@PP_INSPECCION						VARCHAR(255),
@@ -471,6 +492,7 @@ AS
 				UPDATE	INSPECCION_MATERIAL
 					SET			
 						[NUMERO_PARTE]						= @PP_NUMERO_PARTE,
+						[PORCENTAJE_APROBATORIO]			= @PP_PORCENTAJE_APROBATORIO,
 						-- ===========================
 						[INSPECCION]						= @PP_INSPECCION, 
 						[INSPECCION_PORCENTAJE]			= @PP_INSPECCION_PORCENTAJE, 
@@ -482,6 +504,15 @@ AS
 
 				IF @@ROWCOUNT = 0
 					RAISERROR ('ERROR: No se Actualizo la INSPECCION_MATERIAL ', 16, 1 ) --MENSAJE - Severity -State.
+				--=====================================================	
+
+				-- /////////////SE ACTUALIZAN EL PORCENTAJE DE APROBACION PARA TOLAS LAS INSPECCIONES CON EL NUMERO DE PARTE//////////////////////////////
+				UPDATE	INSPECCION_MATERIAL
+					SET	[PORCENTAJE_APROBATORIO]	= @PP_PORCENTAJE_APROBATORIO
+				WHERE NUMERO_PARTE = @PP_NUMERO_PARTE
+
+				IF @@ROWCOUNT = 0
+					RAISERROR ('ERROR: No se Actualizo el PORCENTAJE_APROBATORIO en [INSPECCION_MATERIAL] ', 16, 1 ) --MENSAJE - Severity -State.
 				--=====================================================	
 
 				-- /////////////SE ACTUALIZAN LAS OPCIONES/PARAMETROS DEPENDIENDO DEL TIPO DE INSPECCION//////////////////////////////
