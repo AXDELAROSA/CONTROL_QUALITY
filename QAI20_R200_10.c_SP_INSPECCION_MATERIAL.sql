@@ -139,13 +139,13 @@ CREATE PROCEDURE [dbo].[PG_SK_INSPECCION_MATERIAL_X_NUMERO_PARTE_CON_OPCION]
 	@PP_NUMERO_PARTE				VARCHAR(100),
 	@PP_K_INSPECCION_MATERIAL		INT,
 	@PP_PRIMER_INSPECCION			INT,
-	@PP_TIPO_MOVIMIENTO				INT --#0 ATRAS, #1 ADELANTE
+	@PP_TIPO_MOVIMIENTO				INT --#0 ANTERIOR, #1 SIGUIENTE
 AS
 
 	DECLARE @VP_MENSAJE						VARCHAR(300) = ''
 	-- ////////////////////////////////////////////////
 
-	IF @PP_TIPO_MOVIMIENTO = 1
+	IF @PP_TIPO_MOVIMIENTO = 1 -- SIGUIENTE
 		SELECT	TOP 1
 				INSPECCION_MATERIAL.*,
 				INSPECCION_OPCION.*,
@@ -164,14 +164,14 @@ AS
 				-- =============================
 		AND		INSPECCION_MATERIAL.NUMERO_PARTE=@PP_NUMERO_PARTE
 		AND		INSPECCION_MATERIAL.K_INSPECCION_MATERIAL > ( CASE	WHEN @PP_PRIMER_INSPECCION = 1	THEN 0
-																	ELSE @PP_K_INSPECCION_MATERIAL END )
+															ELSE @PP_K_INSPECCION_MATERIAL END )
 		-- =============================
 		AND		ESTATUS_INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL = 1 -- ACTIVA
 		-- =============================
 		ORDER BY INSPECCION_MATERIAL.K_INSPECCION_MATERIAL ASC
 
 	-- ////////////////////////////////////////////////
-	IF @PP_TIPO_MOVIMIENTO = 0
+	IF @PP_TIPO_MOVIMIENTO = 0 -- ANTERIOR
 		SELECT	TOP 1
 				INSPECCION_MATERIAL.*,
 				INSPECCION_OPCION.*,
@@ -413,7 +413,7 @@ GO
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_UP_INSPECCION_MATERIAL]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_UP_INSPECCION_MATERIAL]
 GO
-
+-- EXEC [PG_UP_INSPECCION_MATERIAL] 0,0,  1 , '200435AWT3' , 80.00 , 2 , 'Cual es el grosor del Hilo?' , 80 , '0.5' , '1' , '' , '' , '' 
 CREATE PROCEDURE [dbo].[PG_UP_INSPECCION_MATERIAL]
 	@PP_K_SISTEMA_EXE					INT,
 	@PP_K_USUARIO_ACCION				INT,
@@ -479,17 +479,16 @@ AS
 				--=====================================================	
 
 				-- /////////////SE ACTUALIZAN LAS OPCIONES/PARAMETROS DEPENDIENDO DEL TIPO DE INSPECCION//////////////////////////////
-				IF @PP_K_TIPO_INSPECCION_MATERIAL = 1
-					UPDATE	[INSPECCION_OPCION]
-						SET	
-							-- ===========================
-							[OPCION_1]				= @PP_OPCION_1,
-							[OPCION_2]				= @PP_OPCION_2,
-							[OPCION_3]				= @PP_OPCION_3,
-							[OPCION_4]				= @PP_OPCION_4,
-							[OPCION_5]				= @PP_OPCION_5	
-							-- ===========================
-					WHERE	K_INSPECCION_MATERIAL=@PP_K_INSPECCION_MATERIAL
+				UPDATE	[INSPECCION_OPCION]
+					SET	
+						-- ===========================
+						[OPCION_1]				= @PP_OPCION_1,
+						[OPCION_2]				= @PP_OPCION_2,
+						[OPCION_3]				= @PP_OPCION_3,
+						[OPCION_4]				= @PP_OPCION_4,
+						[OPCION_5]				= @PP_OPCION_5	
+						-- ===========================
+				WHERE	K_INSPECCION_MATERIAL=@PP_K_INSPECCION_MATERIAL
 
 				IF @@ROWCOUNT = 0
 					RAISERROR ('ERROR: No se Actualizo la [INSPECCION_OPCION] ', 16, 1 ) --MENSAJE - Severity -State.
