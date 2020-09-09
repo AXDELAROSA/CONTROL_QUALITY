@@ -24,22 +24,17 @@ GO
 -- // STORED PROCEDURE ---> RN_BORRABLE
 -- //////////////////////////////////////////////////////////////
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_INSPECCION_MATERIAL_VALIDA_PORCENTAJE]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_VALIDA_PORCENTAJE]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_INSPECCION_MATERIAL_EXISTE_EN_ORDEN]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_EXISTE_EN_ORDEN]
 GO
 
 
-CREATE PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_VALIDA_PORCENTAJE]
+CREATE PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_EXISTE_EN_ORDEN]
 	@PP_K_SISTEMA_EXE				[INT],
 	@PP_K_USUARIO_ACCION			[INT],
 	-- ===========================		
-	@PP_INSPECCION_PORCENTAJE			DECIMAL(13,2),
-	-- ============================		
-	@PP_OPCION_1_PORCENTAJE				DECIMAL(13,2),
-	@PP_OPCION_2_PORCENTAJE				DECIMAL(13,2),
-	@PP_OPCION_3_PORCENTAJE				DECIMAL(13,2),
-	@PP_OPCION_4_PORCENTAJE				DECIMAL(13,2),
-	@PP_OPCION_5_PORCENTAJE				DECIMAL(13,2),
+	@PP_NUMERO_PARTE				VARCHAR(150),
+	@PP_K_INSPECCION_MATERIAL		[INT],
 	-- ============================	
 	@OU_RESULTADO_VALIDACION		[VARCHAR] (200)		OUTPUT
 AS
@@ -50,32 +45,19 @@ AS
 		
 	-- /////////////////////////////////////////////////////
 
-	-- ===========================
-
-	IF @VP_RESULTADO=''
-		IF ( @PP_INSPECCION_PORCENTAJE <  @PP_OPCION_1_PORCENTAJE )
-			SET @VP_RESULTADO =  'El (%) de la opcion 1 no puede ser mayor al (%) de la inspeccion.' 
-	-- ===========================
-
-	IF @VP_RESULTADO=''
-		IF ( @PP_INSPECCION_PORCENTAJE <  @PP_OPCION_2_PORCENTAJE )
-			SET @VP_RESULTADO =  'El (%) de la opcion 2 no puede ser mayor al (%) de la inspeccion.' 
-	-- ===========================
 	
-	IF @VP_RESULTADO=''
-		IF ( @PP_INSPECCION_PORCENTAJE <  @PP_OPCION_3_PORCENTAJE )
-			SET @VP_RESULTADO =  'El (%) de la opcion 3 no puede ser mayor al (%) de la inspeccion.' 
+	DECLARE @VP_N_K_INSPECCION_MATERIAL INT = 0
+	SELECT @VP_N_K_INSPECCION_MATERIAL = COUNT(K_INSPECCION_MATERIAL)
+	FROM [INSPECCION_MATERIAL_ORDEN]
+	WHERE NUMERO_PARTE = @PP_NUMERO_PARTE
+	AND	K_INSPECCION_MATERIAL = @PP_K_INSPECCION_MATERIAL
+
+	IF @VP_N_K_INSPECCION_MATERIAL IS NULL
+		SET @VP_N_K_INSPECCION_MATERIAL = 0
 	-- ===========================
 
-	IF @VP_RESULTADO=''
-		IF ( @PP_INSPECCION_PORCENTAJE <  @PP_OPCION_4_PORCENTAJE )
-			SET @VP_RESULTADO =  'El (%) de la opcion 4 no puede ser mayor al (%) de la inspeccion.' 
-	-- ===========================
-
-	IF @VP_RESULTADO=''
-		IF ( @PP_INSPECCION_PORCENTAJE <  @PP_OPCION_5_PORCENTAJE )
-			SET @VP_RESULTADO =  'El (%) de la opcion 5 no puede ser mayor al (%) de la inspeccion.' 
-	-- ===========================
+	IF @VP_N_K_INSPECCION_MATERIAL > 0
+		SET @VP_RESULTADO = 'La inspeccion ya se aplico por lo menos a una orden'
 	-- /////////////////////////////////////////////////////
 	
 	SET @OU_RESULTADO_VALIDACION = @VP_RESULTADO
@@ -107,13 +89,8 @@ CREATE PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_INSERT]
 	@PP_K_SISTEMA_EXE					[INT],
 	@PP_K_USUARIO_ACCION				[INT],
 	-- ===========================	
-	@PP_INSPECCION_PORCENTAJE			DECIMAL(13,2),
-	-- ============================		
-	@PP_OPCION_1_PORCENTAJE				DECIMAL(13,2),
-	@PP_OPCION_2_PORCENTAJE				DECIMAL(13,2),
-	@PP_OPCION_3_PORCENTAJE				DECIMAL(13,2),
-	@PP_OPCION_4_PORCENTAJE				DECIMAL(13,2),
-	@PP_OPCION_5_PORCENTAJE				DECIMAL(13,2),
+	@PP_NUMERO_PARTE					VARCHAR(150),
+	@PP_K_INSPECCION_MATERIAL			[INT],
 	-- ============================	
 	@OU_RESULTADO_VALIDACION			[VARCHAR] (200)		OUTPUT
 AS
@@ -124,12 +101,10 @@ AS
 		
 	-- ///////////////////////////////////////////
 
-	IF @VP_RESULTADO=''
-		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_VALIDA_PORCENTAJE]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
-																	@PP_INSPECCION_PORCENTAJE, @PP_OPCION_1_PORCENTAJE,
-																	@PP_OPCION_2_PORCENTAJE, @PP_OPCION_3_PORCENTAJE,
-																	@PP_OPCION_4_PORCENTAJE, @PP_OPCION_5_PORCENTAJE,
-																	@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
+	--IF @VP_RESULTADO=''
+	--		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_EXISTE_EN_ORDEN]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
+	--																	@PP_NUMERO_PARTE, @PP_K_INSPECCION_MATERIAL,
+	--																	@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
 	-- ///////////////////////////////////////////
 	
 	IF	@VP_RESULTADO<>''
@@ -160,14 +135,9 @@ CREATE PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_UPDATE]
 	@PP_K_SISTEMA_EXE					[INT],
 	@PP_K_USUARIO_ACCION				[INT],
 	-- ===========================		
-	@PP_INSPECCION_PORCENTAJE			DECIMAL(13,2),
-	-- ============================		
-	@PP_OPCION_1_PORCENTAJE				DECIMAL(13,2),
-	@PP_OPCION_2_PORCENTAJE				DECIMAL(13,2),
-	@PP_OPCION_3_PORCENTAJE				DECIMAL(13,2),
-	@PP_OPCION_4_PORCENTAJE				DECIMAL(13,2),
-	@PP_OPCION_5_PORCENTAJE				DECIMAL(13,2),
-	-- ===========================		
+	@PP_NUMERO_PARTE					VARCHAR(150),
+	@PP_K_INSPECCION_MATERIAL			[INT],
+	-- ============================	
 	@OU_RESULTADO_VALIDACION			[VARCHAR] (200)		OUTPUT
 AS
 
@@ -178,10 +148,8 @@ AS
 	-- ///////////////////////////////////////////
 
 	IF @VP_RESULTADO=''
-		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_VALIDA_PORCENTAJE]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
-																	@PP_INSPECCION_PORCENTAJE, @PP_OPCION_1_PORCENTAJE,
-																	@PP_OPCION_2_PORCENTAJE, @PP_OPCION_3_PORCENTAJE,
-																	@PP_OPCION_4_PORCENTAJE, @PP_OPCION_5_PORCENTAJE,
+		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_EXISTE_EN_ORDEN]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
+																	@PP_NUMERO_PARTE, @PP_K_INSPECCION_MATERIAL,
 																	@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
 	
 	-- //////////////////////////////////////

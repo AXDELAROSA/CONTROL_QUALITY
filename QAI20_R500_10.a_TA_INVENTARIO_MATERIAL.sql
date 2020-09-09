@@ -6,7 +6,7 @@
 -- // OPERACION:		LIBERACION / STORED PROCEDURE
 -- //////////////////////////////////////////////////////////////
 -- // Autor:			FEG
--- // Fecha creación:	02/SEP/2020
+-- // Fecha creación:	09/SEP/2020
 -- ////////////////////////////////////////////////////////////// 
 
 USE [DATA_02Pruebas]
@@ -23,40 +23,35 @@ GO
 -- // DROPs
 -- //////////////////////////////////////////////////////////////
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[INSPECCION_MATERIAL_ORDEN]') AND type in (N'U'))
-	DROP TABLE [dbo].[INSPECCION_MATERIAL_ORDEN]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[INVENTARIO_MATERIAL]') AND type in (N'U'))
+	DROP TABLE [dbo].[INVENTARIO_MATERIAL]
 GO
-
-
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[INSPECCION_MATERIAL_ORDEN_RESULTADO]') AND type in (N'U'))
-	DROP TABLE [dbo].[INSPECCION_MATERIAL_ORDEN_RESULTADO]
-GO
-
-
 
 
 -- //////////////////////////////////////////////////////////////
 -- // INSPECCION_MATERIAL_RESULTADO
 -- //////////////////////////////////////////////////////////////
 
-CREATE TABLE [dbo].[INSPECCION_MATERIAL_ORDEN] (
-	[K_INSPECCION_MATERIAL_ORDEN]				[INT]			NOT NULL,
+CREATE TABLE [dbo].[INVENTARIO_MATERIAL] (
+	[K_INVENTARIO_MATERIAL]				[INT]			NOT NULL,
 	-- =================================
-	[K_ORDEN_COMPRA]							[INT]			NOT NULL,
-	[NUMERO_PARTE]								VARCHAR(150)	NOT NULL,	
-	[K_INSPECCION_MATERIAL]						[INT]			NOT NULL,
-	[OPCION_SELECCIONADA]						VARCHAR(255)	NOT NULL,
+	[K_MATERIAL]						[INT]			NOT NULL,
+	[K_FOLIO]							[INT]			NOT NULL,
+	[K_UNIDAD_MEDIDA]					[INT]			NOT NULL,
+	[K_CLASIFICACION]					[INT]			NOT NULL,
 	-- =================================	
-	[COMENTARIO]								VARCHAR(255)	DEFAULT '',
-	[F_INSPECCION_MATERIAL_ORDEN]				DATE			NOT NULL
+	[LOTE]								INT				NOT NULL,
+	[CONSECUTIVO]						INT				NOT NULL,
+	[CANTIDAD]							DECIMAL(13,2)	NOT NULL
+	-- =================================	
 )ON [PRIMARY]	
 GO
 
 -- //////////////////////////////////////////////////////
 
-ALTER TABLE [dbo].[INSPECCION_MATERIAL_ORDEN]
-	ADD CONSTRAINT [PK_INSPECCION_MATERIAL_ORDEN]
-		PRIMARY KEY CLUSTERED ([K_INSPECCION_MATERIAL_ORDEN])
+ALTER TABLE [dbo].[INVENTARIO_MATERIAL]
+	ADD CONSTRAINT [PK_INVENTARIO_MATERIAL]
+		PRIMARY KEY CLUSTERED ([K_INVENTARIO_MATERIAL])
 GO
 
 -- //////////////////////////////////////////////////////////////
@@ -78,7 +73,7 @@ GO
 -- //////////////////////////////////////////////////////
 
 
-ALTER TABLE [dbo].[INSPECCION_MATERIAL_ORDEN] 
+ALTER TABLE [dbo].[INVENTARIO_MATERIAL] 
 	ADD		[K_USUARIO_ALTA]				[INT]		NOT NULL,
 			[F_ALTA]						[DATETIME]	NOT NULL,
 			[K_USUARIO_CAMBIO]				[INT]		NOT NULL,
@@ -88,37 +83,6 @@ ALTER TABLE [dbo].[INSPECCION_MATERIAL_ORDEN]
 			[F_BAJA]						[DATETIME]	NULL;
 GO
 
-
-
-
-
--- //////////////////////////////////////////////////////////////
--- // INSPECCION_MATERIAL_RESULTADO
--- //////////////////////////////////////////////////////////////
-
-CREATE TABLE [dbo].[INSPECCION_MATERIAL_ORDEN_RESULTADO] (
-	[K_INSPECCION_MATERIAL_ORDEN_RESULTADO]		[INT]			NOT NULL,
-	-- =================================
-	[K_ORDEN_COMPRA]							[INT]			NOT NULL,
-	[NUMERO_PARTE]								VARCHAR(150)	NOT NULL,
-	[PORCENTAJE_APROBATORIO]					DECIMAL(13,2)	NOT NULL,
-	[TOTAL_PORCENTAJE_ACUMULADO]				DECIMAL(13,2)	NOT NULL,
-	[INSPECCION_TERMINADA]						[INT]			NOT NULL,
-	[APROBACION_SISTEMA]						[INT]			DEFAULT 0,
-	[APROBACION_MANUAL]							[INT]			DEFAULT 0,
-	[COMENTARIO]								VARCHAR(255)	DEFAULT '',
-	-- =================================	
-	[K_USUARIO_ALTA]							[INT]			NOT NULL,
-	[F_INSPECCION_MATERIAL_ORDEN_RESULTADO]		DATE			NOT NULL
-)ON [PRIMARY]	
-GO
-
--- //////////////////////////////////////////////////////
-
-ALTER TABLE [dbo].[INSPECCION_MATERIAL_ORDEN_RESULTADO]
-	ADD CONSTRAINT [PK_INSPECCION_MATERIAL_ORDEN_RESULTADO]
-		PRIMARY KEY CLUSTERED ([K_INSPECCION_MATERIAL_ORDEN_RESULTADO])
-GO
 
 -- //////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////
