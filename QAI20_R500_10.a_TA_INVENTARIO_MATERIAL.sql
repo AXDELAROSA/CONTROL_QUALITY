@@ -35,14 +35,14 @@ GO
 CREATE TABLE [dbo].[INVENTARIO_MATERIAL] (
 	[K_INVENTARIO_MATERIAL]				[INT]			NOT NULL,
 	-- =================================
-	[K_MATERIAL]						[INT]			NOT NULL,
+	[K_ITEM]							[INT]			NOT NULL,
 	[K_FOLIO]							[INT]			NOT NULL,
-	[K_UNIDAD_MEDIDA]					[INT]			NOT NULL,
 	[K_CLASIFICACION]					[INT]			NOT NULL,
 	-- =================================	
 	[LOTE]								INT				NOT NULL,
 	[CONSECUTIVO]						INT				NOT NULL,
-	[CANTIDAD]							DECIMAL(13,2)	NOT NULL
+	[CANTIDAD]							DECIMAL(13,2)	NOT NULL,
+	[K_PEDIDO]							INT				NOT NULL
 	-- =================================	
 )ON [PRIMARY]	
 GO
