@@ -151,16 +151,20 @@ CREATE TABLE [dbo].[INSPECCION_MATERIAL_LOG] (
 	[K_INSPECCION_MATERIAL_LOG]					[INT] IDENTITY (1,1) NOT NULL,
 	-- =================================
 	[K_TIPO_INSPECCION_MATERIAL_LOG]			[INT]	NOT NULL,
-	[K_ORDEN]									[INT]	NOT NULL,
+	[K_ORDEN_COMPRA]							[INT]	NOT NULL,
+	[ORDEN_COMPRA_PEDIDO]						VARCHAR(50)	NOT NULL,
 	[K_ITEM]									[INT]	NOT NULL,
 	[K_INSPECCION_MATERIAL_ORDEN]				[INT]	DEFAULT 0,
 	-- =================================		
-	[VALOR_ANTERIOR]							VARCHAR(20)		DEFAULT '',	
-	[VALOR_NUEVO]								VARCHAR(20)		DEFAULT '',	
+	[RESULTADO_ANTERIOR]						VARCHAR(150)	DEFAULT '',	
+	[RESULTADO_NUEVO]							VARCHAR(150)	DEFAULT '',
+	-- =================================	
 	[APROBACION_SISTEMA_ANTERIOR]				INT				NOT NULL,
 	[APROBACION_SISTEMA_NUEVO]					INT				NOT NULL,
+	-- =================================
 	[APROBACION_MANUAL_ANTERIOR]				INT				NOT NULL,
 	[APROBACION_MANUAL_NUEVO]					INT				NOT NULL,	
+	-- =================================
 	[COMENTARIO]								VARCHAR(255)	NOT NULL,	
 )ON [PRIMARY]	
 GO
