@@ -53,7 +53,7 @@ AS
 			K_ITEM						AS K_ITEM
 	-- =============================
 	 FROM	IMITMIDX_SQL 
-	 INNER JOIN COMPRAS_Pruebas.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
+	 INNER JOIN COMPRAS_PRUEBAS.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
 	 -- =============================
 	 WHERE ( ITEM_NO					LIKE '%'+@PP_BUSCAR+'%'
 			OR	D_ITEM					LIKE '%'+@PP_BUSCAR+'%'
@@ -113,7 +113,7 @@ AS
 			LTRIM(RTRIM(LOC))			AS LOCACION,
 			K_ITEM						AS K_ITEM
 	 FROM	IMITMIDX_SQL 
-	 INNER JOIN COMPRAS_Pruebas.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
+	 INNER JOIN COMPRAS_PRUEBAS.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
 	 WHERE	K_ITEM = @PP_ITEM
 	
 	-- ////////////////////////////////////////////////
