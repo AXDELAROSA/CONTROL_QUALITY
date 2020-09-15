@@ -38,6 +38,7 @@ CREATE PROCEDURE [dbo].[PG_IN_INSPECCION_MATERIAL_LOG]
 	@PP_APROBACION_MANUAL_ANTERIOR		INT,
 	@PP_APROBACION_MANUAL_NUEVO			INT,
 	-- ===========================
+	@PP_K_USUARIO_AUTORIZACION			INT,
 	@PP_COMENTARIO						VARCHAR(255)
 
 AS
@@ -59,6 +60,7 @@ AS
 						[APROBACION_MANUAL_ANTERIOR],		
 						[APROBACION_MANUAL_NUEVO],			
 						-- =================================
+						[K_USUARIO_AUTORIZACION],
 						[COMENTARIO],		
 						-- ===========================
 						[K_USUARIO_ALTA], [F_ALTA], [K_USUARIO_CAMBIO], [F_CAMBIO],
@@ -75,11 +77,12 @@ AS
 						@PP_RESULTADO_NUEVO,					
 						-- ===========================
 						@PP_APROBACION_SISTEMA_ANTERIOR,		
-						@PP_APROBACION_SISTEMA_ANTERIOR,		
+						@PP_APROBACION_SISTEMA_NUEVO,		
 						-- ===========================
 						@PP_APROBACION_MANUAL_ANTERIOR,		
 						@PP_APROBACION_MANUAL_NUEVO,			
 						-- ===========================
+						@PP_K_USUARIO_AUTORIZACION,
 						@PP_COMENTARIO,						
 						-- ===========================				
 						@PP_K_USUARIO_ACCION, GETDATE(), @PP_K_USUARIO_ACCION, GETDATE(),
