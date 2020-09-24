@@ -63,6 +63,47 @@ GO
 
 
 
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / FICHA
+-- //////////////////////////////////////////////////////////////
+
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_INSPECCION_MATERIAL_ORDEN_RESULTADO]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_INSPECCION_MATERIAL_ORDEN_RESULTADO]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_INSPECCION_MATERIAL_ORDEN_RESULTADO] 0,0, 19, '00019-00001'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_INSPECCION_MATERIAL_ORDEN_RESULTADO]
+	@PP_K_SISTEMA_EXE				INT,
+	@PP_K_USUARIO_ACCION			INT,
+	-- ===========================
+	@PP_K_ORDEN_COMPRA				INT,
+	@PP_ORDEN_COMPRA_PEDIDO			VARCHAR(50)
+AS
+
+	DECLARE @VP_MENSAJE						VARCHAR(300) = ''
+	-- ///////////////////////////////////////////
+
+	SELECT	
+			[INSPECCION_MATERIAL_ORDEN_RESULTADO].*,
+		-- ===========================
+		PART_NUMBER_ITEM_PEARL
+	-- =============================	
+	FROM	[INSPECCION_MATERIAL_ORDEN_RESULTADO]
+	INNER JOIN	COMPRAS_PRUEBAS.dbo.ITEM		ON	[INSPECCION_MATERIAL_ORDEN_RESULTADO].K_ITEM=ITEM.K_ITEM
+	-- =============================
+	WHERE	K_ORDEN_COMPRA = @PP_K_ORDEN_COMPRA
+	AND		ORDEN_COMPRA_PEDIDO = @PP_ORDEN_COMPRA_PEDIDO
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+
+
 
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> SELECT / FICHA
