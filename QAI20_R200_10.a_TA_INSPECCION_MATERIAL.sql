@@ -9,7 +9,7 @@
 -- // Fecha creación:	21/AGO/2020
 -- ////////////////////////////////////////////////////////////// 
 
-USE [DATA_02Pruebas]
+USE [DATA_02]
 GO
 
 -- //////////////////////////////////////////////////////////////
@@ -145,6 +145,7 @@ SET NOCOUNT ON
 
 EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 1, 'OPCION MULTIPLE',							'OPC_MULT',	1, '', 1
 EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 2, 'EVALUACION',								'EVALCION',	2, '', 1
+EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 3, 'DECISION',									'DECISION',	3, '', 1
 GO
 -- ===============================================
 SET NOCOUNT OFF
@@ -277,9 +278,7 @@ CREATE TABLE [dbo].[INSPECCION_MATERIAL] (
 	[K_ESTATUS_INSPECCION_MATERIAL]		[INT]			NOT NULL,
 	-- =================================	
 	[K_ITEM]							INT				NOT NULL,	
-	[PORCENTAJE_APROBATORIO]			DECIMAL(13,2)	NOT NULL,
-	[INSPECCION]						VARCHAR(255)	NOT NULL,
-	[INSPECCION_PORCENTAJE]				DECIMAL(13,2)	NOT NULL,
+	[INSPECCION]						VARCHAR(255)	NOT NULL, 
 	[F_INSPECCION_MATERIAL]				DATE			NOT NULL
 )ON [PRIMARY]	
 GO
