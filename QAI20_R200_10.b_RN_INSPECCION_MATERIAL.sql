@@ -48,7 +48,7 @@ AS
 	
 	DECLARE @VP_N_K_INSPECCION_MATERIAL INT = 0
 	SELECT @VP_N_K_INSPECCION_MATERIAL = COUNT(K_INSPECCION_MATERIAL)
-	FROM [INSPECCION_MATERIAL_ORDEN]
+	FROM [INSPECCION_MATERIAL_ORDEN_COMPRA]
 	WHERE K_ITEM = @PP_ITEM
 	AND	K_INSPECCION_MATERIAL = @PP_K_INSPECCION_MATERIAL
 
@@ -65,6 +65,52 @@ AS
 	-- /////////////////////////////////////////////////////
 GO
 
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> RN_BORRABLE
+-- //////////////////////////////////////////////////////////////
+
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_INSPECCION_MATERIAL_TEST_RESULT_EXISTE]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_TEST_RESULT_EXISTE]
+GO
+
+
+CREATE PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_TEST_RESULT_EXISTE]
+	@PP_K_SISTEMA_EXE				[INT],
+	@PP_K_USUARIO_ACCION			[INT],
+	-- ===========================		
+	@PP_ITEM						[INT],
+	@PP_K_TIPO_INSPECCION_MATERIAL	[INT],
+	-- ============================	
+	@OU_RESULTADO_VALIDACION		[VARCHAR] (200)		OUTPUT
+AS
+
+	DECLARE @VP_RESULTADO	VARCHAR(300)
+	
+	SET		@VP_RESULTADO	= ''
+		
+	-- /////////////////////////////////////////////////////
+
+	
+	DECLARE	@VP_N_K_INSPECCION_MATERIAL INT = 0
+	SELECT	@VP_N_K_INSPECCION_MATERIAL = COUNT(K_INSPECCION_MATERIAL)
+	FROM	[INSPECCION_MATERIAL]
+	WHERE	K_ITEM = @PP_ITEM
+	AND	K_TIPO_INSPECCION_MATERIAL = @PP_K_TIPO_INSPECCION_MATERIAL -- TEST_RESULT
+
+	IF @VP_N_K_INSPECCION_MATERIAL IS NULL
+		SET @VP_N_K_INSPECCION_MATERIAL = 0
+	-- ===========================
+
+	IF @VP_N_K_INSPECCION_MATERIAL > 0
+		SET @VP_RESULTADO = 'Este tipo de inspeccion solo se puede agregar una vez'
+	-- /////////////////////////////////////////////////////
+	
+	SET @OU_RESULTADO_VALIDACION = @VP_RESULTADO
+
+	-- /////////////////////////////////////////////////////
+GO
 
 
 -- ====================================================================================================
@@ -90,7 +136,7 @@ CREATE PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_INSERT]
 	@PP_K_USUARIO_ACCION				[INT],
 	-- ===========================	
 	@PP_ITEM							[INT],
-	@PP_K_INSPECCION_MATERIAL			[INT],
+	@PP_K_TIPO_INSPECCION_MATERIAL		[INT],
 	-- ============================	
 	@OU_RESULTADO_VALIDACION			[VARCHAR] (200)		OUTPUT
 AS
@@ -101,10 +147,10 @@ AS
 		
 	-- ///////////////////////////////////////////
 
-	--IF @VP_RESULTADO=''
-	--		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_EXISTE_EN_ORDEN]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
-	--																	@PP_NUMERO_PARTE, @PP_K_INSPECCION_MATERIAL,
-	--																	@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
+	IF @VP_RESULTADO=''
+		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_TEST_RESULT_EXISTE]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
+																		@PP_ITEM, @PP_K_TIPO_INSPECCION_MATERIAL,
+																		@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
 	-- ///////////////////////////////////////////
 	
 	IF	@VP_RESULTADO<>''
@@ -146,7 +192,6 @@ AS
 	SET		@VP_RESULTADO	= ''
 		
 	-- ///////////////////////////////////////////
-
 	IF @VP_RESULTADO=''
 		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_EXISTE_EN_ORDEN]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
 																	@PP_ITEM, @PP_K_INSPECCION_MATERIAL,
