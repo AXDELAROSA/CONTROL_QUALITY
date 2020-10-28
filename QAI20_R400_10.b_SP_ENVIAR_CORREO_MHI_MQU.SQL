@@ -35,12 +35,13 @@ CREATE PROCEDURE [dbo].[PG_CONFIGURAR_CORREO_MATERIAL_INSPECCIONADO_DISPOSICION]
 AS
 
 	-- ///////////////////////////////////////////
-	DECLARE @VP_K_TIPO_GRUPO_APROBADOR VARCHAR(15)	= 180
+	DECLARE @VP_K_TIPO_GRUPO_APROBADOR VARCHAR(15)	= 180 --MHI
 	DECLARE @VP_SUBJECT		VARCHAR(255) = 'Material inspeccionado Liberado por calidad para disposición'
 	DECLARE @VP_DATE		DATE = GETDATE()
+
 	IF @PP_LOCACION_DESTINO = 'MQU'
 		BEGIN
-			SET @VP_K_TIPO_GRUPO_APROBADOR = 200
+			SET @VP_K_TIPO_GRUPO_APROBADOR = 200 --MQU
 			SET @VP_SUBJECT = 'Material inspeccionado Rechazado'
 		END
 
@@ -68,7 +69,7 @@ AS
 									    N'<th colspan="6">Material</th>' + 
 									  N'</tr>' + 
 									  N'<tr BGCOLOR="#48D1CC">' + 
-									    N'<th>PO</th><th>PO Pedido</th><th>Entrega</th><th>Numero Parte</th><th>Lote Pearl</th><th>Fecha</th>' + 
+									    N'<th>PO</th><th>PO Pedido</th><th>Entrega</th><th>Número Parte</th><th>Lote Pearl</th><th>Fecha</th>' + 
 									  N'</tr>' + 
 									N'</thead>' + 
 									N'<tbody>' + 
