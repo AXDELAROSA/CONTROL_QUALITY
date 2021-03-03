@@ -7,7 +7,7 @@
 -- // CREATION DATE:	20210224
 -- ////////////////////////////////////////////////////////////// 
 
-USE [DATA_02Pruebas]
+--USE [DATA_02Pruebas]
 GO
 
 
@@ -117,7 +117,7 @@ AS
 	INSERT INTO @VP_TA_CATALOGO
 			( TA_K_CATALOGO,	TA_D_CATALOGO,	TA_O_CATALOGO, TA_L_DELETED, TA_L_ACTIVO	)
 		VALUES
-			( -2,				'No autorizado',	-2,		   0,			 1				)	
+			( -2,				'NO AUTORIZADO',	-2,		   0,			 1				)	
 	
 	IF @PP_L_CON_TODOS=1
 		INSERT INTO @VP_TA_CATALOGO
@@ -141,7 +141,7 @@ GO
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_CB_SER_LOT_NO]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_CB_SER_LOT_NO]
 GO
---		 EXECUTE [dbo].[PG_CB_SER_LOT_NO] 1,139,'FCMP5B8'
+--		 EXECUTE [dbo].[PG_CB_SER_LOT_NO] 1,139,'FWLNPX7'
 CREATE PROCEDURE [dbo].[PG_CB_SER_LOT_NO]
 	@PP_K_SISTEMA_EXE			INT,
 	@PP_K_USUARIO				INT,
@@ -163,10 +163,12 @@ AS
 			0							AS TA_O_CATALOGO,
 			0							AS L_DELETED, 
 			1							AS L_ACTIVO
-	FROM	IMLSMST_SQL 
-	--WHERE	QTY_ON_HAND		<>	0
+	FROM	IMLSMST_SQL
 	WHERE	QTY_ON_HAND		>	0
 	AND		LTRIM(RTRIM(ITEM_NO))=@PP_ITEM_NO
+	AND (		
+												LOC LIKE 'T%'
+											OR	LTRIM(RTRIM(LOC))	IN ('MHI')	)
 	ORDER BY	LTRIM(RTRIM(SER_LOT_NO))
 
 	INSERT INTO @VP_TA_CATALOGO
