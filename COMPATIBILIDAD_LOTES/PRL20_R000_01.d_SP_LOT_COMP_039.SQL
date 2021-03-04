@@ -958,7 +958,7 @@ DECLARE		 @VP_MENSAJE				NVARCHAR(MAX) = ''
 					       ,[F_CAMBIO]			)
 					 VALUES
 					 (		@PP_ITEM_NO					
-							,@PP_LOTE_01			,@VP_VALOR_LOTE_02					
+							,CONCAT('         ',@PP_LOTE_01)			,CONCAT('         ',@VP_VALOR_LOTE_02)
 							-- =========================
 							,@VP_BOOLEAN_COMPATIBLE		--,@VP_VALOR_COMPATI
 							-- =========================
@@ -1072,7 +1072,7 @@ DECLARE		 @VP_MENSAJE				NVARCHAR(MAX) = ''
 		       ,[F_CAMBIO]				)
 		 VALUES
 		 (		@PP_ITEM_NO					
-				,@PP_LOTE_01			,@PP_LOTE_02					
+				,CONCAT('         ',@PP_LOTE_01)			,CONCAT('         ',@PP_LOTE_02)
 				-- =========================
 				,@VP_BOOLEAN_COMPATIBLE	--,@PP_L_COMPATIBLE
 				-- =========================
