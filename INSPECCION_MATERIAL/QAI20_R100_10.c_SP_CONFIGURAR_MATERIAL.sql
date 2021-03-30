@@ -9,7 +9,7 @@
 -- // Fecha creación:	20/AGO/2020
 -- //////////////////////////////////////////////////////////////  
 
-USE [DATA_02]
+USE [DATA_02Pruebas]
 GO
 
 -- //////////////////////////////////////////////////////////////
@@ -56,7 +56,8 @@ AS
 			K_ITEM									AS K_ITEM
 	-- =============================
 	 FROM	IMITMIDX_SQL 
-	 INNER JOIN COMPRAS.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
+	 INNER JOIN COMPRAS_Pruebas.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
+	 --INNER JOIN COMPRAS.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
 	 -- =============================
 	 WHERE ( ITEM_NO					LIKE '%'+@PP_BUSCAR+'%'
 			OR	D_ITEM					LIKE '%'+@PP_BUSCAR+'%'
@@ -66,7 +67,7 @@ AS
 	AND		( @PP_CB_LOCACION = '( TODOS )'		OR	LTRIM(RTRIM(IMITMIDX_SQL.LOC)) = @PP_CB_LOCACION  )
 	AND		( @PP_CB_CATEGORIA = '( TODOS )'	OR	LTRIM(RTRIM(IMITMIDX_SQL.PROD_CAT)) = @PP_CB_CATEGORIA )
 	-- =============================
-	AND	K_CLASS_ITEM = 2
+	AND	K_CLASS_ITEM IN (2, 3)
 	-- =============================
 	 ORDER BY ITEM_NO, PROD_CAT, LOC
 	
@@ -108,7 +109,8 @@ AS
 			LTRIM(RTRIM(LOC))				AS LOCACION,
 			K_ITEM							AS K_ITEM
 	 FROM	IMITMIDX_SQL 
-	 INNER JOIN COMPRAS.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
+	 INNER JOIN COMPRAS_Pruebas.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
+	 --INNER JOIN COMPRAS.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
 	 WHERE	K_ITEM = @PP_ITEM
 	
 	-- ////////////////////////////////////////////////

@@ -9,7 +9,7 @@
 -- // Fecha creación:	21/AGO/2020
 -- ////////////////////////////////////////////////////////////// 
 
-USE [DATA_02]
+USE [DATA_02Pruebas]
 GO
 
 -- //////////////////////////////////////////////////////////////
@@ -147,6 +147,8 @@ EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 1, 'OPCION MULTIPLE',						
 EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 2, 'EVALUACION',								'EVALCION',	2, '', 1
 EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 3, 'DECISION',									'DECISION',	3, '', 1
 EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 4, 'TEST RESULT',								'TSTRESULT',4, '', 1
+EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 5, 'GROSS/THICKNESS',							'GROS/THICK',5, '', 1
+EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 6, 'SUAVIDAD',									'SUAVIDAD',6, '', 1
 GO
 -- ===============================================
 SET NOCOUNT OFF
