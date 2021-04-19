@@ -9,7 +9,7 @@
 -- // Fecha creación:	20/AGO/2020
 -- //////////////////////////////////////////////////////////////  
 
-USE [DATA_02Pruebas]
+USE [DATA_02]
 GO
 
 -- //////////////////////////////////////////////////////////////
@@ -49,15 +49,16 @@ AS
 							AND K_ESTATUS_INSPECCION_MATERIAL = 1) > 0 THEN 1
 				ELSE 0 END	)						AS PROGRAMADO,
 			LTRIM(RTRIM(PART_NUMBER_ITEM_PEARL))	AS NUMERO_PARTE,
-			--LTRIM(RTRIM(D_ITEM))					AS DESCRIPCION,
-			LTRIM(RTRIM(TRADEMARK_ITEM))			AS DESCRIPCION,
+			LTRIM(RTRIM(TRADEMARK_ITEM))			AS TIPO_MATERIAL,
+			LTRIM(RTRIM(item_desc_1))				AS DESCRIPCION,
 			LTRIM(RTRIM(PROD_CAT))					AS PRODUCTO_CATEGORIA,
 			LTRIM(RTRIM(LOC))						AS LOCACION,
-			K_ITEM									AS K_ITEM
+			K_ITEM									AS K_ITEM,
+			K_CLASS_ITEM							AS CLASE_ITEM
 	-- =============================
 	 FROM	IMITMIDX_SQL 
-	 INNER JOIN COMPRAS_Pruebas.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
-	 --INNER JOIN COMPRAS.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
+	 --INNER JOIN COMPRAS_Pruebas.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
+	 INNER JOIN COMPRAS.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
 	 -- =============================
 	 WHERE ( ITEM_NO					LIKE '%'+@PP_BUSCAR+'%'
 			OR	D_ITEM					LIKE '%'+@PP_BUSCAR+'%'
@@ -103,14 +104,15 @@ AS
 	-- ///////////////////////////////////////////
 	 SELECT	0								AS PROGRAMADO,
 			LTRIM(RTRIM(ITEM_NO))			AS NUMERO_PARTE,
-			--LTRIM(RTRIM(ITEM_DESC_1))		AS DESCRIPCION,
-			LTRIM(RTRIM(TRADEMARK_ITEM))	AS DESCRIPCION,
+			LTRIM(RTRIM(TRADEMARK_ITEM))	AS TIPO_MATERIAL,
+			LTRIM(RTRIM(item_desc_1))		AS DESCRIPCION,
 			LTRIM(RTRIM(PROD_CAT))			AS PRODUCTO_CATEGORIA,
 			LTRIM(RTRIM(LOC))				AS LOCACION,
-			K_ITEM							AS K_ITEM
+			K_ITEM							AS K_ITEM,
+			K_CLASS_ITEM					AS CLASE_ITEM
 	 FROM	IMITMIDX_SQL 
-	 INNER JOIN COMPRAS_Pruebas.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
-	 --INNER JOIN COMPRAS.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
+	 --INNER JOIN COMPRAS_Pruebas.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
+	 INNER JOIN COMPRAS.dbo.ITEM ON IMITMIDX_SQL.upc_cd = ITEM.K_ITEM
 	 WHERE	K_ITEM = @PP_ITEM
 	
 	-- ////////////////////////////////////////////////

@@ -9,7 +9,7 @@
 -- // Fecha creación:	21/AGO/2020
 -- ////////////////////////////////////////////////////////////// 
 
-USE [DATA_02Pruebas]
+USE [DATA_02]
 GO
 
 -- //////////////////////////////////////////////////////////////
@@ -149,6 +149,8 @@ EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 3, 'DECISION',									'DEC
 EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 4, 'TEST RESULT',								'TSTRESULT',4, '', 1
 EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 5, 'GROSS/THICKNESS',							'GROS/THICK',5, '', 1
 EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 6, 'SUAVIDAD',									'SUAVIDAD',6, '', 1
+EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 7, 'MARCAS NATURALES',							'MARC_NAT',7, '', 1
+EXECUTE [dbo].[PG_CI_TIPO_INSPECCION_MATERIAL] 0, 0, 8, 'IMAGEN MASTER',							'IMG_MASTER',8, '', 1
 GO
 -- ===============================================
 SET NOCOUNT OFF
