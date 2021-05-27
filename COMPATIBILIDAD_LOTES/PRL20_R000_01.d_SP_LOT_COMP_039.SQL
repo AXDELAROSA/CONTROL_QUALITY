@@ -49,11 +49,11 @@ AS
 			,LTRIM(RTRIM(Comments))					AS C_LOTE_COMPATIBLE
 			,F_ALTA									AS F_LOTE_COMPATIBLE
 		-- ===============================================================
-		FROM	SER_LOT_COMP_SQL
+		FROM	SER_LOT_COMP_SQL		(NOLOCK)
 		-- ===============================================================
 		WHERE	LTRIM(RTRIM(SER_LOT_NO1)) IN (
 										SELECT	DISTINCT LTRIM(RTRIM(SER_LOT_NO))
-										FROM	IMLSMST_SQL
+										FROM	IMLSMST_SQL			(NOLOCK)
 										WHERE	QTY_ON_HAND	> 0.0000
 										AND		LTRIM(RTRIM(ITEM_NO))	LIKE 'F%'
 												--ITEM_NO LIKE 'F%'
@@ -62,7 +62,7 @@ AS
 											)
 		AND		LTRIM(RTRIM(SER_LOT_NO2))	IN	(
 										SELECT	DISTINCT LTRIM(RTRIM(SER_LOT_NO))
-										FROM	IMLSMST_SQL
+										FROM	IMLSMST_SQL			(NOLOCK)
 										WHERE	QTY_ON_HAND	> 0.0000
 										AND		LTRIM(RTRIM(ITEM_NO))	LIKE 'F%'
 												--ITEM_NO LIKE 'F%'
@@ -90,10 +90,10 @@ AS
 				,LTRIM(RTRIM(Comments))					AS C_LOTE_COMPATIBLE
 				,F_ALTA									AS F_LOTE_COMPATIBLE
 		-- ===============================================================
-		FROM	SER_LOT_COMP_SQL 
+		FROM	SER_LOT_COMP_SQL					(NOLOCK)
 		-- ===============================================================
-		WHERE	(		LTRIM(RTRIM(SER_LOT_NO1))	=@PP_LOTE 
-					OR	LTRIM(RTRIM(SER_LOT_NO2))	=@PP_LOTE		)
+		WHERE	(		LTRIM(RTRIM(SER_LOT_NO1))	= @PP_LOTE 
+					OR	LTRIM(RTRIM(SER_LOT_NO2))	= @PP_LOTE		)
 		---- ===============================================================
 		ORDER BY	ITEM_NO, SER_LOT_NO1	DESC
 	END
@@ -130,7 +130,7 @@ AS
 				,LTRIM(RTRIM(Comments))					AS C_LOTE_COMPATIBLE
 				,DBO.CONVERT_INT_TO_DATE(Cdate)			AS F_LOTE_COMPATIBLE
 		-- ===============================================================
-		FROM	SER_LOT_COMP_SQL 
+		FROM	SER_LOT_COMP_SQL			(NOLOCK)
 		-- ===============================================================
 		WHERE	ID		=	@PP_ID_LOTE
 		---- ===============================================================
@@ -206,7 +206,7 @@ AS
 				,K_USUARIO_PEARL_02
 				,LTRIM(RTRIM(Comments))					--AS C_LOTE_COMPATIBLE
 		-- ===============================================================
-		FROM	SER_LOT_COMP_SQL
+		FROM	SER_LOT_COMP_SQL					(NOLOCK)
 		-- ===============================================================
 		WHERE	(		LTRIM(RTRIM(SER_LOT_NO1))	= @PP_LOTE  
 					OR	LTRIM(RTRIM(SER_LOT_NO2))	= @PP_LOTE 		)
@@ -288,8 +288,7 @@ GO
 
 
 -- ////////////////////////////////////////////////////////////////
--- //	CUERPO DEL MENSAJA A ENVIAR CUANDO UN MATERIAL
--- //	NO TIENE PARAMETROS PARA INSPECCIÓN.
+-- //	PARA INSERTAR EL LOG DE COMPATIBILIDAD EN EL SISTEMA.
 -- ///////////////////////////////////////////////////////////////
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_SER_LOT_COMP_SQL_LOG]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_IN_SER_LOT_COMP_SQL_LOG]
@@ -350,7 +349,7 @@ GO
 
 -- ////////////////////////////////////////////////////////////////
 -- //	CUERPO DEL MENSAJA A ENVIAR CUANDO UN MATERIAL
--- //	NO TIENE PARAMETROS PARA INSPECCIÓN.
+-- //	SE LE HA REALIZADO LA COMPATIBILIDAD O MODIFICADO LA MISMA.
 -- ///////////////////////////////////////////////////////////////
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_CORREO_COMPATIBILIDAD_LOTE]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_CORREO_COMPATIBILIDAD_LOTE]
@@ -371,12 +370,12 @@ AS
 
 	IF @PP_K_SISTEMA_EXE=0
 	BEGIN
-		SET @VP_K_TIPO_GRUPO_APROBADOR	= 9200			--	 AQUI VAN LOS USUARIOS DE CALIDAD
+		SET @VP_K_TIPO_GRUPO_APROBADOR	= 0			--	 AQUI VAN LOS USUARIOS DE CALIDAD
 	END
 
 	SELECT  @VP_RECIPIENTS	=	@VP_RECIPIENTS + ';' + CORREO_USUARIO_PEARL
-								FROM	BD_GENERAL.dbo.USUARIO_PEARL AS USERS
-								INNER	JOIN	BD_GENERAL.dbo.GRUPO_APROBADOR ON GRUPO_APROBADOR.K_USUARIO=USERS.K_USUARIO_PEARL
+								FROM	BD_GENERAL.dbo.USUARIO_PEARL			(NOLOCK)	AS USERS
+								INNER	JOIN	BD_GENERAL.dbo.GRUPO_APROBADOR	(NOLOCK)	ON GRUPO_APROBADOR.K_USUARIO=USERS.K_USUARIO_PEARL
 								WHERE	GRUPO_APROBADOR.K_TIPO_GRUPO_APROBADOR = @VP_K_TIPO_GRUPO_APROBADOR
 								AND		K_ESTATUS_GRUPO_APROBADOR = 1
 
@@ -806,23 +805,23 @@ AS
 			,@VP_K_EMPLEADO_PEARL		INT
 	---============================================================
 	--	SE VERIFICA QUE LOS USUARIOS QUE AUTORIZAN SE ENCUENTRAN REGISTRADOS EN EL SISTEMA Y ESTAN ACTUALMENTE ACTIVOS.
-	SELECT	@VP_K_EMPLEADO_PEARL	=	K_EMPLEADO_PEARL
-	FROM	BD_GENERAL.DBO.USUARIO_PEARL
-	WHERE	K_USUARIO_PEARL			= @PP_K_USUARIO
+	SELECT	@VP_K_EMPLEADO_PEARL			=	K_EMPLEADO_PEARL
+	FROM	BD_GENERAL.DBO.USUARIO_PEARL	(NOLOCK)
+	WHERE	K_USUARIO_PEARL					= @PP_K_USUARIO
 
 		IF	(	SELECT  COUNT(EN_NUM_EMP)
-				FROM    BD_GENERAL.DBO.USUARIO_PEARL
-				LEFT JOIN HOWE.DBO.VISTA_GAFETES ON EN_NUM_EMP=K_EMPLEADO_PEARL
+				FROM    BD_GENERAL.DBO.USUARIO_PEARL	(NOLOCK)
+				LEFT JOIN HOWE.DBO.VISTA_GAFETES		(NOLOCK)	ON EN_NUM_EMP=K_EMPLEADO_PEARL
 				WHERE	EN_NUM_EMP	=	@VP_K_EMPLEADO_PEARL					)	= 0
 		BEGIN		
 			SET		@VP_MENSAJE			= 'Hubo un Problema con la cuenta de [Usuario]. [' + @PP_D_USUARIO +']'
 			RAISERROR (@VP_MENSAJE, 16, 1 )
 		END
 
-	SELECT	@VP_USUARIO_CORRECTO	= COUNT(K_USUARIO_PEARL)
-	FROM	BD_GENERAL.DBO.USUARIO_PEARL
-	WHERE	K_USUARIO_PEARL			= @PP_K_USUARIO
-	AND		PASSWORD_USUARIO_PEARL	= @PP_PASS_USUARIO
+	SELECT	@VP_USUARIO_CORRECTO			= COUNT(K_USUARIO_PEARL)
+	FROM	BD_GENERAL.DBO.USUARIO_PEARL	(NOLOCK)
+	WHERE	K_USUARIO_PEARL					= @PP_K_USUARIO
+	AND		PASSWORD_USUARIO_PEARL			= @PP_PASS_USUARIO
 
 	IF @VP_USUARIO_CORRECTO <= 0
 	BEGIN
@@ -859,7 +858,7 @@ DECLARE		 @VP_MENSAJE				NVARCHAR(MAX) = ''
 	---============================================================
 	--	SE REALIZA LA VALIDACIÓN PARA VERIFICAR SI EXISTE LA COMBINACIÓN DE LOTES EN EL SISTEMA.
 	SELECT	@VP_EXISTE_COMPATIBLE	=	COUNT(ID)	
-	FROM	SER_LOT_COMP_SQL	
+	FROM	SER_LOT_COMP_SQL		(NOLOCK)
 	WHERE	(		LTRIM(RTRIM(SER_LOT_NO1))	=@PP_LOTE_01 
 			AND		LTRIM(RTRIM(SER_LOT_NO2))	=@PP_LOTE_02 )
 	OR		(		LTRIM(RTRIM(SER_LOT_NO1))	=@PP_LOTE_02 
@@ -1317,7 +1316,7 @@ DECLARE		 @VP_MENSAJE				NVARCHAR(MAX) = ''
 				SELECT	@PP_ITEM_NO		= ITEM_NO,
 						@PP_LOTE_01		= SER_LOT_NO1,
 						@PP_LOTE_02		= SER_LOT_NO2
-				FROM	SER_LOT_COMP_SQL
+				FROM	SER_LOT_COMP_SQL	(NOLOCK)
 				WHERE		ID				= @VP_VALOR_K_ID_LOTE
 				
 				EXECUTE [dbo].[PG_IN_SER_LOT_COMP_SQL_LOG]	@PP_K_SISTEMA_EXE,	@PP_K_USUARIO_ACCION,
@@ -1403,7 +1402,7 @@ DECLARE		 @VP_MENSAJE				NVARCHAR(MAX) = ''
 	SELECT	@PP_ITEM_NO		= ITEM_NO,
 			@PP_LOTE_01		= SER_LOT_NO1,
 			@PP_LOTE_02		= SER_LOT_NO2
-	FROM	SER_LOT_COMP_SQL
+	FROM	SER_LOT_COMP_SQL	(NOLOCK)
 	WHERE		ID				= @PP_K_ID_LOTE
 	
 	EXECUTE [dbo].[PG_IN_SER_LOT_COMP_SQL_LOG]	@PP_K_SISTEMA_EXE,	@PP_K_USUARIO_ACCION,
@@ -1595,18 +1594,18 @@ BEGIN TRY
 			@PP_PASS_USUARIO_02			VARCHAR(25)
 
 --/////////////////////////////////////////////////////////////
-	SELECT	@PP_ITEM_NO						= Item_No			  ,
-			@PP_LOTE_01						= ser_lot_no1		  ,
-			@PP_LOTE_02						= ser_lot_no2		  ,
-			-- =========================					  
-			@VP_BOOLEAN_COMPATIBLE				= comp			  ,
-			@PP_COMENTARIO					= Comments		  ,
-			-- =========================					  
-			@PP_D_USUARIO_01				= Aut1			  ,
-			@PP_D_USUARIO_02				= Aut2			  ,
-			@PP_K_USUARIO_01				= K_USUARIO_PEARL_01,
-			@PP_K_USUARIO_02				= K_USUARIO_PEARL_02
-	FROM	SER_LOT_COMP_SQL
+	SELECT	@PP_ITEM_NO					= Item_No				,
+			@PP_LOTE_01					= ser_lot_no1			,
+			@PP_LOTE_02					= ser_lot_no2			,
+			-- =========================				  
+			@VP_BOOLEAN_COMPATIBLE			= comp				,
+			@PP_COMENTARIO				= Comments				,
+			-- =========================						
+			@PP_D_USUARIO_01			= Aut1					,
+			@PP_D_USUARIO_02			= Aut2					,
+			@PP_K_USUARIO_01			= K_USUARIO_PEARL_01	,
+			@PP_K_USUARIO_02			= K_USUARIO_PEARL_02
+	FROM	SER_LOT_COMP_SQL			(NOLOCK)
 	WHERE	ID=			@PP_ID_LOTE
 
 	DECLARE @PP_L_COMPATIBLE	INT	= 1
