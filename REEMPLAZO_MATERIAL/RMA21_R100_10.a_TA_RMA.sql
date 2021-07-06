@@ -189,7 +189,8 @@ EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,05, 'DENEGADA POR GTE. PLANTA',			'', 'DNGT
 -- =================================================================================
 EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,06, 'APROBADA',							'', 'APROB',	60,1		-- ACTUALIZA GERENTE PLANTA
 ---- =================================================================================
-EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,07, 'EN PROCESO',							'', 'PROCS',	70,1		-- ACTUALIZA GERENTE PLANTA
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,07, 'EN PROCESO',							'', 'PROCS',	70,1
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,08, 'TERMINADA',							'', 'TERMI',	80,1
 ---- =================================================================================
 ------EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,10, 'PENDING SEND TO VENDOR',		'', 'PNVEN', 100,1		-- ACTUALIZA FINANZAS
 --EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,11, 'PENDING TO RECEIVE',			'', 'PNRCV', 110,1		-- ACTUALIZA FINANZAS

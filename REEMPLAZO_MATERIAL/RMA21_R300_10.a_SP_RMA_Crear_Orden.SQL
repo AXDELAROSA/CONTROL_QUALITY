@@ -117,6 +117,7 @@ AS
 				,TA_S_COLOR_SINF				VARCHAR(10)
 				,TA_D_COLOR						VARCHAR(250)
 				,TA_K_DETAILS					INT
+				,TA_GRUPO_ORDEN					INT
 		)
 		--SET NOCOUNT ON
 		-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +130,8 @@ AS
 							,TA_CANTIDAD					
 							,TA_S_COLOR_SINF			
 							,TA_D_COLOR				
-							,TA_K_DETAILS		)
+							,TA_K_DETAILS		
+							,TA_GRUPO_ORDEN		)
 			SELECT	 LEFT(ITEM_NO,8)
 					,ITEM_NO
 					,CANTIDAD_ORDENADA
@@ -139,6 +141,7 @@ AS
 						WHERE	IMITMIDX_SQL.item_no	= CONCAT('F',RIGHT(DETAILS_RMA.ITEM_NO,6))					
 					)
 					,K_DETAILS_RMA
+					,GRUPO_ORDEN
 			FROM	DETAILS_RMA
 			WHERE	K_HEADER_RMA		= @PP_K_HEADER_RMA
 
@@ -179,15 +182,14 @@ AS
 	
 	-- //////SE CREA CURSOR PARA DARLE FORMATO A LOS DATOS/////////////////////////////////////
 	DECLARE CU_PATTERN_A_PROGRAMAR CURSOR FOR			
-			SELECT	 --K_PATTERN_A_PROGRAMAR
-					 TA_S_PATTERN
+			SELECT	 TA_S_PATTERN
 					,TA_ITEM_NO
 					,TA_CANTIDAD
 					,TA_S_COLOR_SINF
 					,TA_D_COLOR
 					,TA_K_DETAILS
 			FROM	@TBL_PATTERN_A_PROGRAMAR
-			ORDER BY	TA_S_COLOR_SINF,	TA_ITEM_NO,		TA_CANTIDAD
+			ORDER BY	TA_S_COLOR_SINF,	TA_GRUPO_ORDEN,		TA_ITEM_NO,		TA_CANTIDAD
 	OPEN CU_PATTERN_A_PROGRAMAR
 	FETCH NEXT FROM CU_PATTERN_A_PROGRAMAR INTO		@VP_CU_PATTERN,		@VP_CU_ITEM_NO,		@VP_CU_CANTIDAD,	@VP_CU_S_COLOR_SINF,		@VP_CU_D_COLOR,		@VP_CU_K_DETAILS
 	WHILE @@FETCH_STATUS = 0
@@ -666,8 +668,8 @@ DECLARE @VP_ESTATUS_PO		INT
 		N'La orden de compra indicada en el asunto del mensaje, ha sido aprobada por Gerencia de Planta.<br>'+
 		N'Puedes Verificar el estatus del pedido en la pantalla donde generaste la Orden.<br><br>'+
 		
-		N'La orden indicada en el asunto del mensaje, ha sido aprobada por Gerencia de Planta.<br>'+
-		N'Puedes Verificar el estatus y el número de orden asignada en la pantalla donde generaste la Orden.</span><br><br>'+
+		--N'La orden indicada en el asunto del mensaje, ha sido aprobada por Gerencia de Planta.<br>'+
+		--N'Puedes Verificar el estatus y el número de orden asignada en la pantalla donde generaste la Orden.</span><br><br>'+
 		N'[Orden#' + CONVERT(VARCHAR(10),FORMAT(@PP_ORDEN,'00000')) +'] // Secuencia ('+ CONVERT(VARCHAR(10),@PP_NO_SECUENCIA) +')'+
 		N'</body>'+
 		N'</html>';
