@@ -19,7 +19,7 @@ GO
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> INSERT / UPDATE
 -- //////////////////////////////////////////////////////////////
-
+-- USE DATA_02
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_INSPECCION_LOTE_PIEL_MARCA_NATURAL]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_IN_INSPECCION_LOTE_PIEL_MARCA_NATURAL]
 GO
@@ -64,7 +64,34 @@ AS
 																)
 			
 			IF @@ROWCOUNT = 0
-				RAISERROR ('ERROR: No fue posible ingresar el registro en [K_INSPECCION_LOTE_PIEL_MARCA_NATURAL] ', 16, 1 ) --MENSAJE - Severity -State.
+				RAISERROR ('ERROR: No fue posible ingresar el registro en [INSPECCION_LOTE_PIEL_MARCA_NATURAL] ', 16, 1 ) --MENSAJE - Severity -State.
+
+			-- ////SE OBTIENE LA CANTIDAD DE PIELES A INSPECCIONAR POR LOTE//////////////////////////////////////////////
+			DECLARE @VP_N_PIEL_A_INSPECCIONAR	INT = 0
+			SELECT	@VP_N_PIEL_A_INSPECCIONAR = Sample_size 
+			FROM	IncInsp_sql (NOLOCK)
+			WHERE	ID = @PP_K_LOTE_IMPORTACION
+
+			IF @VP_N_PIEL_A_INSPECCIONAR IS NULL
+				SET @VP_N_PIEL_A_INSPECCIONAR = 0
+			
+			-- ////SE OBTIENE LA CANTIDAD DE PIELES A INSPECCIONADAS POR LOTE//////////////////////////////////////////////
+			DECLARE @VP_N_PIEL_INSPECCIONADA INT = 0
+			SELECT	@VP_N_PIEL_INSPECCIONADA = COUNT(DISTINCT PIEL)		
+			-- =============================	
+			FROM	[INSPECCION_LOTE_PIEL_MARCA_NATURAL] (NOLOCK)
+			-- =============================
+			WHERE	[K_IMPORTACION_LOTE_PIEL] = @PP_K_LOTE_IMPORTACION
+			AND		K_ITEM = @PP_K_ITEM
+			AND		LOTE = @PP_LOTE
+			AND		[K_INSPECCION_MATERIAL] = @PP_K_INSPECCION_MATERIAL
+
+			IF @VP_N_PIEL_INSPECCIONADA IS NULL
+				SET @VP_N_PIEL_INSPECCIONADA = 0
+
+			-- ////SI LA CANTIDAD DE PIELES INSPECCIONADAS ES MAYOR A LA QUE SE REQUIERE INSPECIONAR MUESTRA UN ERROR//////////////////////////////////////////////
+			IF @VP_N_PIEL_INSPECCIONADA > @VP_N_PIEL_A_INSPECCIONAR
+			RAISERROR ('ERROR: ya se han inspeccionado las pieles requeridas.', 16, 1 ) --MENSAJE - Severity -State.
 
 		COMMIT TRANSACTION 
 	END TRY
