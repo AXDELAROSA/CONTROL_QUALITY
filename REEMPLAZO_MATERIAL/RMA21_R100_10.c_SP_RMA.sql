@@ -40,6 +40,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_
 GO
 --		 EXECUTE [dbo].[PG_LI_HEADER_RMA] 0,47,'',-1,'( TODOS )',null,null
 --		 EXECUTE [dbo].[PG_LI_HEADER_RMA] 0,43,'',-1,'( TODOS )',null,null
+--		 EXECUTE [dbo].[PG_LI_HEADER_RMA] 0,56,'',-1,'( TODOS )',null,null
 --		 EXECUTE [dbo].[PG_LI_HEADER_RMA] 0,139,'',-1,'( TODOS )',null,null
 CREATE PROCEDURE [dbo].[PG_LI_HEADER_RMA]
 	@PP_K_SISTEMA_EXE				INT,
@@ -62,42 +63,86 @@ AS
 		--	SET	@PP_K_STATUS_RMA	= 4
 
 	-- /////////////////////////////////////////////////////////////////////
-	SELECT		TOP (1000)
-				-- =============================	 
-				--F_CREACION_RMA,	--F_ENTREGA_RMA,	--MODELNO,	--VERSIONNO,
-				-- =============================
-				(SELECT COUNT(K_DETAILS_RMA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS PATTERNS,
-				(SELECT SUM(CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS CANTIDAD,
-				HEADER_RMA.JOBNO	AS JOBNOS_ARRAY,
-				( CASE
-					WHEN	L_APLICA_COBRO = 1 THEN 'SÍ'
-					ELSE	'NO'
-				END	)	AS APLICA_COBRO,
-				-- =============================
-				S_STATUS_RMA	, D_STATUS_RMA,
-				S_TIPO_RMA		, D_TIPO_RMA,
-				HEADER_RMA.CUS_NO,
-				-- =============================
-				HEADER_RMA.*
-				-- =============================	
-	FROM		HEADER_RMA		(NOLOCK) 
-	INNER JOIN 	STATUS_RMA		(NOLOCK) ON STATUS_RMA.K_STATUS_RMA		= HEADER_RMA.K_STATUS_RMA
-	INNER JOIN 	TIPO_RMA		(NOLOCK) ON TIPO_RMA.K_TIPO_RMA			= HEADER_RMA.K_TIPO_RMA
-	--INNER JOIN	DETAILS_RMA		(NOLOCK) ON DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA	
-				-- =============================
-	WHERE		(	HEADER_RMA.K_HEADER_RMA				= @PP_BUSCAR
-				OR	C_RMA								LIKE '%'+@PP_BUSCAR+'%'	)
-				-- =============================
-	AND			( @PP_F_INIT IS NULL		OR	@PP_F_INIT<=F_CREACION_RMA)
-	AND			( @PP_F_FINISH IS NULL		OR	@PP_F_FINISH>=F_CREACION_RMA)
-				-- =============================
-	--	AND			( HEADER_RMA.K_STATUS_RMA IN (4,5,6,7,8,9,11) )
-	AND			( @PP_CUS_NO		= '( TODOS )'		OR	HEADER_RMA.CUS_NO		= @PP_CUS_NO )
-	AND			( @PP_K_STATUS_RMA	= -1				OR	HEADER_RMA.K_STATUS_RMA	= @PP_K_STATUS_RMA )
-	--AND			( @PP_MODELNO	= '( TODOS )'		OR	HEADER_RMA.MODELNO	= @PP_MODELNO )
-				-- =============================
-	AND			HEADER_RMA.L_BORRADO	<> 1
-	ORDER BY	K_STATUS_RMA	DESC,	F_CREACION_RMA	DESC
+	IF @PP_K_USUARIO_ACCION	= 43 OR @PP_K_USUARIO_ACCION	= 139
+	BEGIN
+		SELECT		TOP (1000)
+					-- =============================	 
+					--F_CREACION_RMA,	--F_ENTREGA_RMA,	--MODELNO,	--VERSIONNO,
+					-- =============================
+					(SELECT COUNT(K_DETAILS_RMA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS PATTERNS,
+					(SELECT SUM(CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS CANTIDAD,
+					HEADER_RMA.JOBNO	AS JOBNOS_ARRAY,
+					( CASE
+						WHEN	L_APLICA_COBRO = 1 THEN 'SÍ'
+						ELSE	'NO'
+					END	)	AS APLICA_COBRO,
+					-- =============================
+					S_STATUS_RMA	, D_STATUS_RMA,
+					S_TIPO_RMA		, D_TIPO_RMA,
+					HEADER_RMA.CUS_NO,
+					-- =============================
+					HEADER_RMA.*
+					-- =============================	
+		FROM		HEADER_RMA		(NOLOCK) 
+		INNER JOIN 	STATUS_RMA		(NOLOCK) ON STATUS_RMA.K_STATUS_RMA		= HEADER_RMA.K_STATUS_RMA
+		INNER JOIN 	TIPO_RMA		(NOLOCK) ON TIPO_RMA.K_TIPO_RMA			= HEADER_RMA.K_TIPO_RMA
+		INNER JOIN	BD_GENERAL.DBO.USUARIO_PEARL		(NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL	= HEADER_RMA.K_USUARIO_ALTA
+					-- =============================
+		WHERE		(	HEADER_RMA.K_HEADER_RMA				= @PP_BUSCAR
+					OR	C_RMA								LIKE '%'+@PP_BUSCAR+'%'	)
+					-- =============================
+		AND			( @PP_F_INIT IS NULL		OR	@PP_F_INIT<=F_CREACION_RMA)
+		AND			( @PP_F_FINISH IS NULL		OR	@PP_F_FINISH>=F_CREACION_RMA)
+					-- =============================
+		--	AND			( HEADER_RMA.K_STATUS_RMA IN (4,5,6,7,8,9,11) )
+		AND			( @PP_CUS_NO		= '( TODOS )'		OR	HEADER_RMA.CUS_NO		= @PP_CUS_NO )
+		AND			( @PP_K_STATUS_RMA	= -1				OR	HEADER_RMA.K_STATUS_RMA	= @PP_K_STATUS_RMA )
+		--AND			( @PP_MODELNO	= '( TODOS )'		OR	HEADER_RMA.MODELNO	= @PP_MODELNO )
+		--AND			USUARIO_PEARL.K_USUARIO_DEPARTAMENTO	=	(	SELECT K_USUARIO_DEPARTAMENTO FROM BD_GENERAL.DBO.USUARIO_PEARL WHERE K_USUARIO_PEARL = @PP_K_USUARIO_ACCION  )
+					-- =============================
+		AND			HEADER_RMA.L_BORRADO	<> 1
+		ORDER BY	K_STATUS_RMA	DESC,	F_CREACION_RMA	DESC
+	END
+	ELSE
+	BEGIN
+		SELECT		TOP (1000)
+					-- =============================	 
+					--F_CREACION_RMA,	--F_ENTREGA_RMA,	--MODELNO,	--VERSIONNO,
+					-- =============================
+					(SELECT COUNT(K_DETAILS_RMA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS PATTERNS,
+					(SELECT SUM(CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS CANTIDAD,
+					HEADER_RMA.JOBNO	AS JOBNOS_ARRAY,
+					( CASE
+						WHEN	L_APLICA_COBRO = 1 THEN 'SÍ'
+						ELSE	'NO'
+					END	)	AS APLICA_COBRO,
+					-- =============================
+					S_STATUS_RMA	, D_STATUS_RMA,
+					S_TIPO_RMA		, D_TIPO_RMA,
+					HEADER_RMA.CUS_NO,
+					-- =============================
+					HEADER_RMA.*
+					-- =============================	
+		FROM		HEADER_RMA		(NOLOCK) 
+		INNER JOIN 	STATUS_RMA		(NOLOCK) ON STATUS_RMA.K_STATUS_RMA		= HEADER_RMA.K_STATUS_RMA
+		INNER JOIN 	TIPO_RMA		(NOLOCK) ON TIPO_RMA.K_TIPO_RMA			= HEADER_RMA.K_TIPO_RMA
+		INNER JOIN	BD_GENERAL.DBO.USUARIO_PEARL		(NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL	= HEADER_RMA.K_USUARIO_ALTA
+					-- =============================
+		WHERE		(	HEADER_RMA.K_HEADER_RMA				= @PP_BUSCAR
+					OR	C_RMA								LIKE '%'+@PP_BUSCAR+'%'	)
+					-- =============================
+		AND			( @PP_F_INIT IS NULL		OR	@PP_F_INIT<=F_CREACION_RMA)
+		AND			( @PP_F_FINISH IS NULL		OR	@PP_F_FINISH>=F_CREACION_RMA)
+					-- =============================
+		--	AND			( HEADER_RMA.K_STATUS_RMA IN (4,5,6,7,8,9,11) )
+		AND			( @PP_CUS_NO		= '( TODOS )'		OR	HEADER_RMA.CUS_NO		= @PP_CUS_NO )
+		AND			( @PP_K_STATUS_RMA	= -1				OR	HEADER_RMA.K_STATUS_RMA	= @PP_K_STATUS_RMA )
+		--AND			( @PP_MODELNO	= '( TODOS )'		OR	HEADER_RMA.MODELNO	= @PP_MODELNO )
+		AND			USUARIO_PEARL.K_USUARIO_DEPARTAMENTO	=	(	SELECT K_USUARIO_DEPARTAMENTO FROM BD_GENERAL.DBO.USUARIO_PEARL WHERE K_USUARIO_PEARL = @PP_K_USUARIO_ACCION  )
+					-- =============================
+		AND			HEADER_RMA.L_BORRADO	<> 1
+		ORDER BY	K_STATUS_RMA	DESC,	F_CREACION_RMA	DESC
+	END
 	-- /////////////////////////////////////////////////////////////////////
 GO
 
@@ -108,7 +153,7 @@ GO
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_DETAILS_RMA]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_LI_DETAILS_RMA]
 GO
---		 EXECUTE [dbo].[PG_LI_DETAILS_RMA] 0,139, 4
+--		 EXECUTE [dbo].[PG_LI_DETAILS_RMA] 0,139, 17
 CREATE PROCEDURE [dbo].[PG_LI_DETAILS_RMA]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -116,8 +161,15 @@ CREATE PROCEDURE [dbo].[PG_LI_DETAILS_RMA]
 	@PP_K_HEADER_RMA				INT
 AS
 
-	SELECT	DETAILS_RMA.ITEM_NO			AS S_PATTERN,
-			SEARCH_DESC					AS D_PATTERN,
+	SELECT	DETAILS_RMA.ITEM_NO				AS S_PATTERN,
+			LTRIM(RTRIM(SEARCH_DESC))		AS D_PATTERN,
+			(	SELECT TOP (1) ITEM_NO 
+				FROM	CCPRDSTR_SQL
+				WHERE	ccprdstr_sql.CUS_NO	= DETAILS_RMA.CUS_NO
+				AND		ccprdstr_sql.MODELNO	= DETAILS_RMA.MODELNO
+				AND		ccprdstr_sql.VERSIONNO	= DETAILS_RMA.VERSIONNO	
+				AND		ccprdstr_sql.COMP_ITEM_NO	= DETAILS_RMA.ITEM_NO					
+				) AS KIT,
 			[DETAILS_RMA].* 
 	FROM	[DETAILS_RMA]		(NOLOCK)
 	INNER JOIN	IMITMIDX_SQL	(NOLOCK)	ON IMITMIDX_SQL.ITEM_NO	= DETAILS_RMA.ITEM_NO
@@ -134,7 +186,7 @@ GO
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_COLOR_RMA]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_LI_COLOR_RMA]
 GO
---		 EXECUTE [dbo].[PG_LI_COLOR_RMA] 0,139,'MAGN03','WKZ'
+--		 EXECUTE [dbo].[PG_LI_COLOR_RMA] 0,139,'IRVI02','JLI'
 CREATE PROCEDURE [dbo].[PG_LI_COLOR_RMA]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -142,6 +194,8 @@ CREATE PROCEDURE [dbo].[PG_LI_COLOR_RMA]
 	@PP_CUS_NO					VARCHAR(10),
 	@PP_MODELNO					VARCHAR(10)
 AS
+
+	SET @PP_MODELNO = LTRIM(RTRIM(LEFT(@PP_MODELNO,3)))
 	-- ///////////////////////////////////////////
 		SELECT	IMITMIDX_SQL.A4GLIDENTITY				AS K_COLOR,
 				LTRIM(RTRIM(IMITMIDX_SQL.ITEM_DESC_1))	AS D_COLOR,
@@ -318,7 +372,7 @@ GO
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_HEADER_RMA]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_SK_HEADER_RMA]
 GO
---		 EXECUTE [dbo].[PG_SK_HEADER_RMA] 0,139,1
+--		 EXECUTE [dbo].[PG_SK_HEADER_RMA] 0,139,7
 CREATE PROCEDURE [dbo].[PG_SK_HEADER_RMA]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -326,10 +380,29 @@ CREATE PROCEDURE [dbo].[PG_SK_HEADER_RMA]
 	@PP_K_HEADER_RMA				INT
 AS
 	-- ///////////////////////////////////////////			
+	DECLARE @K_ARCUSFIL				INT
+			,@K_ARCUSFIL_PROGRAM	INT
+			,@CB_ARCUSFIL_PROGRAM	VARCHAR(250)
+
+	--SELECT	@K_ARCUSFIL	= K_ARCUSFIL
+	--FROM	ARCUSFIL_SQL
+	--WHERE	ARCUSFIL_SQL.CUS_NO	= HEADER_RMA.CUS_NO
+
+	--SELECT	@K_ARCUSFIL_PROGRAM	= K_ARCUSFIL_PROGRAM 
+	--FROM	ARCUSFIL_PROGRAM		(NOLOCK)
+	--INNER JOIN	HEADER_RMA			(NOLOCK) ON HEADER_RMA.PROGRAM	= S_ARCUSFIL_PROGRAM 
+	--AND		HEADER_RMA.K_HEADER_RMA			= @PP_K_HEADER_RMA
+
+	SELECT	@CB_ARCUSFIL_PROGRAM = RTRIM(LTRIM(S_ARCUSFIL_PROGRAM_MODEL)) + ' // ' + RTRIM(LTRIM(D_ARCUSFIL_PROGRAM_MODEL))
+	FROM	ARCUSFIL_PROGRAM_MODEL		(NOLOCK)
+	INNER JOIN	HEADER_RMA				(NOLOCK) ON HEADER_RMA.MODELNO	= S_ARCUSFIL_PROGRAM_MODEL
+	AND		HEADER_RMA.K_HEADER_RMA			= @PP_K_HEADER_RMA
+
 	SELECT		TOP (1)
 				-- =============================	 
 				S_STATUS_RMA	, D_STATUS_RMA	,
 				S_TIPO_RMA		, D_TIPO_RMA	,
+				@CB_ARCUSFIL_PROGRAM	AS MODELNO_CB,
 				--CUS_NO			, PROGRAMA		,
 				--MODELNO,
 				--VERSIONNO,
@@ -352,7 +425,7 @@ GO
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_DETAILS_RMA]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_SK_DETAILS_RMA]
 GO
---	EXECUTE [dbo].[PG_SK_DETAILS_RMA] 0,139,240,0
+--		 EXECUTE [dbo].[PG_SK_DETAILS_RMA] 0,139,7
 CREATE PROCEDURE [dbo].[PG_SK_DETAILS_RMA]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -443,7 +516,8 @@ AS
 
 	IF @VP_EXISTE>0
 	BEGIN
-		IF	@PP_K_USUARIO_ACCION IN ( 47 )					---MIGUELC
+		IF	(		@PP_K_USUARIO_ACCION IN ( 47 )					---MIGUELC
+				OR	@PP_K_USUARIO_ACCION IN ( 56 )		)			---MANUELG
 		BEGIN
 
 			SELECT	@VP_PENDIENTES		= COUNT(K_HEADER_RMA)
@@ -461,34 +535,41 @@ AS
 			AND		L_BORRADO			=	0
 
 		END
-		ELSE IF @PP_K_USUARIO_ACCION IN ( 139 )			---JORGEH
+		ELSE IF @PP_K_USUARIO_ACCION IN ( 139 )			---AX
 		BEGIN
 			
 			SELECT	@VP_PENDIENTES		= COUNT(K_HEADER_RMA)
 			FROM	HEADER_RMA
 			WHERE	K_STATUS_RMA		IN	(2)
 			AND		L_BORRADO			=	0
-			SET @VP_MENSAJE	= 'DPTO // '
 
-			IF @VP_PENDIENTES = 0
+			IF @VP_PENDIENTES > 0
+			BEGIN
+				SET @VP_MENSAJE	= 'DPTO // '
+			END
+			ELSE IF @VP_PENDIENTES = 0
 			BEGIN
 				SELECT	@VP_PENDIENTES		= COUNT(K_HEADER_RMA)
 				FROM	HEADER_RMA
 				WHERE	K_STATUS_RMA		IN	(4)
 				AND		L_BORRADO			=	0
-				SET @VP_MENSAJE	= 'MNGR // '
+
+				IF @VP_PENDIENTES > 0
+				BEGIN
+					SET @VP_MENSAJE	= 'MNGR // '
+				END
 			END
 
 		END
 	
 		IF @VP_PENDIENTES>0
 		BEGIN
-			SET @VP_MENSAJE = @VP_MENSAJE + 'Existen [ORDENES RMA] por autorizar!!!!'
+			SET @VP_MENSAJE = @VP_MENSAJE + 'Existen [ORDENES RMA] por autorizar. Da click aquí par ingresar a la pantalla.'
 		END
 
 	END
 
-	SELECT  @VP_MENSAJE AS MENSAJE
+	SELECT  @VP_MENSAJE AS MENSAJE, 'RMA' AS TITULO_UDA
 	-- ////////////////////////////////////////////////////////////////////
 GO
 
@@ -534,12 +615,15 @@ CREATE PROCEDURE [dbo].[PG_IN_HEADER_RMA]
 	@PP_ARRAY_QTY_ORD				NVARCHAR(MAX),
 	@PP_ARRAY_K_DETAI				NVARCHAR(MAX),
 	-- ============================
-	@PP_ARRAY_GRUPO_O				NVARCHAR(MAX)
+	@PP_ARRAY_GRUPO_O				NVARCHAR(MAX),
+	@PP_ARRAY_PRECIOM				NVARCHAR(MAX)
 AS			
 DECLARE  @VP_MENSAJE				NVARCHAR(MAX)
 		,@VP_K_HEADER_RMA			INT = 0
 		,@VP_D_USUARIO				VARCHAR(250)
 		,@VP_S_USUARIO				VARCHAR(50)
+
+	SET @PP_MODELNO = LTRIM(RTRIM(LEFT(@PP_MODELNO,3)))
 
 	SELECT	@VP_D_USUARIO		= NOMBRE + ' ' + APELLIDO_PATERNO,
 			@VP_S_USUARIO		= D_USUARIO_PEARL
@@ -614,7 +698,8 @@ BEGIN TRY
 										@PP_ARRAY_CLAVE_D	,	@PP_ARRAY_DEFECTO	,
 										-- ============================
 										@PP_ARRAY_QTY_ORD	,	@PP_ARRAY_K_DETAI	,
-										@PP_K_TIPO_RMA		,	@PP_ARRAY_GRUPO_O
+										@PP_K_TIPO_RMA		,	@PP_ARRAY_GRUPO_O	,
+										@PP_ARRAY_PRECIOM
 
 -- /////////////////////////////////////////////////////////////////////
 COMMIT TRANSACTION 
@@ -679,7 +764,8 @@ CREATE PROCEDURE [dbo].[PG_UP_HEADER_RMA]
 	@PP_ARRAY_QTY_ORD				NVARCHAR(MAX),
 	@PP_ARRAY_K_DETAI				NVARCHAR(MAX),
 	-- ============================
-	@PP_ARRAY_GRUPO_O				NVARCHAR(MAX)
+	@PP_ARRAY_GRUPO_O				NVARCHAR(MAX),
+	@PP_ARRAY_PRECIOM				NVARCHAR(MAX)
 AS			
 DECLARE @VP_MENSAJE				NVARCHAR(MAX)
 -- /////////////////////////////////////////////////////////////////////
@@ -689,6 +775,8 @@ BEGIN TRY
 	DECLARE  @VP_STATUS_RMA		INT
 			-- ,@VP_FECHA			DATE
 	
+	SET @PP_MODELNO = LTRIM(RTRIM(LEFT(@PP_MODELNO,3)))
+
 	SELECT	@VP_STATUS_RMA	= K_STATUS_RMA	
 			--,@VP_FECHA		= F_CREACION_RMA
 	FROM	HEADER_RMA		(NOLOCK)
@@ -748,7 +836,8 @@ BEGIN TRY
 									@PP_ARRAY_CLAVE_D	,	@PP_ARRAY_DEFECTO	,
 									-- ============================
 									@PP_ARRAY_QTY_ORD	,	@PP_ARRAY_K_DETAI	,
-									@PP_K_TIPO_RMA		,	@PP_ARRAY_GRUPO_O
+									@PP_K_TIPO_RMA		,	@PP_ARRAY_GRUPO_O	,
+									@PP_ARRAY_PRECIOM
 
 -- /////////////////////////////////////////////////////////////////////
 COMMIT TRANSACTION 
@@ -799,7 +888,8 @@ CREATE PROCEDURE [dbo].[PG_INUP_DETAILS_RMA]
 	@PP_ARRAY_K_DETAI			NVARCHAR(MAX),
 	@PP_K_TIPO_RMA				INT,
 	-- ============================
-	@PP_ARRAY_GRUPO_O			NVARCHAR(MAX)	
+	@PP_ARRAY_GRUPO_O			NVARCHAR(MAX),
+	@PP_ARRAY_PRECIOM			NVARCHAR(MAX)
 AS
 	DECLARE @VP_MENSAJE				VARCHAR(300) = ''
 		-- ============================
@@ -818,6 +908,8 @@ AS
 			,@VP_POSICION_QTY_ORD	INT
 			,@VP_POSICION_K_DETAI	INT	
 			,@VP_POSICION_GRUPO_O	INT	
+
+			,@VP_POSICION_PRECIOM	INT	
 		-- ============================	
 			,@VP_VALOR_MODELNO		VARCHAR(500)
 			,@VP_VALOR_VERSION		VARCHAR(500)			
@@ -832,6 +924,8 @@ AS
 			,@VP_VALOR_QTY_ORD		VARCHAR(500)
 			,@VP_VALOR_K_DETAI		VARCHAR(500)
 			,@VP_VALOR_GRUPO_O		VARCHAR(500)
+
+			,@VP_VALOR_PRECIOM		VARCHAR(500)
 
 	
 	DECLARE @VP_TA_DETAILS			AS TABLE
@@ -851,6 +945,8 @@ AS
 	SET	@PP_ARRAY_QTY_ORD		= @PP_ARRAY_QTY_ORD	+ '/'
 	SET	@PP_ARRAY_K_DETAI		= @PP_ARRAY_K_DETAI	+ '/'
 	SET	@PP_ARRAY_GRUPO_O		= @PP_ARRAY_GRUPO_O	+ '/'
+
+	SET	@PP_ARRAY_PRECIOM		= @PP_ARRAY_PRECIOM	+ '/'
 	
 	--Hacemos un bucle que se repite mientras haya separadores, patindex busca un patron en una cadena y nos devuelve su posicion
 	WHILE patindex('%/%' , @PP_ARRAY_ITEM_NO) <> 0
@@ -869,6 +965,8 @@ AS
 			SELECT @VP_POSICION_K_DETAI	=	patindex('%/%' , @PP_ARRAY_K_DETAI		)
 			SELECT @VP_POSICION_GRUPO_O	=	patindex('%/%' , @PP_ARRAY_GRUPO_O		)
 
+			SELECT @VP_POSICION_PRECIOM	=	patindex('%/%' , @PP_ARRAY_PRECIOM		)
+
 			--Buscamos la posicion de la primera y obtenemos los caracteres hasta esa posicion
 			SELECT @VP_VALOR_MODELNO	= LEFT(@PP_ARRAY_MODELNO	, @VP_POSICION_MODELNO	- 1)
 			SELECT @VP_VALOR_VERSION	= LEFT(@PP_ARRAY_VERSION	, @VP_POSICION_VERSION	- 1)			
@@ -883,7 +981,30 @@ AS
 			SELECT @VP_VALOR_QTY_ORD	= LEFT(@PP_ARRAY_QTY_ORD	, @VP_POSICION_QTY_ORD	- 1)
 			SELECT @VP_VALOR_K_DETAI	= LEFT(@PP_ARRAY_K_DETAI	, @VP_POSICION_K_DETAI	- 1)
 			SELECT @VP_VALOR_GRUPO_O	= LEFT(@PP_ARRAY_GRUPO_O	, @VP_POSICION_GRUPO_O	- 1)
+
+			SELECT @VP_VALOR_PRECIOM	= LEFT(@PP_ARRAY_PRECIOM	, @VP_POSICION_PRECIOM	- 1)
 				
+				--========================================================================================================================================
+				--========================================================================================================================================
+				-- SACAR CANTIDAD DE REGISTROS POR COLOR/GRUPO DE DETAILS_RMA
+				DECLARE	@VP_CANTIDAD_REGISTROS_X_GPO	AS INT
+				SELECT  @VP_CANTIDAD_REGISTROS_X_GPO	= COUNT(GRUPO_ORDEN)
+				FROM	DETAILS_RMA		(NOLOCK)
+				WHERE	K_HEADER_RMA	= @PP_K_HEADER_RMA
+				AND		CONCAT('F',LTRIM(RTRIM(RIGHT(item_no,6)))) = CONCAT('F',LTRIM(RTRIM(RIGHT(@VP_VALOR_ITEM_NO,6))))			--@VP_VALOR_ITEM_NO
+				AND		GRUPO_ORDEN	= @VP_VALOR_GRUPO_O
+				--GROUP BY  LOT, HIDE
+				--HAVING COUNT(*)>4
+				--ORDER BY LOT, HIDE
+
+				IF @VP_CANTIDAD_REGISTROS_X_GPO > 4
+				BEGIN
+					SET @VP_MENSAJE='Únicamente se puede indicar 4 Patrones por grupo. Verifique...'
+					RAISERROR (@VP_MENSAJE, 16, 1 )
+				END
+				--========================================================================================================================================
+				--========================================================================================================================================
+
 				DECLARE	@VP_PRECIO_PATTERN	DECIMAL(19,4)
 				SELECT	@VP_PRECIO_PATTERN	= ISNULL( costleather , 0 )
 				FROM	[DATA_02].[DBO].ccprcovr_sql	(NOLOCK)
@@ -899,12 +1020,15 @@ AS
 					END
 					ELSE
 					BEGIN	
+						SET	@VP_VALOR_PRECIOM	= 0
+
 						IF	@VP_VALOR_CLAVE_D	= 'XSR' OR	@VP_VALOR_DEFECTO	= 'ORDEN DE SERVICIO'
 						BEGIN
 							SET @VP_MENSAJE='Se debe indicar un defecto para todos los Pattern agregados a la orden. [DET#'+CONVERT(VARCHAR(10),@VP_VALOR_ITEM_NO)+']'
 							RAISERROR (@VP_MENSAJE, 16, 1 ) 
 						END
 					END
+
 								
 				IF	@VP_VALOR_K_DETAI	>  0
 				BEGIN
@@ -913,7 +1037,8 @@ AS
 							[CLAVE_DEFECTO_RMA]		= @VP_VALOR_CLAVE_D		,
 							[D_DEFECTO_RMA]			= @VP_VALOR_DEFECTO		,
 							[PRECIO_UNITARIO]		= @VP_PRECIO_PATTERN	,
-							[GRUPO_ORDEN]			= @VP_VALOR_GRUPO_O		
+							[GRUPO_ORDEN]			= @VP_VALOR_GRUPO_O		,
+							[PRECIO_MANUAL]			= @VP_VALOR_PRECIOM
 					WHERE	K_DETAILS_RMA			= @VP_VALOR_K_DETAI
 
 					IF @@ROWCOUNT = 0
@@ -939,7 +1064,8 @@ AS
 							-- =========================
 							[CANTIDAD_ORDENADA]			,	[PRECIO_UNITARIO]			,
 							-- =========================
-							[CANTIDAD_ENVIADA]			,	[GRUPO_ORDEN]
+							[CANTIDAD_ENVIADA]			,	[GRUPO_ORDEN]				,
+							[PRECIO_MANUAL]
 						)
 					VALUES
 						(	
@@ -955,7 +1081,8 @@ AS
 							-- ============================
 							@VP_VALOR_QTY_ORD			,	@VP_PRECIO_PATTERN			,
 							-- =========================
-							0							,	@VP_VALOR_GRUPO_O
+							0							,	@VP_VALOR_GRUPO_O			,
+							@VP_VALOR_PRECIOM
 						)																															
 					IF @@ROWCOUNT = 0
 					BEGIN
@@ -991,6 +1118,8 @@ AS
 			SELECT @PP_ARRAY_QTY_ORD	= STUFF(@PP_ARRAY_QTY_ORD	, 1, @VP_POSICION_QTY_ORD , '')
 			SELECT @PP_ARRAY_K_DETAI	= STUFF(@PP_ARRAY_K_DETAI	, 1, @VP_POSICION_K_DETAI , '')
 			SELECT @PP_ARRAY_GRUPO_O	= STUFF(@PP_ARRAY_GRUPO_O	, 1, @VP_POSICION_GRUPO_O , '')
+
+			SELECT @PP_ARRAY_PRECIOM	= STUFF(@PP_ARRAY_PRECIOM	, 1, @VP_POSICION_PRECIOM , '')
 		END
 
 		DELETE	FROM DETAILS_RMA
@@ -1040,22 +1169,26 @@ DECLARE  @VP_MENSAJE				NVARCHAR(MAX)=''
 -- /////////////////////////////////////////////////////////////////////
 BEGIN TRANSACTION 
 BEGIN TRY
-		-----	47: MIGUELC		//	43: JORGEH		//	139:ALEJANDROD
+		-----	47: MIGUELC		//	43: JORGEH		//	56: MANUELG			//	139:ALEJANDROD
 		IF @PP_K_USUARIO_ACCION IN ( 139 )
 		BEGIN
 			SET @VP_MENSAJE	= ''
 		END
-		ELSE IF @PP_K_USUARIO_ACCION IN ( 47, 43) AND @PP_L_ACCION_REALIZAR NOT IN ( 2, 3)
+		ELSE IF @PP_K_USUARIO_ACCION IN ( 47, 43, 56 ) AND @PP_L_ACCION_REALIZAR NOT IN ( 2, 3)
 		BEGIN
 			SET @VP_MENSAJE='Acción no permitida para este usuario, verifique...'
 			RAISERROR (@VP_MENSAJE, 16, 1 ) 
 		END
-		ELSE IF @PP_K_USUARIO_ACCION NOT IN ( 47, 43) AND @PP_L_ACCION_REALIZAR NOT IN ( 1, 4)
+		ELSE IF @PP_K_USUARIO_ACCION NOT IN ( 47, 43, 56 ) AND @PP_L_ACCION_REALIZAR NOT IN ( 1, 4)
 		BEGIN
 			SET @VP_MENSAJE='Acción no permitida para este usuario, verifique...'
 			RAISERROR (@VP_MENSAJE, 16, 1 ) 
 		END
 
+		--IF @PP_L_ACCION_REALIZAR = 1 AND @PP_K_USUARIO_ACCION IN ( 47, 43, 56 )
+		--BEGIN
+		--	SET @PP_L_ACCION_REALIZAR = 2
+		--END
 	-- /////////////////////////////////////////////////////////////////////
 	--Colocamos un separador al final de los parametros para que funcione bien nuestro codigo
 	SET	@PP_ARRAY_K_HEADER		= @PP_ARRAY_K_HEADER		+ '/'
@@ -1278,7 +1411,7 @@ BEGIN TRY
 			RAISERROR (@VP_MENSAJE, 16, 1 ) 
 		END			
 
-		IF @VP_STATUS_K_HEADER NOT IN ( 0, 1)
+		IF @VP_STATUS_K_HEADER NOT IN ( 0, 1, 3, 5)
 		BEGIN
 			SET @VP_MENSAJE='La [RMA#'+CONVERT(VARCHAR(10),@PP_K_HEADER_RMA)+'] no puede ser eliminada, verifique...'
 			RAISERROR (@VP_MENSAJE, 16, 1 ) 

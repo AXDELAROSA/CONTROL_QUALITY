@@ -631,7 +631,7 @@ GO
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_PR_ENVIAR_CORREO_RMA]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_PR_ENVIAR_CORREO_RMA]
 GO
---		 EXECUTE [dbo].[PG_PR_ENVIAR_CORREO_RMA]	0,139,  4, 39404,1
+--		 EXECUTE [dbo].[PG_PR_ENVIAR_CORREO_RMA]	0,139,  7, 34659,1
 CREATE PROCEDURE [dbo].[PG_PR_ENVIAR_CORREO_RMA]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -643,20 +643,45 @@ AS
 DECLARE @VP_MENSAJE			VARCHAR(500)=''
 DECLARE @VP_ESTATUS_PO		INT
 -- /////////////////////////////////////////////////////////////////////
-	DECLARE @VP_RECIPIENTS	NVARCHAR(MAX)	= '';
+	DECLARE  @VP_RECIPIENTS					NVARCHAR(MAX)	= ''
+			,@VP_SUBJECT					NVARCHAR(MAX) 
+			,@VP_BODY_HTML					NVARCHAR(MAX) 
+			,@VP_ID_MAIL					INT
+			,@VP_SENT_STATUS				VARCHAR(500)
+			,@VP_K_TIPO_GRUPO_APROBADOR		VARCHAR(15)	=	0--9702
+			,@PP_TIPO_ORDEN					VARCHAR(250)
+			,@VP_K_USUARIO_DEPTO				INT
+	----================================================================
+	----================================================================
+	SELECT	@PP_TIPO_ORDEN				= D_TIPO_RMA,
+			@VP_K_USUARIO_DEPTO			= K_USUARIO_DEPARTAMENTO
+	FROM	HEADER_RMA								(NOLOCK)
+	INNER JOIN	TIPO_RMA							(NOLOCK) ON TIPO_RMA.K_TIPO_RMA	= HEADER_RMA.K_TIPO_RMA
+	INNER JOIN	BD_GENERAL.DBO.USUARIO_PEARL		(NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL	= HEADER_RMA.K_USUARIO_ALTA
+	--AND			USUARIO_PEARL.K_USUARIO_DEPARTAMENTO	=	(	SELECT K_USUARIO_DEPARTAMENTO FROM BD_GENERAL.DBO.USUARIO_PEARL WHERE K_USUARIO_PEARL = @PP_K_USUARIO_ACCION  )
+	AND		HEADER_RMA.K_HEADER_RMA		= @PP_K_HEADER_RMA
 
-	DECLARE @VP_SUBJECT NVARCHAR(MAX) ;
-	DECLARE @VP_BODY_HTML  NVARCHAR(MAX) ;
-	DECLARE @VP_ID_MAIL INT;
-	DECLARE @VP_SENT_STATUS VARCHAR(500);
+
+	IF @VP_K_USUARIO_DEPTO	IN ( 3 )		--	MATERIALES
+	BEGIN
+		SET	@VP_K_TIPO_GRUPO_APROBADOR	= 9704
+	END
+	ELSE IF @VP_K_USUARIO_DEPTO	IN ( 4 )	--	CALIDAD
+	BEGIN
+		SET	@VP_K_TIPO_GRUPO_APROBADOR	= 9702
+
+	END
+
 	----================================================================
 	----================================================================
-	SELECT		@VP_RECIPIENTS	=	@VP_RECIPIENTS + ';' + CORREO_USUARIO.CORREO_USUARIO_PEARL	
-	FROM		HEADER_RMA		(NOLOCK)
-	LEFT JOIN	BD_GENERAL.DBO.USUARIO_PEARL	AS CORREO_USUARIO	ON	HEADER_RMA.K_USUARIO_ALTA	= CORREO_USUARIO.K_USUARIO_PEARL
-	WHERE		K_HEADER_RMA	=	@PP_K_HEADER_RMA
+	SELECT  @VP_RECIPIENTS	=	@VP_RECIPIENTS + ';' + CORREO_USUARIO_PEARL
+	FROM	BD_GENERAL.dbo.USUARIO_PEARL AS USERS  (NOLOCK) 
+	INNER	JOIN	BD_GENERAL.dbo.GRUPO_APROBADOR (NOLOCK) ON GRUPO_APROBADOR.K_USUARIO=USERS.K_USUARIO_PEARL
+	WHERE	GRUPO_APROBADOR.K_TIPO_GRUPO_APROBADOR = @VP_K_TIPO_GRUPO_APROBADOR
+	AND		K_ESTATUS_GRUPO_APROBADOR = 1
+
+	SET @VP_RECIPIENTS = SUBSTRING(@VP_RECIPIENTS,2,LEN(@VP_RECIPIENTS))
 	----================================================================
-		SET @VP_RECIPIENTS = SUBSTRING(@VP_RECIPIENTS,2,LEN(@VP_RECIPIENTS))
 		SET @VP_SUBJECT = '[RMA#' + CONVERT(VARCHAR(10),FORMAT(@PP_K_HEADER_RMA,'000000')) +'] APROBADA'
 		
 		SET @VP_BODY_HTML =
@@ -665,17 +690,18 @@ DECLARE @VP_ESTATUS_PO		INT
 		N'</head>'+
 		N'<body>'+
 		N'<span style="color:black; font-size:12pt">	Buen día:<br>' +
-		N'La orden de compra indicada en el asunto del mensaje, ha sido aprobada por Gerencia de Planta.<br>'+
-		N'Puedes Verificar el estatus del pedido en la pantalla donde generaste la Orden.<br><br>'+
+		N'La orden:  <b>[#' + CONVERT(VARCHAR(10),FORMAT(@PP_ORDEN,'00000')) +'] </b> // Secuencia ('+ CONVERT(VARCHAR(10),@PP_NO_SECUENCIA) +')'+
+		N'<br><br> De tipo: <b>' + @PP_TIPO_ORDEN + '</b>,  ha sido aprobada por Gerencia de Planta.<br>'+
+		
+		N'Es necesario dar el seguimiento correspondiente. <br><br>'+
 		
 		--N'La orden indicada en el asunto del mensaje, ha sido aprobada por Gerencia de Planta.<br>'+
 		--N'Puedes Verificar el estatus y el número de orden asignada en la pantalla donde generaste la Orden.</span><br><br>'+
-		N'[Orden#' + CONVERT(VARCHAR(10),FORMAT(@PP_ORDEN,'00000')) +'] // Secuencia ('+ CONVERT(VARCHAR(10),@PP_NO_SECUENCIA) +')'+
 		N'</body>'+
 		N'</html>';
 
 			EXEC msdb.dbo.sp_send_dbmail @recipients=@VP_RECIPIENTS,
-			--@blind_copy_recipients='rafaelf@PEARLLEATHER.COM.MX',
+			--@blind_copy_recipients='alejandrod@PEARLLEATHER.COM.MX',
 			@subject = @VP_SUBJECT,
 			@body = @VP_BODY_HTML,  
 			@body_format = 'HTML';
