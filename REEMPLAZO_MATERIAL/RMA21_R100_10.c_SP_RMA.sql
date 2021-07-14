@@ -596,7 +596,7 @@ CREATE PROCEDURE [dbo].[PG_IN_HEADER_RMA]
 	-- ============================
 	--@PP_F_CREACION_RMA				DATE,
 	-- ============================
-	@PP_SOLICITADA_POR_RMA			VARCHAR (150),
+	@PP_SOLICITADA_POR_RMA			VARCHAR (250),
 	-- ============================
 	@PP_C_RMA						VARCHAR(255),
 	@PP_K_TIPO_RMA					INT,
@@ -616,7 +616,8 @@ CREATE PROCEDURE [dbo].[PG_IN_HEADER_RMA]
 	@PP_ARRAY_K_DETAI				NVARCHAR(MAX),
 	-- ============================
 	@PP_ARRAY_GRUPO_O				NVARCHAR(MAX),
-	@PP_ARRAY_PRECIOM				NVARCHAR(MAX)
+	@PP_ARRAY_PRECIOM				NVARCHAR(MAX),
+	@PP_ATENCION_A					VARCHAR (250)	= ''
 AS			
 DECLARE  @VP_MENSAJE				NVARCHAR(MAX)
 		,@VP_K_HEADER_RMA			INT = 0
@@ -649,6 +650,7 @@ BEGIN TRY
 				[F_CREACION_RMA]				,--	[F_ENTREGA_RMA]					,
 				-- ============================	
 				[CREADA_POR_RMA]				,	[SOLICITADA_POR_RMA]			,
+				[ATENCION_A]					,
 				-- ============================	
 				[C_RMA]							,	[L_APLICA_COBRO]				,
 				-- ============================
@@ -665,6 +667,7 @@ BEGIN TRY
 				GETDATE(),	-- @PP_F_CREACION_RMA,
 				-- ============================	
 				@VP_D_USUARIO					,	@PP_SOLICITADA_POR_RMA			,
+				@PP_ATENCION_A					,
 				-- ============================	
 				@PP_C_RMA						,	@PP_L_APLICA_COBRO				,
 				-- ============================
@@ -745,7 +748,7 @@ CREATE PROCEDURE [dbo].[PG_UP_HEADER_RMA]
 	-- ============================
 	--@PP_F_CREACION_RMA				DATE,
 	-- ============================
-	@PP_SOLICITADA_POR_RMA			VARCHAR (150),
+	@PP_SOLICITADA_POR_RMA			VARCHAR (250),
 	-- ============================
 	@PP_C_RMA						VARCHAR(255),
 	@PP_K_TIPO_RMA					INT,
@@ -765,7 +768,8 @@ CREATE PROCEDURE [dbo].[PG_UP_HEADER_RMA]
 	@PP_ARRAY_K_DETAI				NVARCHAR(MAX),
 	-- ============================
 	@PP_ARRAY_GRUPO_O				NVARCHAR(MAX),
-	@PP_ARRAY_PRECIOM				NVARCHAR(MAX)
+	@PP_ARRAY_PRECIOM				NVARCHAR(MAX),
+	@PP_ATENCION_A					VARCHAR (250)	= ''
 AS			
 DECLARE @VP_MENSAJE				NVARCHAR(MAX)
 -- /////////////////////////////////////////////////////////////////////
@@ -811,6 +815,7 @@ BEGIN TRY
 			--[F_CREACION_RMA]				= @VP_FECHA					,
 			-- ============================	= -- ============================			
 			[SOLICITADA_POR_RMA]			= @PP_SOLICITADA_POR_RMA	,
+			[ATENCION_A]					= @PP_ATENCION_A			,
 			-- ============================	= -- ============================
 			[C_RMA]							= @PP_C_RMA					,
 			[L_APLICA_COBRO]				= @PP_L_APLICA_COBRO		,
@@ -997,9 +1002,9 @@ AS
 				--HAVING COUNT(*)>4
 				--ORDER BY LOT, HIDE
 
-				IF @VP_CANTIDAD_REGISTROS_X_GPO > 4
+				IF @VP_CANTIDAD_REGISTROS_X_GPO > 12
 				BEGIN
-					SET @VP_MENSAJE='Únicamente se puede indicar 4 Patrones por grupo. Verifique...'
+					SET @VP_MENSAJE='Únicamente se puede indicar 12 Patrones por grupo. Verifique...'
 					RAISERROR (@VP_MENSAJE, 16, 1 )
 				END
 				--========================================================================================================================================
@@ -1252,7 +1257,7 @@ BEGIN TRY
 							SET @VP_ESTATUS_SIGUIENTE	= 4
 						END
 						
-						IF @PP_K_USUARIO_ACCION IN (43)  AND @VP_STATUS_K_HEADER IN (4)				-- JORGEH
+						IF @PP_K_USUARIO_ACCION IN (43, 56)  AND @VP_STATUS_K_HEADER IN (4)				-- JORGEH
 						BEGIN
 							SET @VP_ESTATUS_SIGUIENTE	= 6
 						END
