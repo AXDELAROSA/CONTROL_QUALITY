@@ -190,7 +190,17 @@ EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,05, 'DENEGADA POR GTE. PLANTA',			'', 'DNGT
 EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,06, 'APROBADA',							'', 'APROB',	60,1		-- ACTUALIZA GERENTE PLANTA
 ---- =================================================================================
 EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,07, 'EN PROCESO',							'', 'PROCS',	70,1
-EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,08, 'TERMINADA',							'', 'TERMI',	80,1
+
+--EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,10, 'INSPECCIONADA',						'', 'INSPC',	100,1
+
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,08, 'PARCIALMENTE CORTADA',				'', 'PRCOR',	80,1
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,09, 'COMPLETAMENTE CORTADA',				'', 'CPCOR',	90,1
+
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,10, 'RMA CERRADA-PARCIAL',					'', 'CERRA',	100,1
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,11, 'RMA CERRADA-COMPLETA',				'', 'CERRA',	110,1
+
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,12, 'RMA EMBARCADA',						'', 'EMBAR',	120,1
+
 ---- =================================================================================
 ------EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,10, 'PENDING SEND TO VENDOR',		'', 'PNVEN', 100,1		-- ACTUALIZA FINANZAS
 --EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,11, 'PENDING TO RECEIVE',			'', 'PNRCV', 110,1		-- ACTUALIZA FINANZAS
@@ -299,6 +309,11 @@ GO
 --ALTER TABLE	[dbo].[DETAILS_RMA]			--AX: 20210709					
 --ADD
 --	[PRECIO_MANUAL]					[DECIMAL](19,6) NOT NULL DEFAULT 0.0000
+--GO
+
+--ALTER TABLE	[dbo].[DETAILS_RMA]			--AX: 20210716					
+--ADD
+--	[K_STATUS_RMA]					[INT] NOT NULL DEFAULT  1
 --GO
 
 -- //////////////////////////////////////////////////////////////

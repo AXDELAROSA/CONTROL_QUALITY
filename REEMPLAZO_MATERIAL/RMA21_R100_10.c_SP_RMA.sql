@@ -590,7 +590,7 @@ CREATE PROCEDURE [dbo].[PG_IN_HEADER_RMA]
 	--@PP_K_STATUS_RMA				INT,
 	-- ============================
 	@PP_CUS_NO						VARCHAR(6),
-	@PP_PROGRAM						VARCHAR(25),
+	@PP_PROGRAM						VARCHAR(50),
 	@PP_MODELNO						VARCHAR(3),
 	--@PP_VERSIONNO					VARCHAR(5),
 	-- ============================
@@ -742,7 +742,7 @@ CREATE PROCEDURE [dbo].[PG_UP_HEADER_RMA]
 	--@PP_K_STATUS_RMA				INT,
 	-- ============================
 	@PP_CUS_NO						VARCHAR(6),
-	@PP_PROGRAM						VARCHAR(25),
+	@PP_PROGRAM						VARCHAR(50),
 	@PP_MODELNO						VARCHAR(3),
 	--@PP_VERSIONNO					VARCHAR(5),
 	-- ============================
