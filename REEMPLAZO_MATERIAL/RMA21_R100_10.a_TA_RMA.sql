@@ -196,10 +196,11 @@ EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,07, 'EN PROCESO',							'', 'PROCS',	70,1
 EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,08, 'PARCIALMENTE CORTADA',				'', 'PRCOR',	80,1
 EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,09, 'COMPLETAMENTE CORTADA',				'', 'CPCOR',	90,1
 
-EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,10, 'RMA CERRADA-PARCIAL',					'', 'CERRA',	100,1
-EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,11, 'RMA CERRADA-COMPLETA',				'', 'CERRA',	110,1
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,10, 'RMA CERRADA-PARCIAL',					'', 'PRCER',	100,1
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,11, 'RMA CERRADA-COMPLETA',				'', 'CPCER',	110,1
 
 EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,12, 'RMA EMBARCADA',						'', 'EMBAR',	120,1
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,13, 'RMA LIBERADA QC',						'', 'LIBER',	130,1
 
 ---- =================================================================================
 ------EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,10, 'PENDING SEND TO VENDOR',		'', 'PNVEN', 100,1		-- ACTUALIZA FINANZAS
@@ -314,6 +315,11 @@ GO
 --ALTER TABLE	[dbo].[DETAILS_RMA]			--AX: 20210716					
 --ADD
 --	[K_STATUS_RMA]					[INT] NOT NULL DEFAULT  1
+--GO
+
+--ALTER TABLE	[dbo].[CCJOBHDR_SQL]						--AX: 20210719			
+--ADD
+--	[PROGRAM_MODEL_RMA]					[VARCHAR](250) NOT NULL DEFAULT  ''
 --GO
 
 -- //////////////////////////////////////////////////////////////

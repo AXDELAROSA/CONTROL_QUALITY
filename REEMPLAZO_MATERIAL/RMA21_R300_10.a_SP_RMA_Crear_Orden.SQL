@@ -23,7 +23,7 @@ GO
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_PR_RMA_CREAR_ORDER]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_PR_RMA_CREAR_ORDER]
 GO
---			EXEC [dbo].[PG_PR_RMA_CREAR_ORDER] 0 ,139, 4
+--			EXEC [dbo].[PG_PR_RMA_CREAR_ORDER] 0 ,139, 44
 CREATE PROCEDURE [dbo].[PG_PR_RMA_CREAR_ORDER]
 	@PP_K_SISTEMA_EXE			INT,
 	@PP_K_USUARIO_ACCION		INT,
@@ -33,26 +33,41 @@ AS
 	-- ///////////////////////////////////////////
 	DECLARE  @VP_MENSAJE		NVARCHAR(MAX)	= ''
 			,@VP_ORDEN			VARCHAR(10)		= ''
-			,@VP_K_USER			INT				= ( SELECT K_USUARIO_ALTA	FROM HEADER_RMA	WHERE	K_HEADER_RMA	= @PP_K_HEADER_RMA	)
+			,@VP_K_USER			INT
 			,@VP_COMPUTER_NAME	VARCHAR(25)		= 'IT-002'
 			,@VP_COMENTARIO		VARCHAR(250)	= ''--'Orden Generada automaticamente #RMA['+ CONVERT(VARCHAR(10),@PP_K_HEADER_RMA) +']'			
-			,@VP_CLIENTE		VARCHAR(10)		= ( SELECT CUS_NO	FROM HEADER_RMA	WHERE	K_HEADER_RMA	= @PP_K_HEADER_RMA	)
+			,@VP_CLIENTE		VARCHAR(10)
 			,@VP_NO_SECUENCIA	INT		= 0
 			--=================================================================
 			,@VP_K_ESTATUS_RMA	INT		= 0
 			,@VP_JOB			NVARCHAR(MAX) = ''
+			--=================================================================
+			,@VP_MESA_CORTE		VARCHAR(250)	= ''
 	-- //////////////////////////////////////////////////////////////
+			--SET	@VP_CLIENTE	= ( 
+			SELECT	@VP_CLIENTE	= CUS_NO,
+					@VP_K_USER	= K_USUARIO_ALTA,
+					@VP_K_ESTATUS_RMA	= K_STATUS_RMA 				
+			FROM	HEADER_RMA	(NOLOCK) 
+			WHERE	K_HEADER_RMA	= @PP_K_HEADER_RMA	
+			--)
+			--SET @VP_K_USER	= ( SELECT K_USUARIO_ALTA	FROM HEADER_RMA	(NOLOCK) WHERE	K_HEADER_RMA	= @PP_K_HEADER_RMA	)
 --BEGIN TRANSACTION 
 --BEGIN TRY
 		---- ///////ACTUALIZAR EL ENCABEZADO DEL RMA //////////////////////////////////////////////
-			SELECT	@VP_K_ESTATUS_RMA	= K_STATUS_RMA 
-			FROM	HEADER_RMA
-			WHERE	K_HEADER_RMA	= @PP_K_HEADER_RMA
+			--SELECT	@VP_K_ESTATUS_RMA	= K_STATUS_RMA 
+			--FROM	HEADER_RMA		(NOLOCK)
+			--WHERE	K_HEADER_RMA	= @PP_K_HEADER_RMA
 			
 			IF ( @VP_K_ESTATUS_RMA <> 6 ) OR ( @VP_K_ESTATUS_RMA IS NULL )
 			BEGIN
 				RAISERROR ('La orden no ha sido aprobada.', 16, 1 ) 
 			END
+
+			--IF @VP_K_ESTATUS_RMA=4
+			--BEGIN
+			--	RAISERROR ('La orden no ha sido aprobada.', 16, 1 ) 
+			--END
 
 		-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		-- ///////SE OBTIENE EL NUMERO DE LA ULTIMA ORDEN GENERADA//////////////////////////////////////////////
@@ -118,6 +133,9 @@ AS
 				,TA_D_COLOR						VARCHAR(250)
 				,TA_K_DETAILS					INT
 				,TA_GRUPO_ORDEN					INT
+				,TA_D_MODELO					VARCHAR(250)
+				,TA_S_MODELO					VARCHAR(10)
+				,TA_VERSIONNO					VARCHAR(10)
 		)
 		--SET NOCOUNT ON
 		-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -131,8 +149,11 @@ AS
 							,TA_S_COLOR_SINF			
 							,TA_D_COLOR				
 							,TA_K_DETAILS		
-							,TA_GRUPO_ORDEN		)
-			SELECT	 LEFT(ITEM_NO,8)
+							,TA_GRUPO_ORDEN		
+							,TA_D_MODELO		
+							,TA_S_MODELO
+							,TA_VERSIONNO	)
+			SELECT	LEFT(ITEM_NO,8)
 					,ITEM_NO
 					,CANTIDAD_ORDENADA
 					,RIGHT(ITEM_NO,6)
@@ -142,7 +163,11 @@ AS
 					)
 					,K_DETAILS_RMA
 					,GRUPO_ORDEN
-			FROM	DETAILS_RMA
+					,ARCUSFIL_PROGRAM_MODEL.D_ARCUSFIL_PROGRAM_MODEL
+					,MODELNO
+					,VERSIONNO
+			FROM	DETAILS_RMA					(NOLOCK)
+			INNER JOIN ARCUSFIL_PROGRAM_MODEL	(NOLOCK)	ON ARCUSFIL_PROGRAM_MODEL.S_ARCUSFIL_PROGRAM_MODEL	= DETAILS_RMA.MODELNO
 			WHERE	K_HEADER_RMA		= @PP_K_HEADER_RMA
 
 		-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -162,7 +187,8 @@ AS
 	-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
 	-- //////SE DECLARAN VARIABLES A USARSE/////////////////////////////////////
 	DECLARE  @VP_CU_PATTERN			VARCHAR(50)		= '',	@VP_CU_ITEM_NO		VARCHAR(100)	= '',	@VP_CU_CANTIDAD		INT = 0,		
-			 @VP_CU_S_COLOR_SINF	VARCHAR(10)		= '',	@VP_CU_D_COLOR		VARCHAR(10)		= '',	@VP_CU_K_DETAILS	INT, 
+			 @VP_CU_S_COLOR_SINF	VARCHAR(10)		= '',	@VP_CU_D_COLOR		VARCHAR(10)		= '',	@VP_CU_K_DETAILS	INT,
+			 @VP_CU_MODELO			VARCHAR(250)		,	@VP_CU_S_MODELO		VARCHAR(10)			,	@VP_CU_VERSIONNO			VARCHAR(10),
 			 @VP_GROSS				DECIMAL(16,4)	= 0,	@VP_NETO			DECIMAL(16,4)	= 0,	@VP_PATRON			INT = 0,
 			 @VP_TOTAL_GROSS		DECIMAL(16,4)	= 0,	@VP_TOTAL_NETO		DECIMAL(16,4)	= 0,	@VP_TOTAL_PATRON	INT = 0,
 			 @VP_CONSECUTIVO		INT				= 1,	@VP_NUMERO_RELOJ	INT				= 0,	
@@ -188,10 +214,14 @@ AS
 					,TA_S_COLOR_SINF
 					,TA_D_COLOR
 					,TA_K_DETAILS
+					,TA_D_MODELO
+					,TA_S_MODELO
+					,TA_VERSIONNO
 			FROM	@TBL_PATTERN_A_PROGRAMAR
 			ORDER BY	TA_S_COLOR_SINF,	TA_GRUPO_ORDEN,		TA_ITEM_NO,		TA_CANTIDAD
 	OPEN CU_PATTERN_A_PROGRAMAR
-	FETCH NEXT FROM CU_PATTERN_A_PROGRAMAR INTO		@VP_CU_PATTERN,		@VP_CU_ITEM_NO,		@VP_CU_CANTIDAD,	@VP_CU_S_COLOR_SINF,		@VP_CU_D_COLOR,		@VP_CU_K_DETAILS
+	FETCH NEXT FROM CU_PATTERN_A_PROGRAMAR INTO		@VP_CU_PATTERN,		@VP_CU_ITEM_NO,		@VP_CU_CANTIDAD,	@VP_CU_S_COLOR_SINF,		@VP_CU_D_COLOR,		@VP_CU_K_DETAILS, @VP_CU_MODELO,
+													@VP_CU_S_MODELO,	@VP_CU_VERSIONNO
 	WHILE @@FETCH_STATUS = 0
 		BEGIN
 			DECLARE  @VP_CUBE_LENGTH		DECIMAL(13,4) = 0	,@VP_CUBE_WIDTH			DECIMAL(13,4)	= 0		,@VP_CUBE_QTY_PER	DECIMAL(13,4) = 0
@@ -233,25 +263,32 @@ AS
 			SET @VP_TOTAL_PATRON	= @VP_TOTAL_PATRON	+	@VP_CU_CANTIDAD
 			-- ///////////////////////////////////////////////////////////////////////////////////////
 			-- ////////SE OBTIENE EL MODELO Y ULTIMA VERSION DEL KIT//////////////////////////////////				
-			SELECT	DISTINCT TOP (1) PERCENT 
-					 @VP_MODELO		= ccverhdr_sql.modelno
-					,@VP_VERSION		= ccverhdr_sql.versionno
-			FROM	dbo.ccverhdr_sql		(NOLOCK)
-			INNER JOIN	cccusitm_sql		(NOLOCK)	ON CONCAT(ccverhdr_sql.modelno, ccverhdr_sql.versionno ) = CONCAT(cccusitm_sql.modelno, cccusitm_sql.versionno ) 
-				AND		SUBSTRING(LTRIM(RTRIM(cccusitm_sql.item_no)) ,1 ,1)		=	'I' 
-				--AND												cus_item_no		<>	''
-			INNER JOIN	IMITMIDX_SQL		(NOLOCK)	ON IMITMIDX_SQL.item_no			= cccusitm_sql.item_no
-			INNER JOIN  IMCATFIL_SQL		(NOLOCK)	ON dbo.IMITMIDX_SQL.prod_cat	= IMCATFIL_SQL.prod_cat 
-				AND		IMCATFIL_SQL.L_BORRADO						=	0
-			WHERE	ccverhdr_sql.specstatus							=	'U'
-			AND		ccverhdr_sql.status								=	'L'
-			--AND		RIGHT(LTRIM(RTRIM(cccusitm_sql.item_no)),6)		=	@VP_CU_S_COLOR_SINF
-			AND		ccverhdr_sql.cus_no								=	@VP_CLIENTE
-			AND		cccusitm_sql.item_no							=	@VP_CU_ITEM_NO
+			--SELECT	DISTINCT TOP (1) PERCENT 
+			--		 @VP_MODELO			= ccverhdr_sql.modelno
+			--		,@VP_VERSION		= ccverhdr_sql.versionno
+			--FROM	dbo.ccverhdr_sql		(NOLOCK)
+			--INNER JOIN	cccusitm_sql		(NOLOCK)	ON CONCAT(ccverhdr_sql.modelno, ccverhdr_sql.versionno ) = CONCAT(cccusitm_sql.modelno, cccusitm_sql.versionno ) 
+			--	AND		SUBSTRING(LTRIM(RTRIM(cccusitm_sql.item_no)) ,1 ,1)		=	'I' 
+			--	--AND												cus_item_no		<>	''
+			--INNER JOIN	IMITMIDX_SQL		(NOLOCK)	ON IMITMIDX_SQL.item_no			= cccusitm_sql.item_no
+			--INNER JOIN  IMCATFIL_SQL		(NOLOCK)	ON dbo.IMITMIDX_SQL.prod_cat	= IMCATFIL_SQL.prod_cat 
+			--	AND		IMCATFIL_SQL.L_BORRADO						=	0
+			--WHERE	ccverhdr_sql.specstatus							=	'U'
+			--AND		ccverhdr_sql.status								=	'L'
+			----AND		RIGHT(LTRIM(RTRIM(cccusitm_sql.item_no)),6)		=	@VP_CU_S_COLOR_SINF
+			--AND		ccverhdr_sql.cus_no								=	@VP_CLIENTE
+			--AND		LTRIM(RTRIM(cccusitm_sql.item_no))				=	@VP_CU_ITEM_NO
 	
-				SET @VP_CHANGE_LEVEL = @VP_MODELO + @VP_VERSION
+				--IF @VP_MODELO IS NULL OR @VP_VERSION IS NULL
+				--BEGIN
+				--	SET @VP_MENSAJE	= 'No fue posible obtener el Model / Versión. (# ' + @VP_CU_ITEM_NO + ' ).'
+				--	RAISERROR (@VP_MENSAJE, 16, 1 ) 
+				--END
+				
+			--SET @VP_CHANGE_LEVEL = @VP_MODELO + @VP_VERSION
+			SET @VP_CHANGE_LEVEL = @VP_CU_S_MODELO	+	@VP_CU_VERSIONNO
 
-			IF	LEN(@VP_CHANGE_LEVEL)	<	7
+			IF	LEN(@VP_CHANGE_LEVEL)	<	7 OR @VP_CHANGE_LEVEL IS NULL
 			BEGIN
 				RAISERROR ('No fue posible obtener el Change Level.', 16, 1 ) 
 			END
@@ -267,9 +304,20 @@ AS
 				AND		versionno				= @VP_VERSION		
 				ORDER BY versionno DESC
 			
-			IF @VP_STD_PACK IS NULL
+			IF @VP_STD_PACK IS NULL or @VP_STD_PACK = 0
 			BEGIN
-				RAISERROR ('No fue posible obtener el Estandar Pack en [CCITMIDX]', 16, 1 ) 
+				SET @VP_STD_PACK= 30
+				--SELECT	TOP (1)	
+				--		@VP_STD_PACK	= STANDAR_PACK_KIT	--,QUOTE_PATTERN.* 
+				--FROM	COT19_COTIZACIONES_V9999_R0.DBO.QUOTE_PATTERN 
+				--INNER JOIN COT19_COTIZACIONES_V9999_R0.DBO.QUOTE_KIT	ON QUOTE_KIT.K_QUOTE_TRIM_COLOR	= QUOTE_PATTERN.K_QUOTE_TRIM_COLOR
+				--AND		QUOTE_KIT.K_QUOTE_KIT	= QUOTE_PATTERN.K_QUOTE_KIT
+				--WHERE	ITEM_NUMBER_PATTERN		= LEFT(@VP_CU_ITEM_NO,8)
+				
+				--IF @VP_STD_PACK IS NULL or @VP_STD_PACK = 0
+				--BEGIN
+				--	RAISERROR ('No fue posible obtener el Estandar Pack en [CCITMIDX]', 16, 1 ) 
+				--END
 			END
 			-- ///////////////////////////////////////////////////////////////////////////////////////
 			-- ///////////////////////////////////////////////////////////////////////////////////////
@@ -339,15 +387,15 @@ AS
 							RAISERROR (@VP_MENSAJE, 16, 1 )
 						END
 						--========================================================================================================================================
-						UPDATE	DETAILS_RMA
-						SET		JOBNO			= 	@VP_ORDEN,
-								SERIAL			=	@VP_SERIAL
-						WHERE	K_DETAILS_RMA	=	@VP_CU_K_DETAILS
-						IF @@ROWCOUNT = 0
-						BEGIN
-							SET @VP_MENSAJE	= 'No fue posible actualizar el detalle RMA ['+ CONVERT(VARCHAR(10),@VP_CU_K_DETAILS) +'] a la orden en [CCJOBLIN].'
-							RAISERROR (@VP_MENSAJE, 16, 1 )
-						END
+						--UPDATE	DETAILS_RMA
+						--SET		JOBNO			= 	@VP_ORDEN,
+						--		SERIAL			=	@VP_SERIAL
+						--WHERE	K_DETAILS_RMA	=	@VP_CU_K_DETAILS
+						--IF @@ROWCOUNT = 0
+						--BEGIN
+						--	SET @VP_MENSAJE	= 'No fue posible actualizar el detalle RMA ['+ CONVERT(VARCHAR(10),@VP_CU_K_DETAILS) +'] a la orden en [CCJOBLIN].'
+						--	RAISERROR (@VP_MENSAJE, 16, 1 )
+						--END
 						--========================================================================================================================================
 
 					END
@@ -368,6 +416,26 @@ AS
 							SET @VP_MENSAJE	= 'No fue posible agregar el pattern ['+ @VP_CU_ITEM_NO +'] a la orden en [CCJOBLIN].'
 							RAISERROR (@VP_MENSAJE, 16, 1 )
 						END
+						----========================================================================================================================================
+						--UPDATE	DETAILS_RMA
+						--SET		JOBNO			= 	@VP_ORDEN,
+						--		SERIAL			=	@VP_SERIAL
+						--WHERE	K_DETAILS_RMA	=	@VP_CU_K_DETAILS
+						--IF @@ROWCOUNT = 0
+						--BEGIN
+						--	SET @VP_MENSAJE	= 'No fue posible actualizar el detalle RMA ['+ CONVERT(VARCHAR(10),@VP_CU_K_DETAILS) +'] a la orden en [CCJOBLIN].'
+						--	RAISERROR (@VP_MENSAJE, 16, 1 )
+						--END
+						----========================================================================================================================================
+					END
+	
+						-- ///////SE GUARDA EL REGISTRO DEL MATERIAL ESCANEADO//////////////////////////////////////////////
+						SET @VP_SERIAL  = @VP_ORDEN + RIGHT('000'+ CONVERT(VARCHAR(10), @VP_CONSECUTIVO), 3) 
+
+						EXECUTE [DATA_02].[dbo].[PG_IN_MATERIAL_PROGRAMADO_LOG]	@PP_K_SISTEMA_EXE,	@VP_K_USER,--@PP_K_USUARIO_ACCION,
+																				10,				@VP_SERIAL,			@VP_CU_ITEM_NO,
+																				'MATERIALES',	@VP_COMPUTER_NAME,	@VP_NUMERO_RELOJ, 
+																				''
 						--========================================================================================================================================
 						UPDATE	DETAILS_RMA
 						SET		JOBNO			= 	@VP_ORDEN,
@@ -379,15 +447,6 @@ AS
 							RAISERROR (@VP_MENSAJE, 16, 1 )
 						END
 						--========================================================================================================================================
-					END
-	
-					-- ///////SE GUARDA EL REGISTRO DEL MATERIAL ESCANEADO//////////////////////////////////////////////
-					SET @VP_SERIAL  = @VP_ORDEN + RIGHT('000'+ CONVERT(VARCHAR(10), @VP_CONSECUTIVO), 3) 
-
-					EXECUTE [DATA_02].[dbo].[PG_IN_MATERIAL_PROGRAMADO_LOG]	@PP_K_SISTEMA_EXE,	@VP_K_USER,--@PP_K_USUARIO_ACCION,
-																			10,				@VP_SERIAL,			@VP_CU_ITEM_NO,
-																			'MATERIALES',	@VP_COMPUTER_NAME,	@VP_NUMERO_RELOJ, 
-																			''
 					
 					-- ///////SE RESTA DEL STADANDARD PACK LO INGRESADO Y SE AUMENTA EL CONSECUTIVO//////////////////////////////////////////////
 					SET @VP_CU_CANTIDAD = @VP_CU_CANTIDAD - @VP_STD_PACK
@@ -399,8 +458,8 @@ AS
 				SET	@VP_CU_S_COLOR_SINF_anterior	= 	@VP_CU_S_COLOR_SINF				
 				SET	@VP_CU_D_COLOR_anterior			=	@VP_CU_D_COLOR
 									
-			FETCH NEXT FROM CU_PATTERN_A_PROGRAMAR INTO		@VP_CU_PATTERN,		@VP_CU_ITEM_NO,		@VP_CU_CANTIDAD,	@VP_CU_S_COLOR_SINF,		@VP_CU_D_COLOR,		@VP_CU_K_DETAILS
-
+			FETCH NEXT FROM CU_PATTERN_A_PROGRAMAR INTO		@VP_CU_PATTERN,		@VP_CU_ITEM_NO,		@VP_CU_CANTIDAD,	@VP_CU_S_COLOR_SINF,		@VP_CU_D_COLOR,		@VP_CU_K_DETAILS, @VP_CU_MODELO,
+															@VP_CU_S_MODELO,	@VP_CU_VERSIONNO
 				IF	@VP_CU_S_COLOR_SINF_anterior	<>	@VP_CU_S_COLOR_SINF
 				BEGIN
 					--	ASIGNAR EL COLOR VIEJO COMPARAR CONTRA EL NUEVO, SI SON DIFERENTE SE INSERTA LA ORDEN Y SE REINICIA EL CONSECUTIVO.	
@@ -408,21 +467,35 @@ AS
 					
 					SET	@VP_NO_SECUENCIA	= @VP_NO_SECUENCIA + 1					
 					SET	@VP_COMENTARIO		= 'Ord. Generada autom. #RMA['+ CONVERT(VARCHAR(10),@PP_K_HEADER_RMA) +'] Sec'+CONVERT(VARCHAR(10),@VP_NO_SECUENCIA)+''
+					
+					--=========================================================
+					IF (
+							SELECT	K_TIPO_RMA
+							FROM	HEADER_RMA								(NOLOCK)
+							WHERE	HEADER_RMA.K_HEADER_RMA		= @PP_K_HEADER_RMA		) = 1
 
+					BEGIN
+						SET	@VP_MESA_CORTE	= 'Table 79'
+					END
+					ELSE
+					BEGIN
+						SET	@VP_MESA_CORTE	= 'Table 78'						
+					END
+					--=========================================================
 					INSERT INTO [DATA_02].[dbo].CCJOBHDR_SQL 
 					(		jobno,					[status],			colour,				colourdesc, 
 							machine,				datecreated,		dateplanned,		printedflag, 
 							instruct1,				instruct2,			netsqm,				standardsqm, 
 							targetutil,				customer,			patterns,	
 							plannedshift,			plannedseq,			startedflag,		comments,	
-							lotno		 )
+							lotno,					[PROGRAM_MODEL_RMA]		 )
 					VALUES 
 					(		@VP_ORDEN,				'P',				@VP_CU_S_COLOR_SINF_anterior,	@VP_CU_D_COLOR_anterior, 
-							'Table 79',				@VP_FECHA,			@VP_FECHA,			'2', 
+							@VP_MESA_CORTE,			@VP_FECHA,			@VP_FECHA,			'2', 
 							@VP_COMENTARIO,			'',					@VP_TOTAL_NETO,		@VP_TOTAL_GROSS, 
 							@VP_UTILIDAD_MINIMA,	@VP_CLIENTE,		@VP_TOTAL_PATRON,	
 							@VP_TURNO,				'0',				'',					@VP_COMENTARIO, 
-							''			)					
+							'',						@VP_CU_MODELO			)					
 					IF @@ROWCOUNT = 0
 					BEGIN
 						RAISERROR ('No fue posible agregar la orden en [CCJOBHDR]', 16, 1 ) 
@@ -444,9 +517,13 @@ AS
 					WHERE	K_HEADER_RMA = @PP_K_HEADER_RMA
 
 					IF @VP_JOB <> ''
+					BEGIN
 						SET @VP_JOB	= @VP_ORDEN + ' / ' + @VP_JOB
+					END
 					ELSE
+					BEGIN
 						SET	@VP_JOB	= @VP_ORDEN					
+					END
 
 						UPDATE	HEADER_RMA
 						SET		JOBNO	= @VP_JOB
@@ -518,20 +595,35 @@ AS
 
 					--	ASIGNAR EL COLOR VIEJO COMPARAR CONTRA EL NUEVO, SI SON DIFERENTE SE INSERTA LA ORDEN Y SE REINICIA EL CONSECUTIVO.	
 					-- ///////SE INGRESA EL REGISTRO DE LA ORDEN EN CCJOBHDR_SQL//////////////////////////////////////////////
+					--=========================================================
+					IF (
+							SELECT	K_TIPO_RMA
+							FROM	HEADER_RMA								(NOLOCK)
+							WHERE	HEADER_RMA.K_HEADER_RMA		= @PP_K_HEADER_RMA		) = 1
+
+					BEGIN
+						SET	@VP_MESA_CORTE	= 'Table 79'
+					END
+					ELSE
+					BEGIN
+						SET	@VP_MESA_CORTE	= 'Table 78'						
+					END
+					--=========================================================
+
 					INSERT INTO [DATA_02].[dbo].CCJOBHDR_SQL 
 					(		jobno,					[status],			colour,				colourdesc, 
 							machine,				datecreated,		dateplanned,		printedflag, 
 							instruct1,				instruct2,			netsqm,				standardsqm, 
 							targetutil,				customer,			patterns,	
 							plannedshift,			plannedseq,			startedflag,		comments,	
-							lotno		 )
+							lotno		 ,			[PROGRAM_MODEL_RMA]	)
 					VALUES 
 					(		@VP_ORDEN,				'P',				@VP_CU_S_COLOR_SINF_anterior,	@VP_CU_D_COLOR_anterior,	--@VP_EX_S_COLOR_SINF,	@VP_EX_D_COLOR, 
-							'Table 79',				@VP_FECHA,			@VP_FECHA,			'2', 
-							@VP_COMENTARIO,			'',					@VP_TOTAL_NETO,		@VP_TOTAL_GROSS, 
+							@VP_MESA_CORTE,			@VP_FECHA,			@VP_FECHA,			'2', 
+							@VP_COMENTARIO,			'',		@VP_TOTAL_NETO,		@VP_TOTAL_GROSS, 
 							@VP_UTILIDAD_MINIMA,	@VP_CLIENTE,		@VP_TOTAL_PATRON,	
 							@VP_TURNO,				'0',				'',					@VP_COMENTARIO, 
-							''			)					
+							'',						@VP_CU_MODELO		)					
 					IF @@ROWCOUNT = 0
 					BEGIN
 						RAISERROR ('No fue posible agregar la orden en [CCJOBHDR]', 16, 1 ) 
@@ -553,13 +645,17 @@ AS
 					WHERE	K_HEADER_RMA = @PP_K_HEADER_RMA
 
 					IF @VP_JOB <> ''
+					BEGIN
 						SET @VP_JOB	= @VP_ORDEN + ' / ' + @VP_JOB
+					END
 					ELSE
-						SET	@VP_JOB	= @VP_ORDEN					
+					BEGIN
+						SET	@VP_JOB	= @VP_ORDEN
+					END					
 
 						UPDATE	HEADER_RMA
-						SET		JOBNO	= @VP_JOB
-						WHERE	K_HEADER_RMA = @PP_K_HEADER_RMA
+						SET		JOBNO			= @VP_JOB
+						WHERE	K_HEADER_RMA	= @PP_K_HEADER_RMA
 						IF @@ROWCOUNT = 0
 						BEGIN
 							RAISERROR ('No fue posible agregar la orden en [HEADER_RMA]', 16, 1 ) 
@@ -591,8 +687,8 @@ AS
 --	SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
 --	SET @VP_MENSAJE = 'ERROR: // TRANS: [PG_PR_RMA_CREAR_ORDER] // ' + @VP_ERROR_TRANS
 --END CATCH
---	-- /////////////////////////////////////////////////////////////////////
---	-- /////////////////////////////////////////////////////////////////////
+----	-- /////////////////////////////////////////////////////////////////////
+----	-- /////////////////////////////////////////////////////////////////////
 --	IF @VP_MENSAJE<>''
 --	BEGIN
 		
