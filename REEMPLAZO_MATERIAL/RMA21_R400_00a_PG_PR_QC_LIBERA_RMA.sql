@@ -1,4 +1,14 @@
+-- //////////////////////////////////////////////////////////////
+-- // DATA BASE:		DATA_02
+-- // MODULE:			RMA
+-- // OPERATION:		SP'S
+-- //////////////////////////////////////////////////////////////
+-- // AUTHOR:			AX DE LA ROSA			
+-- // CREATION DATE:	20210715
+-- ////////////////////////////////////////////////////////////// 
+
 USE [DATA_02]
+GO
 
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_PR_QC_LIBERA_RMA]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_PR_QC_LIBERA_RMA]
@@ -48,7 +58,7 @@ BEGIN TRY
 	IF SUBSTRING(@PP_ETIQUETA_EMBARQUE,1,1) <> 'J'
 	BEGIN
 		--SET @PP_ETIQUETA_EMBARQUE	= SUBSTRING(@PP_ETIQUETA_EMBARQUE, 2,LEN(@PP_ETIQUETA_EMBARQUE))
-		SET @VP_MENSAJE = 'No es una etiqueta de RMA'
+		SET @VP_MENSAJE = 'No es una etiqueta de Reemplazo... Verifique'
 		RAISERROR(@VP_MENSAJE, 16, 1)
 	END
 	ELSE
@@ -107,13 +117,31 @@ BEGIN TRY
 			BEGIN
 				SET	@VP_CUS_CLIENTE	= RIGHT( @VP_VALOR	, LEN(@VP_VALOR) - 1 )
 
-				DECLARE		@VP_I_NUMBER	VARCHAR(100)	= ''
-							,@VP_K_DETALLE	VARCHAR(20)
+				DECLARE		 @VP_I_NUMBER		VARCHAR(100)	= ''
+							,@VP_K_DETALLE		VARCHAR(20)
+							,@VP_NET_AREA		DECIMAL(19,4)
+							,@VP_S_COLOR_RMA	VARCHAR(50)
+							,@VP_CUS_NO			VARCHAR(50)
+							,@VP_MODELNO		VARCHAR(50)
+							,@VP_D_MODELNO		VARCHAR(250)
 
-				SELECT	@VP_I_NUMBER	= ITEM_NO	,
-						@VP_K_DETALLE	= K_DETAILS_RMA
-				FROM	DETAILS_RMA
-				WHERE	SERIAL	= @VP_SERIE
+				SELECT	@VP_I_NUMBER	= ITEM_NO		,
+						@VP_K_DETALLE	= K_DETAILS_RMA	,
+						@VP_NET_AREA	= NET_AREA		,
+						@VP_S_COLOR_RMA	= S_COLOR_RMA	,
+						@VP_CUS_NO		= CUS_NO		,
+						@VP_MODELNO		= MODELNO
+				FROM	DETAILS_RMA		(NOLOCK)
+				WHERE	SERIAL			= @VP_SERIE
+
+				SELECT	@VP_D_MODELNO				= D_ARCUSFIL_PROGRAM_MODEL 
+				FROM	ARCUSFIL_PROGRAM_MODEL		(NOLOCK)	
+				WHERE	S_ARCUSFIL_PROGRAM_MODEL	= @VP_MODELNO
+
+				IF	( @VP_D_MODELNO	= '' ) OR ( @VP_D_MODELNO = NULL )
+				BEGIN
+					SET @VP_D_MODELNO	= 'XXXXX'
+				END
 				
 				DECLARE @VP_FECHA	INT = DBO.CONVERT_DATE_TO_INT(GETDATE(), 'yyyyMMdd');
 				DECLARE @VP_HORA	INT = FORMAT(CAST(GETDATE() AS TIME(0)), N'hhmmss');
@@ -155,6 +183,39 @@ BEGIN TRY
 						SET @VP_MENSAJE='El detalle no fue actualizado. [SERIAL#'+ @VP_SERIE +']'
 						RAISERROR (@VP_MENSAJE, 16, 1 )
 					END
+
+						INSERT INTO	INVENTARIO_EMBARQUE_RMA
+						(
+							[K_ESTATUS_INVENTARIO_EMBARQUE_RMA],
+							[ITEM_NO]		,		[QTY]			,
+							[CUBE_WIDTH]	,		[SERIAL_1]		,
+							[SERIAL_2]		,		[COLOR]			,
+							[CUSTOMER]		,		[CUS_PART_NO]	,
+							[PROD_CAT]		,		[D_PROD_CAT]	,
+							-- =================================	
+							[N_EMBARQUE]	,		[PACKING_NO]	,
+							[INVOICE_NO]	,		[F_INVENTARIO_EMBARQUE_RMA]	,
+							-- ============================
+							[K_USUARIO_ALTA], [F_ALTA], [K_USUARIO_CAMBIO], [F_CAMBIO],
+							[L_BORRADO], [K_USUARIO_BAJA], [F_BAJA]		)			
+						VALUES	(
+							5,
+							@VP_I_NUMBER	,		@VP_CANTIDAD	,
+							@VP_NET_AREA	,		@VP_SERIE		,
+							@VP_K_DETALLE	,		@VP_S_COLOR_RMA	,
+							@VP_CUS_NO		,		@VP_CUS_CLIENTE	,
+							@VP_MODELNO		,		@VP_D_MODELNO,
+							-- =================================	
+							0				,		NULL			,
+							NULL			,		GETDATE(),
+							-- ============================
+							0, GETDATE(),	0, GETDATE(),
+							0, NULL, NULL			)
+						IF @@ROWCOUNT = 0
+						BEGIN
+							SET @VP_MENSAJE='El registro no fue insertado [EMBQ]. [SERIAL#'+ @VP_SERIE +']'
+							RAISERROR (@VP_MENSAJE, 16, 1 )
+						END
 				END
 					
 					SET	@VP_CONTADOR		= 0
@@ -167,21 +228,7 @@ BEGIN TRY
 			--Reemplazamos lo procesado con nada con la funcion stuff
 			SELECT @PP_ETIQUETA_EMBARQUE		= STUFF(@PP_ETIQUETA_EMBARQUE		, 1, @VP_POSICION, '')
 		END
-		--SELECT * FROM @TA_DATOS_ETIQUETA
-		--	--SELECT	TOP(1) 
-		--	--		@VP_K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA
-		--	--FROM	DETAILS_RMA		(NOLOCK)
-		--	--INNER JOIN	HEADER_RMA	(NOLOCK) ON HEADER_RMA.K_HEADER_RMA	= DETAILS_RMA.K_HEADER_RMA
-		--	--WHERE	 DETAILS_RMA.K_HEADER_RMA	= @VP_K_RMA
 
-		--	--UPDATE	HEADER_RMA
-		--	--SET		K_STATUS_RMA	= 12
-		--	--WHERE	K_HEADER_RMA	= @VP_K_HEADER_RMA
-		--	--IF @@ROWCOUNT = 0
-		--	--	BEGIN
-		--	--		SET @VP_MENSAJE = '[INSERT], Verifique....'
-		--	--		RAISERROR (@VP_MENSAJE, 16, 1 )
-		--	--	END
 COMMIT TRANSACTION 
 END TRY
 

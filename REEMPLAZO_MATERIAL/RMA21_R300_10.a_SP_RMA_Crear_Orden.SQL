@@ -45,11 +45,11 @@ AS
 			,@VP_MESA_CORTE		VARCHAR(250)	= ''
 	-- //////////////////////////////////////////////////////////////
 			--SET	@VP_CLIENTE	= ( 
-			SELECT	@VP_CLIENTE	= CUS_NO,
-					@VP_K_USER	= K_USUARIO_ALTA,
+			SELECT	@VP_CLIENTE			= CUS_NO,
+					@VP_K_USER			= K_USUARIO_ALTA,
 					@VP_K_ESTATUS_RMA	= K_STATUS_RMA 				
-			FROM	HEADER_RMA	(NOLOCK) 
-			WHERE	K_HEADER_RMA	= @PP_K_HEADER_RMA	
+			FROM	HEADER_RMA			(NOLOCK) 
+			WHERE	K_HEADER_RMA		= @PP_K_HEADER_RMA	
 			--)
 			--SET @VP_K_USER	= ( SELECT K_USUARIO_ALTA	FROM HEADER_RMA	(NOLOCK) WHERE	K_HEADER_RMA	= @PP_K_HEADER_RMA	)
 --BEGIN TRANSACTION 
@@ -156,10 +156,10 @@ AS
 			SELECT	LEFT(ITEM_NO,8)
 					,ITEM_NO
 					,CANTIDAD_ORDENADA
-					,RIGHT(ITEM_NO,6)
+					,RIGHT(S_COLOR_RMA,6)
 					,(	SELECT	LTRIM(RTRIM(ITEM_DESC_1))
 						FROM	IMITMIDX_SQL		(NOLOCK)
-						WHERE	IMITMIDX_SQL.item_no	= CONCAT('F',RIGHT(DETAILS_RMA.ITEM_NO,6))					
+						WHERE	IMITMIDX_SQL.item_no	= S_COLOR_RMA		--CONCAT('F',RIGHT(DETAILS_RMA.ITEM_NO,6))					
 					)
 					,K_DETAILS_RMA
 					,GRUPO_ORDEN
@@ -194,7 +194,7 @@ AS
 			 @VP_CONSECUTIVO		INT				= 1,	@VP_NUMERO_RELOJ	INT				= 0,	
 			 --=============================================================================================================================
 			 @VP_CU_S_COLOR_SINF_anterior	VARCHAR(10)	= '',
-			 @VP_CU_D_COLOR_anterior		VARCHAR(10)	= '',
+			 @VP_CU_D_COLOR_anterior		VARCHAR(250)	= '',
 			 --=============================================================================================================================
 			 @VP_EX_PATTERN			VARCHAR(50)		= '',	@VP_EX_ITEM_NO		VARCHAR(100)	= '',	@VP_EX_CANTIDAD		INT = 0,		
 			 @VP_EX_S_COLOR_SINF	VARCHAR(10)		= '',	@VP_EX_D_COLOR		VARCHAR(10)		= '',
@@ -263,29 +263,6 @@ AS
 			SET @VP_TOTAL_PATRON	= @VP_TOTAL_PATRON	+	@VP_CU_CANTIDAD
 			-- ///////////////////////////////////////////////////////////////////////////////////////
 			-- ////////SE OBTIENE EL MODELO Y ULTIMA VERSION DEL KIT//////////////////////////////////				
-			--SELECT	DISTINCT TOP (1) PERCENT 
-			--		 @VP_MODELO			= ccverhdr_sql.modelno
-			--		,@VP_VERSION		= ccverhdr_sql.versionno
-			--FROM	dbo.ccverhdr_sql		(NOLOCK)
-			--INNER JOIN	cccusitm_sql		(NOLOCK)	ON CONCAT(ccverhdr_sql.modelno, ccverhdr_sql.versionno ) = CONCAT(cccusitm_sql.modelno, cccusitm_sql.versionno ) 
-			--	AND		SUBSTRING(LTRIM(RTRIM(cccusitm_sql.item_no)) ,1 ,1)		=	'I' 
-			--	--AND												cus_item_no		<>	''
-			--INNER JOIN	IMITMIDX_SQL		(NOLOCK)	ON IMITMIDX_SQL.item_no			= cccusitm_sql.item_no
-			--INNER JOIN  IMCATFIL_SQL		(NOLOCK)	ON dbo.IMITMIDX_SQL.prod_cat	= IMCATFIL_SQL.prod_cat 
-			--	AND		IMCATFIL_SQL.L_BORRADO						=	0
-			--WHERE	ccverhdr_sql.specstatus							=	'U'
-			--AND		ccverhdr_sql.status								=	'L'
-			----AND		RIGHT(LTRIM(RTRIM(cccusitm_sql.item_no)),6)		=	@VP_CU_S_COLOR_SINF
-			--AND		ccverhdr_sql.cus_no								=	@VP_CLIENTE
-			--AND		LTRIM(RTRIM(cccusitm_sql.item_no))				=	@VP_CU_ITEM_NO
-	
-				--IF @VP_MODELO IS NULL OR @VP_VERSION IS NULL
-				--BEGIN
-				--	SET @VP_MENSAJE	= 'No fue posible obtener el Model / Versión. (# ' + @VP_CU_ITEM_NO + ' ).'
-				--	RAISERROR (@VP_MENSAJE, 16, 1 ) 
-				--END
-				
-			--SET @VP_CHANGE_LEVEL = @VP_MODELO + @VP_VERSION
 			SET @VP_CHANGE_LEVEL = @VP_CU_S_MODELO	+	@VP_CU_VERSIONNO
 
 			IF	LEN(@VP_CHANGE_LEVEL)	<	7 OR @VP_CHANGE_LEVEL IS NULL
@@ -355,7 +332,7 @@ AS
 				WHERE	K_DETAILS_RMA	=	@VP_CU_K_DETAILS
 				IF @@ROWCOUNT = 0
 				BEGIN
-					SET @VP_MENSAJE	= 'No fue posible actualizar el detalle RMA ['+ CONVERT(VARCHAR(10),@VP_CU_K_DETAILS) +'] a la orden en [CCJOBLIN].'
+					SET @VP_MENSAJE	= 'No fue posible actualizar el detalle ['+ CONVERT(VARCHAR(10),@VP_CU_K_DETAILS) +'] a la orden en [CCJOBLIN].'
 					RAISERROR (@VP_MENSAJE, 16, 1 )
 				END
 				--========================================================================================================================================
@@ -443,7 +420,7 @@ AS
 						WHERE	K_DETAILS_RMA	=	@VP_CU_K_DETAILS
 						IF @@ROWCOUNT = 0
 						BEGIN
-							SET @VP_MENSAJE	= 'No fue posible actualizar el detalle RMA ['+ CONVERT(VARCHAR(10),@VP_CU_K_DETAILS) +'] a la orden en [CCJOBLIN].'
+							SET @VP_MENSAJE	= 'No fue posible actualizar el detalle ['+ CONVERT(VARCHAR(10),@VP_CU_K_DETAILS) +'] a la orden en [CCJOBLIN].'
 							RAISERROR (@VP_MENSAJE, 16, 1 )
 						END
 						--========================================================================================================================================
@@ -466,7 +443,7 @@ AS
 					-- ///////SE INGRESA EL REGISTRO DE LA ORDEN EN CCJOBHDR_SQL//////////////////////////////////////////////
 					
 					SET	@VP_NO_SECUENCIA	= @VP_NO_SECUENCIA + 1					
-					SET	@VP_COMENTARIO		= 'Ord. Generada autom. #RMA['+ CONVERT(VARCHAR(10),@PP_K_HEADER_RMA) +'] Sec'+CONVERT(VARCHAR(10),@VP_NO_SECUENCIA)+''
+					SET	@VP_COMENTARIO		= 'Ord. Generada autom. #['+ CONVERT(VARCHAR(10),@PP_K_HEADER_RMA) +'] Sec'+CONVERT(VARCHAR(10),@VP_NO_SECUENCIA)+''
 					
 					--=========================================================
 					IF (
@@ -591,7 +568,7 @@ AS
 				BEGIN
 					
 					SET	@VP_NO_SECUENCIA	= @VP_NO_SECUENCIA + 1					
-					SET	@VP_COMENTARIO		= 'Ord. Generada autom. #RMA['+ CONVERT(VARCHAR(10),@PP_K_HEADER_RMA) +'] Sec'+CONVERT(VARCHAR(10),@VP_NO_SECUENCIA)+''
+					SET	@VP_COMENTARIO		= 'Ord. Generada autom. #['+ CONVERT(VARCHAR(10),@PP_K_HEADER_RMA) +'] Sec'+CONVERT(VARCHAR(10),@VP_NO_SECUENCIA)+''
 
 					--	ASIGNAR EL COLOR VIEJO COMPARAR CONTRA EL NUEVO, SI SON DIFERENTE SE INSERTA LA ORDEN Y SE REINICIA EL CONSECUTIVO.	
 					-- ///////SE INGRESA EL REGISTRO DE LA ORDEN EN CCJOBHDR_SQL//////////////////////////////////////////////
@@ -672,50 +649,8 @@ AS
 	WHERE	K_HEADER_RMA	= @PP_K_HEADER_RMA
 	IF @@ROWCOUNT = 0
 	BEGIN
-		RAISERROR ('No fue posible actualizar la orden (RMA).', 16, 1 ) 
+		RAISERROR ('No fue posible actualizar la orden.', 16, 1 ) 
 	END
-
-	--RAISERROR ('Fin del SP', 16, 1 )
--- ///////////////////////////////////////////
---COMMIT TRANSACTION 
---END TRY
-
---BEGIN CATCH
---	/* Ocurrió un error, deshacemos los cambios*/ 
---	ROLLBACK TRANSACTION
---	DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
---	SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
---	SET @VP_MENSAJE = 'ERROR: // TRANS: [PG_PR_RMA_CREAR_ORDER] // ' + @VP_ERROR_TRANS
---END CATCH
-----	-- /////////////////////////////////////////////////////////////////////
-----	-- /////////////////////////////////////////////////////////////////////
---	IF @VP_MENSAJE<>''
---	BEGIN
-		
---		SET		@VP_MENSAJE = 'No es posible Crear la Orden: ' + '[' + @VP_ORDEN +'] ' + @VP_MENSAJE 
-		
---		--UPDATE HEADER_RMA
---		--SET		K_STATUS_RMA	= 0
---		--WHERE	K_HEADER_RMA	IN (SELECT TA_K_HEADER_RMA FROM @TBL_PATTERN_A_PROGRAMAR )
-
---	END
-	
---	SELECT	@VP_MENSAJE AS MENSAJE, @VP_ORDEN AS CLAVE
-	
-	-- //////////////////////////////////////////////////////////////
-
-	--EXECUTE BD_GENERAL.[dbo].[PG_IN_BITACORA_SYS_OPERACION]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
-	--												-- ===========================================
-	--												2,		-- 0 al 6 // @PP_K_IMPORTANCIA_BITACORA_SYS	[INT],	
-	--												'PROCESO',
-	--												'',
-	--												-- ===========================================
-	--												'[PR]', -- @PP_STORED_PROCEDURE			[VARCHAR] (100),
-	--												0, 0, 		-- @PP_K_FOLIO_1, @PP_K_FOLIO_2,
-	--												-- === [INT], [INT], [VARCHAR](100), [VARCHAR](100), DECIMAL(19,4), DECIMAL(19,4),
-	--												0, 0, @VP_ORDEN, @VP_COMENTARIO, 0.00, 0.00,
-	--												-- === @PP_VALOR_1 al 6_DATO
-	--												'', '', '', '', '', ''
 
 	-- ////////////////////////////////////////////////////////////////////
 GO
@@ -806,70 +741,6 @@ DECLARE @VP_ESTATUS_PO		INT
 	-- ////////////////////////////////////////////////////////////////
 	-- ///////////////////////////////////////////////////////////////
 GO
-
----- //////////////////////////////////////////////////////////////
----- // STORED PROCEDURE ---> ENVIAR CORREO
----- // PARA ENVIAR CORREO A LOS USUARIOS QUE GENERARON LA ORDEN DE COMPRA.
----- //////////////////////////////////////////////////////////////
---IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_PR_ENVIAR_CORREO_RMA]') AND type in (N'P', N'PC'))
---	DROP PROCEDURE [dbo].[PG_PR_ENVIAR_CORREO_RMA]
---GO
-----		 EXECUTE [dbo].[PG_PR_ENVIAR_CORREO_RMA]	0,139,  4, 39404,1
---CREATE PROCEDURE [dbo].[PG_PR_ENVIAR_CORREO_RMA]
---	@PP_K_SISTEMA_EXE				INT,
---	@PP_K_USUARIO_ACCION			INT,
---	-- ===========================
---	@PP_K_HEADER_RMA				INT,
---	@PP_ORDEN						INT,
---	@PP_NO_SECUENCIA				INT
---AS
---DECLARE @VP_MENSAJE			VARCHAR(500)=''
---DECLARE @VP_ESTATUS_RMA		INT
----- /////////////////////////////////////////////////////////////////////
---	DECLARE @VP_RECIPIENTS	NVARCHAR(MAX)	= '';
-
---	DECLARE @VP_SUBJECT NVARCHAR(MAX) ;
---	DECLARE @VP_BODY_HTML  NVARCHAR(MAX) ;
---	DECLARE @VP_ID_MAIL INT;
---	DECLARE @VP_SENT_STATUS VARCHAR(500);
---	----================================================================
---	SELECT		@VP_RECIPIENTS	=	@VP_RECIPIENTS + ';' + CORREO_USUARIO.CORREO_USUARIO_PEARL	
---	FROM		HEADER_RMA
---	LEFT JOIN	BD_GENERAL.DBO.USUARIO_PEARL	AS CORREO_USUARIO	ON	HEADER_RMA.K_USUARIO_ALTA	= CORREO_USUARIO.K_USUARIO_PEARL
---	WHERE		K_HEADER_RMA	=	@PP_K_HEADER_RMA
-			
---	----================================================================
---		IF LEN(@VP_RECIPIENTS)>5
---		BEGIN
---			SET @VP_RECIPIENTS = SUBSTRING(@VP_RECIPIENTS,2,LEN(@VP_RECIPIENTS))
---			SET @VP_SUBJECT = '[RMA#' + CONVERT(VARCHAR(10),FORMAT(@PP_K_HEADER_RMA,'000000')) +'] APROBADA'
-		
---			SET @VP_BODY_HTML =
---			N'<html>'+
---			N'<head>'+		
---			N'</head>'+
---			N'<body>'+
-
---			N'<p style="color:black; font-size:14.0pt;font-family:"Calisto MT",serif">'+
---			N'Buen día:<br>' +
-
---			N'La orden indicada en el asunto del mensaje, ha sido aprobada por Gerencia de Planta.<br>'+
---			N'Puedes Verificar el estatus y el número de orden asignada en la pantalla donde generaste la Orden.</span><br><br>'+
---			N'[Orden#' + CONVERT(VARCHAR(10),FORMAT(@PP_ORDEN,'00000')) +'] // Secuencia ('+ CONVERT(VARCHAR(10),@PP_NO_SECUENCIA) +')'+
---			N'</body>'+
---			N'</html>';
-
-
---			EXEC msdb.dbo.sp_send_dbmail @recipients=@VP_RECIPIENTS,
---			--@copy_recipients='franciscoe@pearlleather.com.mx',
---			--@blind_copy_recipients='alejandrod@pearlleather.com.mx',
---			@subject = @VP_SUBJECT,
---			@body = @VP_BODY_HTML,  
---			@body_format = 'HTML'		
---		END
---	-- ////////////////////////////////////////////////////////////////
---	-- ///////////////////////////////////////////////////////////////
---GO
 -- //////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////

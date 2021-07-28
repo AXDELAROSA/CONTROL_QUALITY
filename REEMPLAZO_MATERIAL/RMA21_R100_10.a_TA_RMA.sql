@@ -189,19 +189,22 @@ EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,05, 'DENEGADA POR GTE. PLANTA',			'', 'DNGT
 -- =================================================================================
 EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,06, 'APROBADA',							'', 'APROB',	60,1		-- ACTUALIZA GERENTE PLANTA
 ---- =================================================================================
-EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,07, 'EN PROCESO',							'', 'PROCS',	70,1
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,07, 'EN PROCESO',							'', 'PROCS',	70,1		-- SE ENCUENTRA EN EL ÁREA DE PRODUCCIÓN
 
 --EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,10, 'INSPECCIONADA',						'', 'INSPC',	100,1
 
-EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,08, 'PARCIALMENTE CORTADA',				'', 'PRCOR',	80,1
-EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,09, 'COMPLETAMENTE CORTADA',				'', 'CPCOR',	90,1
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,08, 'PARCIALMENTE CORTADA',				'', 'PRCOR',	80,1		-- SE ENCUENTRA CORTANDOSE: FALTA DEFINIR EN QUE MOMENTO SE ACTUALIZARÁ EL REGISTRO EN EL DETALLE.
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,09, 'COMPLETAMENTE CORTADA',				'', 'CPCOR',	90,1		-- SE ENCUENTRA CORTANDOSE: FALTA DEFINIR EN QUE MOMENTO SE ACTUALIZARÁ EL REGISTRO EN EL DETALLE.
 
-EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,10, 'RMA CERRADA-PARCIAL',					'', 'PRCER',	100,1
-EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,11, 'RMA CERRADA-COMPLETA',				'', 'CPCER',	110,1
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,10, 'ORDEN CERRADA-PARCIAL',				'', 'PRCER',	100,1
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,11, 'ORDEN CERRADA-COMPLETA',				'', 'CPCER',	110,1
 
-EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,12, 'RMA EMBARCADA',						'', 'EMBAR',	120,1
-EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,13, 'RMA LIBERADA QC',						'', 'LIBER',	130,1
+--EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,12, 'RMA PARA EMBARCAR',					'', 'PAEMB',	120,1
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,13, 'ORDEN LIBERADA QC',					'', 'LIBER',	130,1
 
+
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,20, 'ORDEN EMBARCADA',						'', 'EMBAR',	200,1
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,21, 'ORDEN FACTURADA',						'', 'FACTR',	210,1
 ---- =================================================================================
 ------EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,10, 'PENDING SEND TO VENDOR',		'', 'PNVEN', 100,1		-- ACTUALIZA FINANZAS
 --EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,11, 'PENDING TO RECEIVE',			'', 'PNRCV', 110,1		-- ACTUALIZA FINANZAS
@@ -317,10 +320,17 @@ GO
 --	[K_STATUS_RMA]					[INT] NOT NULL DEFAULT  1
 --GO
 
+--ALTER TABLE	[dbo].[DETAILS_RMA]			--AX: 20210720					
+--ADD
+--	[S_COLOR_RMA]					[VARCHAR](15) NOT NULL DEFAULT ''
+--GO
+
 --ALTER TABLE	[dbo].[CCJOBHDR_SQL]						--AX: 20210719			
 --ADD
 --	[PROGRAM_MODEL_RMA]					[VARCHAR](250) NOT NULL DEFAULT  ''
 --GO
+
+
 
 -- //////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////
