@@ -205,14 +205,11 @@ EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,13, 'ORDEN LIBERADA QC',					'', 'LIBER',	1
 
 EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,20, 'ORDEN EMBARCADA',						'', 'EMBAR',	200,1
 EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,21, 'ORDEN FACTURADA',						'', 'FACTR',	210,1
+
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,30, 'LIBERADO QC',							'', 'PLIBER',	300,1
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,35, 'EMBARCADO',							'', 'PEMBAR',	350,1
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,40, 'FACTURADO',							'', 'PFACTU',	400,1
 ---- =================================================================================
-------EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,10, 'PENDING SEND TO VENDOR',		'', 'PNVEN', 100,1		-- ACTUALIZA FINANZAS
---EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,11, 'PENDING TO RECEIVE',			'', 'PNRCV', 110,1		-- ACTUALIZA FINANZAS
----- =================================================================================
---EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,12, 'COMPLETE ORDER RECEIVED',		'', 'COMPL', 110,1		-- ACTUALIZA FINANZAS
---EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,13, 'PARTIAL ORDER RECEIVED',		'', 'PRRCV', 130,1		-- ACTUALIZA FINANZAS
---EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,14, 'PARTIAL ORDER CLOSED',			'', 'PRCOM', 140,1		-- ACTUALIZA FINANZAS
---EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,15, 'RETURNED ORDER',				'', 'RETUR', 150,1		-- ACTUALIZA FINANZAS
 SET NOCOUNT OFF
 GO
 
@@ -331,6 +328,10 @@ GO
 --GO
 
 
+--ALTER TABLE	[dbo].[DETAILS_RMA]			--AX: 20210803					
+--ADD
+--	[PO_NUMBER]						[VARCHAR](50) NOT NULL DEFAULT ''
+--GO
 
 -- //////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////

@@ -546,35 +546,36 @@ AS
 			FROM	HEADER_RMA			(NOLOCK)
 			WHERE	K_STATUS_RMA		=	4
 			AND		L_BORRADO			=	0
-			--AND		K_HEADER_RMA		NOT IN (44,46,47)
+			--AND		K_HEADER_RMA		
+			--NOT IN (	'1137',	'1138',	'1139',	'1140',	'1141',	'1142',	'1143',	
+			--		'1144',	'1145',	'1146',	'1147',	'1148',	'1149')
 
 		END
-		ELSE IF @PP_K_USUARIO_ACCION IN ( 139 )			---AX
-		BEGIN
+		--ELSE IF @PP_K_USUARIO_ACCION IN ( 139 )			---AX
+		--BEGIN
 			
-			SELECT	@VP_PENDIENTES		= COUNT(K_HEADER_RMA)
-			FROM	HEADER_RMA			(NOLOCK)
-			WHERE	K_STATUS_RMA		IN	(2)
-			AND		L_BORRADO			=	0
+		--	SELECT	@VP_PENDIENTES		= COUNT(K_HEADER_RMA)
+		--	FROM	HEADER_RMA			(NOLOCK)
+		--	WHERE	K_STATUS_RMA		IN	(2)
+		--	AND		L_BORRADO			=	0
 
-			IF @VP_PENDIENTES > 0
-			BEGIN
-				SET @VP_MENSAJE	= 'DPTO // '
-			END
-			ELSE IF @VP_PENDIENTES = 0
-			BEGIN
-				SELECT	@VP_PENDIENTES		= COUNT(K_HEADER_RMA)
-				FROM	HEADER_RMA			(NOLOCK)
-				WHERE	K_STATUS_RMA		IN	(4)
-				AND		L_BORRADO			=	0
+		--	IF @VP_PENDIENTES > 0
+		--	BEGIN
+		--		SET @VP_MENSAJE	= 'DPTO // '
+		--	END
+		--	ELSE IF @VP_PENDIENTES = 0
+		--	BEGIN
+		--		SELECT	@VP_PENDIENTES		= COUNT(K_HEADER_RMA)
+		--		FROM	HEADER_RMA			(NOLOCK)
+		--		WHERE	K_STATUS_RMA		IN	(4)
+		--		AND		L_BORRADO			=	0
 
-				IF @VP_PENDIENTES > 0
-				BEGIN
-					SET @VP_MENSAJE	= 'MNGR // '
-				END
-			END
-
-		END
+		--		IF @VP_PENDIENTES > 0
+		--		BEGIN
+		--			SET @VP_MENSAJE	= 'MNGR // '
+		--		END
+		--	END
+		--END
 	
 		IF @VP_PENDIENTES>0
 		BEGIN
@@ -1023,7 +1024,6 @@ AS
 				END
 				--========================================================================================================================================
 				--========================================================================================================================================
-
 				DECLARE	@VP_PRECIO_PATTERN	DECIMAL(19,4)
 				SELECT	@VP_PRECIO_PATTERN		= ISNULL( costleather , 0 )
 				FROM	[DATA_02].[DBO].ccprcovr_sql	(NOLOCK)

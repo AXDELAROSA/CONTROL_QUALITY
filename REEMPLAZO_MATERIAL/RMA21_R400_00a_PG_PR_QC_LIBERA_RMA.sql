@@ -125,18 +125,23 @@ BEGIN TRY
 							,@VP_MODELNO		VARCHAR(50)
 							,@VP_D_MODELNO		VARCHAR(250)
 
-				SELECT	@VP_I_NUMBER	= ITEM_NO		,
-						@VP_K_DETALLE	= K_DETAILS_RMA	,
-						@VP_NET_AREA	= NET_AREA		,
-						@VP_S_COLOR_RMA	= S_COLOR_RMA	,
-						@VP_CUS_NO		= CUS_NO		,
-						@VP_MODELNO		= MODELNO
+				SELECT	@VP_I_NUMBER		= ITEM_NO		,
+						@VP_K_DETALLE		= K_DETAILS_RMA	,
+						@VP_NET_AREA		= NET_AREA		,
+						@VP_S_COLOR_RMA		= S_COLOR_RMA	,
+						@VP_CUS_NO			= CUS_NO		,
+						@VP_MODELNO			= MODELNO		,
+						@VP_K_HEADER_RMA	= K_HEADER_RMA	
 				FROM	DETAILS_RMA		(NOLOCK)
 				WHERE	SERIAL			= @VP_SERIE
 
-				SELECT	@VP_D_MODELNO				= D_ARCUSFIL_PROGRAM_MODEL 
-				FROM	ARCUSFIL_PROGRAM_MODEL		(NOLOCK)	
-				WHERE	S_ARCUSFIL_PROGRAM_MODEL	= @VP_MODELNO
+				--SELECT	@VP_D_MODELNO				= D_ARCUSFIL_PROGRAM_MODEL 
+				--FROM	ARCUSFIL_PROGRAM_MODEL		(NOLOCK)
+				--WHERE	S_ARCUSFIL_PROGRAM_MODEL	= @VP_MODELNO
+
+				SELECT	@VP_D_MODELNO				= PROD_CAT_DESC
+				FROM	IMCATFIL_SQL				(NOLOCK)	
+				WHERE	LTRIM(RTRIM(PROD_CAT))		= @VP_MODELNO
 
 				IF	( @VP_D_MODELNO	= '' ) OR ( @VP_D_MODELNO = NULL )
 				BEGIN
@@ -145,7 +150,7 @@ BEGIN TRY
 				
 				DECLARE @VP_FECHA	INT = DBO.CONVERT_DATE_TO_INT(GETDATE(), 'yyyyMMdd');
 				DECLARE @VP_HORA	INT = FORMAT(CAST(GETDATE() AS TIME(0)), N'hhmmss');
-
+				--===================================================================================================================
 				IF (	SELECT	COUNT(SERIAL)
 						FROM	QCLIBERA_SQL	
 						WHERE	SERIAL2	= @VP_K_DETALLE	)	<=  0
@@ -176,13 +181,20 @@ BEGIN TRY
 					END
 
 					UPDATE	DETAILS_RMA
-					SET		K_STATUS_RMA	= 13
+					SET		K_STATUS_RMA	= 30
 					WHERE	SERIAL			= @VP_SERIE
+					AND		K_STATUS_RMA	<> 30
 					IF @@ROWCOUNT = 0
 					BEGIN
-						SET @VP_MENSAJE='El detalle no fue actualizado. [SERIAL#'+ @VP_SERIE +']'
+						SET @VP_MENSAJE='El registro ya fue escaneado. [SERIAL#'+ @VP_SERIE +']'
 						RAISERROR (@VP_MENSAJE, 16, 1 )
 					END
+
+						IF (	SELECT COUNT(K_INVENTARIO_EMBARQUE_RMA)	FROM INVENTARIO_EMBARQUE_RMA WHERE SERIAL_1	= @VP_SERIE		)	> 0
+						BEGIN
+							SET @VP_MENSAJE='El registro ya se encuentra agregado a INVENTARIO_EMBARQUE. [SERIAL#'+ @VP_SERIE +']'
+							RAISERROR (@VP_MENSAJE, 16, 1 )
+						END
 
 						INSERT INTO	INVENTARIO_EMBARQUE_RMA
 						(
@@ -215,9 +227,32 @@ BEGIN TRY
 						BEGIN
 							SET @VP_MENSAJE='El registro no fue insertado [EMBQ]. [SERIAL#'+ @VP_SERIE +']'
 							RAISERROR (@VP_MENSAJE, 16, 1 )
+						END						
+
+						IF (	SELECT	SUM(CANTIDAD_ORDENADA) - SUM(CANTIDAD_ENVIADA) 
+								FROM	DETAILS_RMA			(NOLOCK)
+								WHERE	K_HEADER_RMA		= @VP_K_HEADER_RMA		) = 0
+						BEGIN
+							
+							UPDATE	HEADER_RMA
+							SET		K_STATUS_RMA	= 30		--- ORDEN LIBERADA
+							WHERE	K_HEADER_RMA	= @VP_K_HEADER_RMA
+							AND		K_STATUS_RMA	< 15
+							IF @@ROWCOUNT = 0
+							BEGIN
+								SET @VP_MENSAJE='El estatus de la Orden, no pudo ser actualizado. [RMA#'+CONVERT(VARCHAR(10),@VP_K_HEADER_RMA)+']'
+								RAISERROR (@VP_MENSAJE, 16, 1 ) 
+							END
 						END
-				END
-					
+
+					-- ///////SE GUARDA EL LOG DEL MATERIAL EMBARCADO PARA EL RASTREO//////////////////////////////////////////////
+					EXECUTE [DATA_02].[dbo].[PG_IN_MATERIAL_PROGRAMADO_LOG]		0,	0,--@PP_K_USUARIO_ACCION,
+																	410,		@VP_SERIE,			@VP_CU_ITEM_NO,
+																	'QC_LIBER RMA',	'QC-LIBERA',	@PP_INSPECTOR, 
+																	''				
+					END
+				--===================================================================================================================
+
 					SET	@VP_CONTADOR		= 0
 					SET @VP_CANTIDAD		= ''
 					SET @VP_CUS_CLIENTE		= ''

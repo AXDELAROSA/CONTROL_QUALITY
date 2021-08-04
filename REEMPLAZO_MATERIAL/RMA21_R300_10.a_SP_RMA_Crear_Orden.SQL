@@ -64,11 +64,6 @@ AS
 				RAISERROR ('La orden no ha sido aprobada.', 16, 1 ) 
 			END
 
-			--IF @VP_K_ESTATUS_RMA=4
-			--BEGIN
-			--	RAISERROR ('La orden no ha sido aprobada.', 16, 1 ) 
-			--END
-
 		-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		-- ///////SE OBTIENE EL NUMERO DE LA ULTIMA ORDEN GENERADA//////////////////////////////////////////////
 		SELECT	TOP 1 @VP_ORDEN = CONVERT(INT, LTRIM(RTRIM(user_def_fld_4)))
@@ -227,6 +222,7 @@ AS
 			DECLARE  @VP_CUBE_LENGTH		DECIMAL(13,4) = 0	,@VP_CUBE_WIDTH			DECIMAL(13,4)	= 0		,@VP_CUBE_QTY_PER	DECIMAL(13,4) = 0
 					,@VP_D_ITEM				VARCHAR(255)		,@VP_CHANGE_LEVEL		VARCHAR(100)			,@VP_MODELO			VARCHAR(50)
 					,@VP_VERSION			VARCHAR(50)			,@VP_SERIAL				VARCHAR(50)		= ''	
+					,@VP_D_ITEM_KIT			VARCHAR(255)		
 
 			-- ////////SE OBTIENE EL GROSS, NETO Y PATRONES DEL KIT///////////////////////////////////
 			SELECT TOP (1)
@@ -238,6 +234,20 @@ AS
 			FROM	IMITMIDX_SQL			(NOLOCK)
 			WHERE	LTRIM(RTRIM(ITEM_NO))	= @VP_CU_ITEM_NO
 	
+			-- SE PIDIÓ AGREGAR LA DESCRIPCIÓN DEL KIT EN LUGAR DE LA DEL PATTERN PARA LAS ORDENES_RMA
+			SELECT	@VP_D_ITEM_KIT			= LTRIM(RTRIM(item_desc_1))	--PJTSRB4NPJTX7  
+			FROM	IMITMIDX_SQL			(NOLOCK)
+			WHERE	LTRIM(RTRIM(ITEM_NO))	= (		SELECT LTRIM(RTRIM(ITEM_NO))
+													FROM	DATA_02.DBO.CCPRDSTR_SQL	(NOLOCK)
+													WHERE	COMP_ITEM_NO	= @VP_CU_ITEM_NO
+													AND		VERSIONNO		= @VP_CU_VERSIONNO
+													AND		MODELNO			= @VP_CU_S_MODELO		)
+
+			IF @VP_D_ITEM_KIT = '' OR @VP_D_ITEM_KIT IS NULL
+			BEGIN
+				SET	@VP_D_ITEM_KIT	= @VP_D_ITEM
+			END
+
 			IF @VP_CUBE_LENGTH IS NULL
 			BEGIN
 				SET @VP_CUBE_LENGTH = 0
@@ -270,166 +280,43 @@ AS
 				RAISERROR ('No fue posible obtener el Change Level.', 16, 1 ) 
 			END
 			-- ///////////////////////////////////////////////////////////////////////////////////////
-			-- ////////SE OBTIENE EL STANDARD PACK DEL KIT///////////////////////////////////
-			DECLARE @VP_STD_PACK INT = 0
+			INSERT INTO	[DATA_02].[dbo].ccjoblin_sql
+			(		jobno,				kit,				kitdesc,		item_no, 
+					PlannedQty,			OriginalQty,		CompletedQty, 
+					netsqmper,			stdsqmper,			patternsper, 
+					customer,			ChangeLevel,		Ser_no					)
+			VALUES	
+			(		@VP_ORDEN,			@VP_CU_PATTERN,		@VP_D_ITEM_KIT,		@VP_CU_ITEM_NO, 
+					@VP_CU_CANTIDAD,	@VP_CU_CANTIDAD,	0,--0 ES VALOR POR DEFAULT
+					@VP_CUBE_WIDTH,		@VP_CUBE_LENGTH,	1,--SE PONE 1, YA QUE LA RELACIÓN ES UN PATRON CONTIENE UN PATRON
+					@VP_CLIENTE,		@VP_CHANGE_LEVEL,	@VP_CONSECUTIVO			)				
+			IF @@ROWCOUNT = 0
+			BEGIN
+				SET @VP_MENSAJE	= 'No fue posible agregar el pattern ['+ @VP_CU_ITEM_NO +'] a la orden en [CCJOBLIN].'
+				RAISERROR (@VP_MENSAJE, 16, 1 )
+			END
 
-				SELECT	TOP(1) 
-						@VP_STD_PACK			= user_def_fld_5 
-				FROM	ccitmidx_sql			(NOLOCK)
-				WHERE	LTRIM(RTRIM(item_no))	= @VP_CU_ITEM_NO
-				AND		modelno					= @VP_MODELO		
-				AND		versionno				= @VP_VERSION		
-				ORDER BY versionno DESC
+			-- ///////SE GUARDA EL REGISTRO DEL MATERIAL ESCANEADO//////////////////////////////////////////////
+			SET @VP_SERIAL  = @VP_ORDEN + RIGHT('000'+ CONVERT(VARCHAR(10), @VP_CONSECUTIVO), 3) 
 			
-			IF @VP_STD_PACK IS NULL or @VP_STD_PACK = 0
+			EXECUTE [DATA_02].[dbo].[PG_IN_MATERIAL_PROGRAMADO_LOG]	@PP_K_SISTEMA_EXE,	@VP_K_USER,--@PP_K_USUARIO_ACCION,
+																	10,				@VP_SERIAL,			@VP_CU_ITEM_NO,
+																	'MATERIALES',	@VP_COMPUTER_NAME,	@VP_NUMERO_RELOJ, 
+																	''				
+			--========================================================================================================================================
+			UPDATE	DETAILS_RMA
+			SET		JOBNO			= 	@VP_ORDEN,
+					SERIAL			=	@VP_SERIAL
+			WHERE	K_DETAILS_RMA	=	@VP_CU_K_DETAILS
+			IF @@ROWCOUNT = 0
 			BEGIN
-				SET @VP_STD_PACK= 30
-				--SELECT	TOP (1)	
-				--		@VP_STD_PACK	= STANDAR_PACK_KIT	--,QUOTE_PATTERN.* 
-				--FROM	COT19_COTIZACIONES_V9999_R0.DBO.QUOTE_PATTERN 
-				--INNER JOIN COT19_COTIZACIONES_V9999_R0.DBO.QUOTE_KIT	ON QUOTE_KIT.K_QUOTE_TRIM_COLOR	= QUOTE_PATTERN.K_QUOTE_TRIM_COLOR
-				--AND		QUOTE_KIT.K_QUOTE_KIT	= QUOTE_PATTERN.K_QUOTE_KIT
-				--WHERE	ITEM_NUMBER_PATTERN		= LEFT(@VP_CU_ITEM_NO,8)
-				
-				--IF @VP_STD_PACK IS NULL or @VP_STD_PACK = 0
-				--BEGIN
-				--	RAISERROR ('No fue posible obtener el Estandar Pack en [CCITMIDX]', 16, 1 ) 
-				--END
+				SET @VP_MENSAJE	= 'No fue posible actualizar el detalle ['+ CONVERT(VARCHAR(10),@VP_CU_K_DETAILS) +'] a la orden en [CCJOBLIN].'
+				RAISERROR (@VP_MENSAJE, 16, 1 )
 			END
-			-- ///////////////////////////////////////////////////////////////////////////////////////
-			-- ///////////////////////////////////////////////////////////////////////////////////////
-			-- ///////////////////////////////////////////////////////////////////////////////////////
-			-- //////SE INGRESAN LOS KITS EN LA TABLA ccjoblin_sql/////////////////////////////////////
-			IF @VP_CU_CANTIDAD < @VP_STD_PACK
-			BEGIN
-				INSERT INTO	[DATA_02].[dbo].ccjoblin_sql
-				(		jobno,				kit,				kitdesc,		item_no, 
-						PlannedQty,			OriginalQty,		CompletedQty, 
-						netsqmper,			stdsqmper,			patternsper, 
-						customer,			ChangeLevel,		Ser_no					)
-				VALUES	
-				(		@VP_ORDEN,			@VP_CU_PATTERN,		@VP_D_ITEM,		@VP_CU_ITEM_NO, 
-						@VP_CU_CANTIDAD,	@VP_CU_CANTIDAD,	0,--0 ES VALOR POR DEFAULT
-						@VP_CUBE_WIDTH,		@VP_CUBE_LENGTH,	1,--SE PONE 1, YA QUE LA RELACIÓN ES UN PATRON CONTIENE UN PATRON
-						@VP_CLIENTE,		@VP_CHANGE_LEVEL,	@VP_CONSECUTIVO			)				
-				IF @@ROWCOUNT = 0
-				BEGIN
-					SET @VP_MENSAJE	= 'No fue posible agregar el pattern ['+ @VP_CU_ITEM_NO +'] a la orden en [CCJOBLIN].'
-					RAISERROR (@VP_MENSAJE, 16, 1 )
-				END
-	
-				-- ///////SE GUARDA EL REGISTRO DEL MATERIAL ESCANEADO//////////////////////////////////////////////
-				SET @VP_SERIAL  = @VP_ORDEN + RIGHT('000'+ CONVERT(VARCHAR(10), @VP_CONSECUTIVO), 3) 
-				
-				EXECUTE [DATA_02].[dbo].[PG_IN_MATERIAL_PROGRAMADO_LOG]	@PP_K_SISTEMA_EXE,	@VP_K_USER,--@PP_K_USUARIO_ACCION,
-																		10,				@VP_SERIAL,			@VP_CU_ITEM_NO,
-																		'MATERIALES',	@VP_COMPUTER_NAME,	@VP_NUMERO_RELOJ, 
-																		''				
-				--========================================================================================================================================
-				UPDATE	DETAILS_RMA
-				SET		JOBNO			= 	@VP_ORDEN,
-						SERIAL			=	@VP_SERIAL
-				WHERE	K_DETAILS_RMA	=	@VP_CU_K_DETAILS
-				IF @@ROWCOUNT = 0
-				BEGIN
-					SET @VP_MENSAJE	= 'No fue posible actualizar el detalle ['+ CONVERT(VARCHAR(10),@VP_CU_K_DETAILS) +'] a la orden en [CCJOBLIN].'
-					RAISERROR (@VP_MENSAJE, 16, 1 )
-				END
-				--========================================================================================================================================
+			--========================================================================================================================================
 
-				-- ///////SE AUMENTA EL CONSECUTIVO//////////////////////////////////////////////
-				SET @VP_CONSECUTIVO = @VP_CONSECUTIVO + 1
-			END
-			---------------------------------------------------------------------------------------------------------------------
-			ELSE
-			---------------------------------------------------------------------------------------------------------------------
-			BEGIN
-				WHILE  @VP_CU_CANTIDAD > 0
-				BEGIN	--BEGIN WHILE
-					IF @VP_CU_CANTIDAD > @VP_STD_PACK
-					BEGIN
-						INSERT INTO	[DATA_02].[dbo].ccjoblin_sql
-						(		jobno,				kit,				kitdesc,		item_no, 
-								PlannedQty,			OriginalQty,		CompletedQty, 
-								netsqmper,			stdsqmper,			patternsper, 
-								customer,			ChangeLevel,		Ser_no					)
-						VALUES	
-						(		@VP_ORDEN,			@VP_CU_PATTERN,		@VP_D_ITEM,		@VP_CU_ITEM_NO, 
-								@VP_STD_PACK,		@VP_STD_PACK,		0,--0 ES VALOR POR DEFAULT
-								@VP_CUBE_WIDTH,		@VP_CUBE_LENGTH,	1,--SE PONE 1, YA QUE LA RELACIÓN ES UN PATRON CONTIENE UN PATRON
-								@VP_CLIENTE,		@VP_CHANGE_LEVEL,	@VP_CONSECUTIVO			)				
-						IF @@ROWCOUNT = 0
-						BEGIN
-							SET @VP_MENSAJE	= 'No fue posible agregar el pattern ['+ @VP_CU_ITEM_NO +'] a la orden en [CCJOBLIN].'
-							RAISERROR (@VP_MENSAJE, 16, 1 )
-						END
-						--========================================================================================================================================
-						--UPDATE	DETAILS_RMA
-						--SET		JOBNO			= 	@VP_ORDEN,
-						--		SERIAL			=	@VP_SERIAL
-						--WHERE	K_DETAILS_RMA	=	@VP_CU_K_DETAILS
-						--IF @@ROWCOUNT = 0
-						--BEGIN
-						--	SET @VP_MENSAJE	= 'No fue posible actualizar el detalle RMA ['+ CONVERT(VARCHAR(10),@VP_CU_K_DETAILS) +'] a la orden en [CCJOBLIN].'
-						--	RAISERROR (@VP_MENSAJE, 16, 1 )
-						--END
-						--========================================================================================================================================
-
-					END
-					ELSE
-					BEGIN
-						INSERT INTO	[DATA_02].[dbo].ccjoblin_sql
-						(		jobno,				kit,				kitdesc,		item_no, 
-								PlannedQty,			OriginalQty,		CompletedQty, 
-								netsqmper,			stdsqmper,			patternsper, 
-								customer,			ChangeLevel,		Ser_no					)
-						VALUES	
-						(		@VP_ORDEN,			@VP_CU_PATTERN,		@VP_D_ITEM,		@VP_CU_ITEM_NO, 
-								@VP_CU_CANTIDAD,	@VP_CU_CANTIDAD,	0,--0 ES VALOR POR DEFAULT
-								@VP_CUBE_WIDTH,		@VP_CUBE_LENGTH,	1,--SE PONE 1, YA QUE LA RELACIÓN ES UN PATRON CONTIENE UN PATRON
-								@VP_CLIENTE,		@VP_CHANGE_LEVEL,	@VP_CONSECUTIVO			)				
-						IF @@ROWCOUNT = 0
-						BEGIN
-							SET @VP_MENSAJE	= 'No fue posible agregar el pattern ['+ @VP_CU_ITEM_NO +'] a la orden en [CCJOBLIN].'
-							RAISERROR (@VP_MENSAJE, 16, 1 )
-						END
-						----========================================================================================================================================
-						--UPDATE	DETAILS_RMA
-						--SET		JOBNO			= 	@VP_ORDEN,
-						--		SERIAL			=	@VP_SERIAL
-						--WHERE	K_DETAILS_RMA	=	@VP_CU_K_DETAILS
-						--IF @@ROWCOUNT = 0
-						--BEGIN
-						--	SET @VP_MENSAJE	= 'No fue posible actualizar el detalle RMA ['+ CONVERT(VARCHAR(10),@VP_CU_K_DETAILS) +'] a la orden en [CCJOBLIN].'
-						--	RAISERROR (@VP_MENSAJE, 16, 1 )
-						--END
-						----========================================================================================================================================
-					END
-	
-						-- ///////SE GUARDA EL REGISTRO DEL MATERIAL ESCANEADO//////////////////////////////////////////////
-						SET @VP_SERIAL  = @VP_ORDEN + RIGHT('000'+ CONVERT(VARCHAR(10), @VP_CONSECUTIVO), 3) 
-
-						EXECUTE [DATA_02].[dbo].[PG_IN_MATERIAL_PROGRAMADO_LOG]	@PP_K_SISTEMA_EXE,	@VP_K_USER,--@PP_K_USUARIO_ACCION,
-																				10,				@VP_SERIAL,			@VP_CU_ITEM_NO,
-																				'MATERIALES',	@VP_COMPUTER_NAME,	@VP_NUMERO_RELOJ, 
-																				''
-						--========================================================================================================================================
-						UPDATE	DETAILS_RMA
-						SET		JOBNO			= 	@VP_ORDEN,
-								SERIAL			=	@VP_SERIAL
-						WHERE	K_DETAILS_RMA	=	@VP_CU_K_DETAILS
-						IF @@ROWCOUNT = 0
-						BEGIN
-							SET @VP_MENSAJE	= 'No fue posible actualizar el detalle ['+ CONVERT(VARCHAR(10),@VP_CU_K_DETAILS) +'] a la orden en [CCJOBLIN].'
-							RAISERROR (@VP_MENSAJE, 16, 1 )
-						END
-						--========================================================================================================================================
-					
-					-- ///////SE RESTA DEL STADANDARD PACK LO INGRESADO Y SE AUMENTA EL CONSECUTIVO//////////////////////////////////////////////
-					SET @VP_CU_CANTIDAD = @VP_CU_CANTIDAD - @VP_STD_PACK
-					SET @VP_CONSECUTIVO = @VP_CONSECUTIVO + 1
-				END	--END WHILE
-			END
+			-- ///////SE AUMENTA EL CONSECUTIVO//////////////////////////////////////////////
+			SET @VP_CONSECUTIVO = @VP_CONSECUTIVO + 1
 
 				-- ///////////////////////////////////////////////////////////////////////////////////////	
 				SET	@VP_CU_S_COLOR_SINF_anterior	= 	@VP_CU_S_COLOR_SINF				
@@ -440,12 +327,12 @@ AS
 				IF	@VP_CU_S_COLOR_SINF_anterior	<>	@VP_CU_S_COLOR_SINF
 				BEGIN
 					--	ASIGNAR EL COLOR VIEJO COMPARAR CONTRA EL NUEVO, SI SON DIFERENTE SE INSERTA LA ORDEN Y SE REINICIA EL CONSECUTIVO.	
-					-- ///////SE INGRESA EL REGISTRO DE LA ORDEN EN CCJOBHDR_SQL//////////////////////////////////////////////
-					
+					-- ///////SE INGRESA EL REGISTRO DE LA ORDEN EN CCJOBHDR_SQL//////////////////////////////////////////////					
 					SET	@VP_NO_SECUENCIA	= @VP_NO_SECUENCIA + 1					
 					SET	@VP_COMENTARIO		= 'Ord. Generada autom. #['+ CONVERT(VARCHAR(10),@PP_K_HEADER_RMA) +'] Sec'+CONVERT(VARCHAR(10),@VP_NO_SECUENCIA)+''
 					
 					--=========================================================
+					--	VERIFICA EL TIPO DE ORDEN PARA INDICAR EN CUAL MESA SERÁ ASIGNADA
 					IF (
 							SELECT	K_TIPO_RMA
 							FROM	HEADER_RMA								(NOLOCK)
@@ -459,6 +346,7 @@ AS
 						SET	@VP_MESA_CORTE	= 'Table 78'						
 					END
 					--=========================================================
+					--	INSERTA EL REGISTRO DE LA ORDEN EN LA TABLA CORRESPONDIENTE
 					INSERT INTO [DATA_02].[dbo].CCJOBHDR_SQL 
 					(		jobno,					[status],			colour,				colourdesc, 
 							machine,				datecreated,		dateplanned,		printedflag, 
@@ -485,11 +373,10 @@ AS
 													@VP_ORDEN,		'Crear orden',		@VP_DETAIL, 
 													''
 					
-					-- /////////////////////////////////////////////////////// SE ACTUALIZA EL CAMPO DE JOBNOS EN EL ENCABEZADO.
-					
+					-- /////////////////////////////////////////////////////// SE ACTUALIZA EL CAMPO DE JOBNOS EN EL ENCABEZADO DE LA RMA.
 					SET @VP_JOB = ''
 
-					SELECT	@VP_JOB	= JOBNO
+					SELECT	@VP_JOB		= JOBNO
 					FROM	HEADER_RMA		(NOLOCK)
 					WHERE	K_HEADER_RMA = @PP_K_HEADER_RMA
 
@@ -533,7 +420,7 @@ AS
 	
 					IF @VP_ORDEN IS NULL
 					BEGIN
-						RAISERROR ('No fue posible obtener el numero de orden en [CCJOBHDR]', 16, 1 ) 
+						RAISERROR ('No fue posible obtener el numero de orden(2) en [CCJOBHDR]', 16, 1 ) 
 					END
 	
 					SET @VP_ORDEN = @VP_ORDEN + 1
@@ -546,18 +433,10 @@ AS
 					WHERE LOC = 'MFP'	
 					IF @@ROWCOUNT = 0
 					BEGIN
-						RAISERROR ('No fue posible Actualizar la orden en [IMLOCFIL]', 16, 1 ) 
+						RAISERROR ('No fue posible Actualizar la orden(2) en [IMLOCFIL]', 16, 1 ) 
 					END
 					-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
-				END --IF	@VP_COLOR_ANTERIOR	<>	@VP_CU_S_COLOR_SINF			
-											
-					--SET	@VP_EX_PATTERN			= @VP_CU_PATTERN		
-					--SET	@VP_EX_ITEM_NO			= @VP_CU_ITEM_NO		
-					--SET	@VP_EX_CANTIDAD			= @VP_CU_CANTIDAD
-					--SET	@VP_EX_S_COLOR_SINF		= @VP_CU_S_COLOR_SINF
-					--SET	@VP_EX_D_COLOR			= @VP_CU_D_COLOR
-					--SET	@VP_DETAIL				= ''
-
+				END 
 		END		--END CURSOR	
 	CLOSE		CU_PATTERN_A_PROGRAMAR
 	DEALLOCATE	CU_PATTERN_A_PROGRAMAR
@@ -651,7 +530,6 @@ AS
 	BEGIN
 		RAISERROR ('No fue posible actualizar la orden.', 16, 1 ) 
 	END
-
 	-- ////////////////////////////////////////////////////////////////////
 GO
 
