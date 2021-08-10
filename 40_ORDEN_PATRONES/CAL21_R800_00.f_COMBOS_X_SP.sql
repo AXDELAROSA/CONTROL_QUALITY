@@ -1,0 +1,262 @@
+-- //////////////////////////////////////////////////////////////
+-- // DATA BASE:		DATA_02
+-- // MODULE:			ORDEN_PATRON
+-- // OPERATION:		CARGA COMBO
+-- //////////////////////////////////////////////////////////////
+-- // AUTHOR:			AX DE LA ROSA			
+-- // CREATION DATE:	20210804
+-- ////////////////////////////////////////////////////////////// 
+
+USE [DATA_02]
+GO
+
+-- //////////////////////////////////////////////////////////////
+-- ////////			CONTENIDO DEL SP
+--	[PG_CB_CUSNO_ORDEN_PATRON]
+--	[PG_CB_CUSNO_PROGRAM_ORDEN_PATRON]
+--	[PG_CB_CUSNO_MODELNO_ORDEN_PATRON]
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> CB / MUESTRA LOS CLIENTES CON VERSIONES ACTIVAS EN PEARL
+-- //////////////////////////////////////////////////////////////
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_CB_CUSNO_ORDEN_PATRON]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_CB_CUSNO_ORDEN_PATRON]
+GO
+--		 EXECUTE [dbo].[PG_CB_CUSNO_ORDEN_PATRON] 0,0, 0
+--		 EXECUTE [dbo].[PG_CB_CUSNO_ORDEN_PATRON] 0,0, 1
+CREATE PROCEDURE [dbo].[PG_CB_CUSNO_ORDEN_PATRON]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO				INT,
+	--============================
+	@PP_L_CON_TODOS				INT
+AS
+	DECLARE @VP_TA_CATALOGO	AS TABLE
+				(	TA_K_CATALOGO		INT,
+					TA_D_CATALOGO		VARCHAR(50),
+					TA_O_CATALOGO		INT,
+					TA_L_DELETED		INT,	
+					TA_L_ACTIVO			INT			 )
+	IF @PP_L_CON_TODOS=0
+	BEGIN
+		INSERT INTO @VP_TA_CATALOGO
+		SELECT	DISTINCT
+				0			,
+				CUS_NO		,
+				0,	0,	1
+		FROM	HEADER_RMA	(NOLOCK)		
+	END
+
+	IF @PP_L_CON_TODOS=1
+	BEGIN
+		INSERT INTO @VP_TA_CATALOGO
+		SELECT	DISTINCT
+				ARCUSFIL_SQL.A4GLIdentity	,
+				CCVERHDR_SQL.CUS_NO			,
+				ARCUSFIL_SQL.O_ARCUSFIL		,
+				ARCUSFIL_SQL.L_BORRADO		,
+				ARCUSFIL_SQL.L_ARCUSFIL		
+		FROM	CCVERHDR_SQL		(NOLOCK),
+				ARCUSFIL_SQL		(NOLOCK)
+		WHERE	CCVERHDR_SQL.STATUS			= 'L'
+		AND		CCVERHDR_SQL.SPECSTATUS		= 'U'
+		AND		ARCUSFIL_SQL.CUS_NO			= CCVERHDR_SQL.cus_no
+		ORDER BY CCVERHDR_SQL.CUS_NO
+	END
+
+	IF @PP_L_CON_TODOS IN ( 0 )
+		INSERT INTO @VP_TA_CATALOGO
+				( TA_K_CATALOGO,	TA_D_CATALOGO,	TA_O_CATALOGO, TA_L_DELETED, TA_L_ACTIVO	)
+			VALUES
+				( -1,				'( SELECT )',	-999,		   0,			 1				)
+
+	IF @PP_L_CON_TODOS IN ( 1 )
+		INSERT INTO @VP_TA_CATALOGO
+				( TA_K_CATALOGO,	TA_D_CATALOGO,	TA_O_CATALOGO, TA_L_DELETED, TA_L_ACTIVO	)
+			VALUES
+				( -1,				'( TODOS )',	-999,		   0,			 1				)
+
+	-- ==========================================		
+	SELECT	TA_K_CATALOGO	AS K_COMBOBOX,
+			(
+				(CASE 
+					WHEN (TA_L_ACTIVO=1 AND TA_L_DELETED=0) THEN '' 
+					ELSE '<X> ' 
+					END 
+				) +		TA_D_CATALOGO 
+			) AS D_COMBOBOX
+	FROM	@VP_TA_CATALOGO
+	ORDER BY TA_D_CATALOGO ,	TA_O_CATALOGO
+	-- ////////////////////////////////////////////////////
+GO
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> CB	/	MUESTRA LOS PROGRAMAS DE ACUERDO AL CLIENTE
+-- //////////////////////////////////////////////////////////////
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_CB_CUSNO_PROGRAM_ORDEN_PATRON]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_CB_CUSNO_PROGRAM_ORDEN_PATRON]
+GO
+--		 EXECUTE [dbo].[PG_CB_CUSNO_PROGRAM_ORDEN_PATRON] 0,139,'',0
+--		 EXECUTE [dbo].[PG_CB_CUSNO_PROGRAM_ORDEN_PATRON] 0,139,'',1
+--		 EXECUTE [dbo].[PG_CB_CUSNO_PROGRAM_ORDEN_PATRON] 0,139,'MAGN03',0
+--		 EXECUTE [dbo].[PG_CB_CUSNO_PROGRAM_ORDEN_PATRON] 0,139,'MAGN03',1
+--		 EXECUTE [dbo].[PG_CB_CUSNO_PROGRAM_ORDEN_PATRON] 0,139,19,0
+--		 EXECUTE [dbo].[PG_CB_CUSNO_PROGRAM_ORDEN_PATRON] 0,139,19,1
+CREATE PROCEDURE [dbo].[PG_CB_CUSNO_PROGRAM_ORDEN_PATRON]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO				INT,
+	--============================
+	--@PP_CUSNO					VARCHAR(6),
+	@PP_CUSNO					INT,
+	@PP_L_CON_TODOS				INT
+AS
+
+	DECLARE @VP_TA_CATALOGO	AS TABLE
+				(	TA_K_CATALOGO		INT,
+					TA_D_CATALOGO		VARCHAR(50),
+					TA_O_CATALOGO		INT,
+					TA_L_DELETED		INT,	
+					TA_L_ACTIVO			INT			 )
+
+		INSERT INTO @VP_TA_CATALOGO
+		SELECT	DISTINCT
+				ARCUSFIL_PROGRAM.K_ARCUSFIL_PROGRAM		,
+				--CCVERHDR_SQL.CUS_NO					,
+				ARCUSFIL_PROGRAM.S_ARCUSFIL_PROGRAM		,
+				ARCUSFIL_PROGRAM.O_ARCUSFIL_PROGRAM		,
+				ARCUSFIL_PROGRAM.L_BORRADO				,
+				ARCUSFIL_PROGRAM.L_ARCUSFIL_PROGRAM		
+		FROM	CCVERHDR_SQL		(NOLOCK),
+				ARCUSFIL_SQL		(NOLOCK),
+				ARCUSFIL_PROGRAM	(NOLOCK)
+		WHERE	CCVERHDR_SQL.STATUS			= 'L'
+		AND		CCVERHDR_SQL.SPECSTATUS		= 'U'
+		AND		ARCUSFIL_SQL.CUS_NO			= CCVERHDR_SQL.cus_no
+		--===================================
+		AND		ARCUSFIL_PROGRAM.K_ARCUSFIL	= ARCUSFIL_SQL.A4GLIDENTITY
+		AND		ARCUSFIL_PROGRAM.K_ARCUSFIL	= ARCUSFIL_SQL.A4GLIDENTITY
+		AND		ARCUSFIL_SQL.A4GLIdentity	= @PP_CUSNO
+		ORDER BY	K_ARCUSFIL_PROGRAM		,S_ARCUSFIL_PROGRAM
+
+
+	IF @PP_L_CON_TODOS=0
+		INSERT INTO @VP_TA_CATALOGO
+				( TA_K_CATALOGO,	TA_D_CATALOGO,	TA_O_CATALOGO, TA_L_DELETED, TA_L_ACTIVO	)
+			VALUES
+				( -1,				'( SELECT )',	-999,		   0,			 1				)
+
+	IF @PP_L_CON_TODOS=1
+		INSERT INTO @VP_TA_CATALOGO
+				( TA_K_CATALOGO,	TA_D_CATALOGO,	TA_O_CATALOGO, TA_L_DELETED, TA_L_ACTIVO	)
+			VALUES
+				( -1,				'( TODOS )',	-999,		   0,			 1				)
+
+	-- ==========================================		
+	SELECT	TA_K_CATALOGO	AS K_COMBOBOX,
+			(
+				(CASE 
+					WHEN (TA_L_ACTIVO=1 AND TA_L_DELETED=0) THEN '' 
+					ELSE '<X> ' 
+					END 
+				) +		TA_D_CATALOGO 
+			) AS D_COMBOBOX
+	FROM	@VP_TA_CATALOGO
+	ORDER BY TA_D_CATALOGO ,	TA_O_CATALOGO
+	-- ////////////////////////////////////////////////////
+GO
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> CB / MUESTRA LOS MODELOS POR PROGRAMA ACTIVOS EN PEARL
+-- //////////////////////////////////////////////////////////////
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_CB_CUSNO_MODELNO_ORDEN_PATRON]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_CB_CUSNO_MODELNO_ORDEN_PATRON]
+GO
+--		 EXECUTE [dbo].[PG_CB_CUSNO_MODELNO_ORDEN_PATRON] 1,139,43,0
+--		 EXECUTE [dbo].[PG_CB_CUSNO_MODELNO_ORDEN_PATRON] 1,139,43,1
+CREATE PROCEDURE [dbo].[PG_CB_CUSNO_MODELNO_ORDEN_PATRON]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO				INT,
+	--============================
+	@PP_K_PROGRAM				INT,
+	@PP_L_CON_TODOS				INT
+AS
+	DECLARE @VP_TA_CATALOGO	AS TABLE
+				(	TA_K_CATALOGO		INT,
+					TA_D_CATALOGO		VARCHAR(50),
+					TA_O_CATALOGO		INT,
+					TA_L_DELETED		INT,	
+					TA_L_ACTIVO			INT			 )
+	
+	IF @PP_L_CON_TODOS=0
+	BEGIN
+		INSERT INTO @VP_TA_CATALOGO
+
+		SELECT	DISTINCT
+				ARCUSFIL_PROGRAM_MODEL.K_ARCUSFIL_PROGRAM_MODEL		,
+				--CONCAT ( (SELECT TOP (1) RTRIM(LTRIM(PROD_CAT)) FROM IMCATFIL_SQL (NOLOCK) WHERE IMCATFIL_SQL.PROD_CAT = S_ARCUSFIL_PROGRAM_MODEL)
+				CONCAT ( RTRIM(LTRIM(S_ARCUSFIL_PROGRAM_MODEL))
+									,' // '
+											--,(SELECT TOP (1) RTRIM(LTRIM(PROD_CAT_DESC)) FROM IMCATFIL_SQL (NOLOCK) WHERE IMCATFIL_SQL.PROD_CAT = S_ARCUSFIL_PROGRAM_MODEL) ),
+											,RTRIM(LTRIM(ARCUSFIL_PROGRAM_MODEL.D_ARCUSFIL_PROGRAM_MODEL)))	,
+				10		,
+				ARCUSFIL_PROGRAM_MODEL.L_BORRADO					,
+				1
+		FROM	CCVERHDR_SQL			(NOLOCK),
+				ARCUSFIL_SQL			(NOLOCK),
+				ARCUSFIL_PROGRAM		(NOLOCK),
+				ARCUSFIL_PROGRAM_MODEL	(NOLOCK)
+		WHERE	CCVERHDR_SQL.[STATUS]						= 'L'
+		AND		CCVERHDR_SQL.SPECSTATUS						= 'U'
+		AND		ARCUSFIL_SQL.CUS_NO							= CCVERHDR_SQL.cus_no
+		--===================================
+		AND		ARCUSFIL_PROGRAM.K_ARCUSFIL					= ARCUSFIL_SQL.A4GLIDENTITY
+		AND		ARCUSFIL_PROGRAM_MODEL.K_ARCUSFIL_PROGRAM	= ARCUSFIL_PROGRAM.K_ARCUSFIL_PROGRAM
+		AND		ARCUSFIL_PROGRAM_MODEL.K_ARCUSFIL_PROGRAM	= @PP_K_PROGRAM
+		AND		ARCUSFIL_PROGRAM_MODEL.K_ARCUSFIL_PROGRAM_MODEL	NOT IN (144,145,139)	--139,140
+		AND		ARCUSFIL_PROGRAM_MODEL.L_BORRADO	= 0
+		--ORDER BY	K_ARCUSFIL_PROGRAM_MODEL		,S_ARCUSFIL_PROGRAM_MODEL
+
+	END
+
+	IF @PP_L_CON_TODOS=1
+	BEGIN
+		INSERT INTO @VP_TA_CATALOGO
+		SELECT	DISTINCT
+				0			,
+				CUS_NO		,
+				0,	0,	1
+		FROM	HEADER_RMA	(NOLOCK)		
+	END
+
+	IF @PP_L_CON_TODOS IN ( 0 )
+		INSERT INTO @VP_TA_CATALOGO
+				( TA_K_CATALOGO,	TA_D_CATALOGO,	TA_O_CATALOGO, TA_L_DELETED, TA_L_ACTIVO	)
+			VALUES
+				( -1,				'( SELECT )',	-999,		   0,			 1				)
+
+	IF @PP_L_CON_TODOS IN ( 1 )
+		INSERT INTO @VP_TA_CATALOGO
+				( TA_K_CATALOGO,	TA_D_CATALOGO,	TA_O_CATALOGO, TA_L_DELETED, TA_L_ACTIVO	)
+			VALUES
+				( -1,				'( TODOS )',	-999,		   0,			 1				)
+
+	-- ==========================================		
+	SELECT	TA_K_CATALOGO	AS K_COMBOBOX,
+			(
+				(CASE 
+					WHEN (TA_L_ACTIVO=1 AND TA_L_DELETED=0) THEN '' 
+					ELSE '<X> ' 
+					END 
+				) +		TA_D_CATALOGO 
+			) AS D_COMBOBOX
+	FROM	@VP_TA_CATALOGO
+	ORDER BY TA_D_CATALOGO ,	TA_O_CATALOGO
+	-- ////////////////////////////////////////////////////
+GO
+
+
+-- ///////////////////////////////////////////////////////////////////////////////////////////////////////
+-- ///////////////////////////////////////////////////////////////////////////////////////////////////////
+-- ///////////////////////////////////////////////////////////////////////////////////////////////////////
+-- ///////////////////////////////////////////////////////////////////////////////////////////////////////
+-- ///////////////////////////////////////////////////////////////////////////////////////////////////////

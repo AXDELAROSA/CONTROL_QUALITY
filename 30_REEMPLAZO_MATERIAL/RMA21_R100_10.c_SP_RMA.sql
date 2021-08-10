@@ -27,7 +27,6 @@ GO
 --	[PG_INUP_DETAILS_RMA]
 --	[PG_UP_ESTATUS_RMA]
 --	[PG_DL_HEADER_RMA]
---	[PG_ERROR_GENERAR_ORDEN_RMA]
 -- //////////////////////////////////////////////////////////////
 
 
@@ -176,13 +175,14 @@ AS
 
 	SELECT	DETAILS_RMA.ITEM_NO				AS S_PATTERN,
 			LTRIM(RTRIM(SEARCH_DESC))		AS D_PATTERN,
-			(	SELECT TOP (1) ITEM_NO 
-				FROM	CCPRDSTR_SQL		(NOLOCK)
-				WHERE	ccprdstr_sql.CUS_NO			= DETAILS_RMA.CUS_NO
-				AND		ccprdstr_sql.MODELNO		= DETAILS_RMA.MODELNO
-				AND		ccprdstr_sql.VERSIONNO		= DETAILS_RMA.VERSIONNO	
-				AND		ccprdstr_sql.COMP_ITEM_NO	= DETAILS_RMA.ITEM_NO					
-				) AS KIT,
+			S_KIT	AS	KIT,
+			--(	SELECT TOP (1) ITEM_NO 
+			--	FROM	CCPRDSTR_SQL		(NOLOCK)
+			--	WHERE	ccprdstr_sql.CUS_NO			= DETAILS_RMA.CUS_NO
+			--	AND		ccprdstr_sql.MODELNO		= DETAILS_RMA.MODELNO
+			--	AND		ccprdstr_sql.VERSIONNO		= DETAILS_RMA.VERSIONNO	
+			--	AND		ccprdstr_sql.COMP_ITEM_NO	= DETAILS_RMA.ITEM_NO					
+			--	) AS KIT,
 			[DETAILS_RMA].* 
 	FROM	[DETAILS_RMA]		(NOLOCK)
 	INNER JOIN	IMITMIDX_SQL	(NOLOCK)	ON IMITMIDX_SQL.ITEM_NO	= DETAILS_RMA.ITEM_NO
@@ -1084,7 +1084,8 @@ AS
 							[CANTIDAD_ORDENADA]			,	[PRECIO_UNITARIO]			,
 							-- =========================
 							[CANTIDAD_ENVIADA]			,	[GRUPO_ORDEN]				,
-							[PRECIO_MANUAL]				,	[S_COLOR_RMA]
+							[PRECIO_MANUAL]				,	[S_COLOR_RMA]				,
+							[S_KIT]
 						)
 					VALUES
 						(	
@@ -1101,7 +1102,13 @@ AS
 							@VP_VALOR_QTY_ORD			,	@VP_PRECIO_PATTERN			,
 							-- =========================
 							0							,	@VP_VALOR_GRUPO_O			,
-							@VP_VALOR_PRECIOM			,	CONCAT('F',RIGHT(LTRIM(RTRIM(@VP_VALOR_ITEM_NO)),6))
+							@VP_VALOR_PRECIOM			,	CONCAT('F',RIGHT(LTRIM(RTRIM(@VP_VALOR_ITEM_NO)),6)),
+							(	SELECT	TOP (1) ITEM_NO
+								FROM	CCPRDSTR_SQL				(NOLOCK)
+								WHERE	ccprdstr_sql.CUS_NO			= @PP_CUS_NO
+								AND		ccprdstr_sql.MODELNO		= @VP_VALOR_MODELNO
+								AND		ccprdstr_sql.VERSIONNO		= @VP_VALOR_VERSION
+								AND		ccprdstr_sql.COMP_ITEM_NO	= @VP_VALOR_ITEM_NO		)
 						)																															
 					IF @@ROWCOUNT = 0
 					BEGIN
@@ -1401,9 +1408,6 @@ END CATCH
 	IF @VP_MENSAJE<>''
 	BEGIN
 		SET		@VP_MENSAJE = 'No es posible [ACTUALIZAR]: ' + @VP_MENSAJE 
-
-		-- PARA ENVIAR EL CORREO EN CASO DE ERRORES.
-		--EXECUTE	[PG_ERROR_GENERAR_ORDEN_RMA]	0,		@PP_ARRAY_K_HEADER,		@VP_MENSAJE
 	END
 	SELECT	@VP_MENSAJE AS MENSAJE, @PP_L_ACCION_REALIZAR AS CLAVE
 	-- //////////////////////////////////////////////////////////////

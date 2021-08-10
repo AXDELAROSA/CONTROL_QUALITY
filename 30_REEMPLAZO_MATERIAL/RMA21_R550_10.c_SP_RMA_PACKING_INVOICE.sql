@@ -75,7 +75,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_
 	DROP PROCEDURE [dbo].[PG_LI_DETAILS_RMA_PACKING]
 GO
 --		 EXECUTE [dbo].[PG_LI_DETAILS_RMA_PACKING] 0,139, '36191/36192'
---		 EXECUTE [dbo].[PG_LI_DETAILS_RMA_PACKING] 0,139, '36192'
+--		 EXECUTE [dbo].[PG_LI_DETAILS_RMA_PACKING] 0,139, '35522/35523'
 CREATE PROCEDURE [dbo].[PG_LI_DETAILS_RMA_PACKING]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -122,14 +122,15 @@ AS
 				D_ARCUSFIL_PROGRAM_MODEL		AS D_MODELNO,
 				DETAILS_RMA.ITEM_NO				AS S_PATTERN,
 				LTRIM(RTRIM(SEARCH_DESC))		AS D_PATTERN,
-				(	SELECT TOP (1) ITEM_NO 
-					FROM	CCPRDSTR_SQL				(NOLOCK)
-					WHERE	ccprdstr_sql.CUS_NO			= DETAILS_RMA.CUS_NO
-					AND		ccprdstr_sql.MODELNO		= DETAILS_RMA.MODELNO
-					AND		ccprdstr_sql.VERSIONNO		= DETAILS_RMA.VERSIONNO	
-					AND		ccprdstr_sql.COMP_ITEM_NO	= DETAILS_RMA.ITEM_NO					
-					) AS KIT,
-				DETAILS_RMA.CANTIDAD_ORDENADA AS CANTIDAD_ENVIADA,
+				S_KIT	AS KIT,
+				--(	SELECT TOP (1) ITEM_NO 
+				--	FROM	CCPRDSTR_SQL				(NOLOCK)
+				--	WHERE	ccprdstr_sql.CUS_NO			= DETAILS_RMA.CUS_NO
+				--	AND		ccprdstr_sql.MODELNO		= DETAILS_RMA.MODELNO
+				--	AND		ccprdstr_sql.VERSIONNO		= DETAILS_RMA.VERSIONNO	
+				--	AND		ccprdstr_sql.COMP_ITEM_NO	= DETAILS_RMA.ITEM_NO					
+				--	) AS KIT,
+				DETAILS_RMA.CANTIDAD_ORDENADA			AS CANTIDAD_ENVIADA,
 				ISNULL(PACKING_NO,'-')					AS PACKING_NO,
 				ISNULL(INVOICE_NO,'-')					AS INVOICE_NO,
 				--(	CASE
@@ -157,7 +158,9 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_GET
 	DROP PROCEDURE [dbo].[PG_GET_DETALLE_PACKING_RMA]
 GO
 --		 EXECUTE [dbo].[PG_GET_DETALLE_PACKING_RMA] 0 ,0,  '18/19/20/151/152/153/154/155' , 'JL0723-1'
+--		 EXECUTE [dbo].[PG_GET_DETALLE_PACKING_RMA] 0 ,0,  '18/19/20/151/152/153/154/155' , 'XXXXXXXXXX'
 --		 EXECUTE [dbo].[PG_GET_DETALLE_PACKING_RMA] 0 ,0,  '101/102/103/104/105' , 'XXXXXXXXXX'
+--		 EXECUTE [dbo].[PG_GET_DETALLE_PACKING_RMA] 0 ,0,  '126/127' , 'XXXXXXXXXX'
 CREATE PROCEDURE [dbo].[PG_GET_DETALLE_PACKING_RMA]
 	@PP_K_SISTEMA_EXE			INT,
 	@PP_K_USUARIO_ACCION		INT,
@@ -210,7 +213,9 @@ AS
 
 	DECLARE @TBL_DETALLE_PACKING  TABLE (
 			K_DETALLE_PACKING			INT IDENTITY(1,1),
+			ITEM_NO						VARCHAR(100),
 			CUS_ITEM_NO					VARCHAR(100),
+			S_CUS_ITEM_NO				VARCHAR(100),
 			D_ITEM_NO					VARCHAR(150),
 			PROD_CAT					VARCHAR(100),
 			QTY_SHIP					INT,
@@ -221,44 +226,58 @@ AS
 	SET NOCOUNT ON
 
 	INSERT INTO @TBL_DETALLE_PACKING
-	SELECT	CUS_ITEM_NO,	
-			--(	SELECT TOP (1) LTRIM(RTRIM(ITEM_DESC_1))
-			--	FROM IMITMIDX_SQL (NOLOCK)
-			--	WHERE item_no	= DETAILS_RMA.ITEM_NO				),
-			LTRIM(RTRIM(ITEM_DESC_1)),
-			MODELNO,
-			SUM(CANTIDAD_ENVIADA),
-			COUNT(CUS_ITEM_NO),
+	SELECT	DETAILS_RMA.ITEM_NO				AS ITEM_NO,
+			CUS_ITEM_NO						AS CUS_ITEM_NO,
+			(	CASE
+					WHEN	CUS_NO	= 'IRVI02'	THEN	(	SELECT  TOP (1)
+																	LTRIM(RTRIM(CUS_ITEM_NO))
+															FROM	CCCUSITM_SQL	(NOLOCK)
+															WHERE	LTRIM(RTRIM(ITEM_NO))	= DETAILS_RMA.S_KIT
+															AND		CUS_NO					= DETAILS_RMA.CUS_NO
+															AND		MODELNO					= DETAILS_RMA.MODELNO
+															--AND		VERSIONNO				= DETAILS_RMA.VERSIONNO
+															ORDER BY 	VERSIONNO	DESC
+														)
+					ELSE	''
+				END
+			)								AS	S_CUS_ITEM_NO,
+			LTRIM(RTRIM(ITEM_DESC_1))		AS D_ITEM_NO,
+			MODELNO							AS PROD_CAT,
+			SUM(CANTIDAD_ENVIADA)			AS QTY_SHIP,
+			COUNT(CUS_ITEM_NO)				AS BOX,
 			(	CASE
 					WHEN	PRECIO_MANUAL		<> 0 THEN	( SUM(PRECIO_MANUAL)	* SUM(CANTIDAD_ENVIADA) )
 					WHEN	PRECIO_UNITARIO		<> 0 THEN	( SUM(PRECIO_UNITARIO)	* SUM(CANTIDAD_ENVIADA) )
-				END		) AS PRECIO,
+				END		)					AS COST,
 			--PRECIO_UNITARIO,
 			--PRECIO_MANUAL,
 			( SUM(CANTIDAD_ENVIADA) * MAX(NET_AREA)	)
 	FROM	DETAILS_RMA		(NOLOCK)
 	INNER JOIN IMITMIDX_SQL	(NOLOCK) ON IMITMIDX_SQL.ITEM_NO	= DETAILS_RMA.ITEM_NO
 	WHERE	K_DETAILS_RMA IN ( SELECT K_DETAILS_RMA FROM  @TBL_MATERIAL_SELECCIONADO	)
-	GROUP BY	MODELNO, CUS_ITEM_NO, ITEM_DESC_1,	PRECIO_UNITARIO, PRECIO_MANUAL
-	ORDER BY	MODELNO, CUS_ITEM_NO, ITEM_DESC_1
+	GROUP BY	CUS_NO, MODELNO, CUS_ITEM_NO, DETAILS_RMA.ITEM_NO,ITEM_DESC_1,	PRECIO_UNITARIO, PRECIO_MANUAL,DETAILS_RMA.S_KIT
+	ORDER BY	CUS_NO, MODELNO, CUS_ITEM_NO, ITEM_DESC_1
 	SET NOCOUNT ON
 
 	INSERT INTO @TBL_DETALLE_PACKING
-	SELECT	'  ', 'Totals:', '',
+	SELECT	' ','  ','', 'Totals:', '',
 			SUM(QTY_SHIP) AS QTY_SHIP, 
 			SUM(BOX) AS BOX, 
-			--(	CASE
-			--		WHEN	COST_MANUAL	<> 0 THEN	( SUM(COST_MANUAL)	* SUM(QTY_SHIP) )
-			--		WHEN	COST		<> 0 THEN	( SUM(COST)			* SUM(QTY_SHIP) )
-			--	END		) AS COST,
 			SUM(COST) AS COST,
-			--SUM(COST_MANUAL) AS COST_MANUAL,
 			SUM(SQFT) AS SQFT 
 	FROM	@TBL_DETALLE_PACKING
 	SET NOCOUNT ON
 
 	SELECT	K_DETALLE_PACKING,	
-			CUS_ITEM_NO,		
+			CUS_ITEM_NO,
+			(	CASE
+					WHEN	S_CUS_ITEM_NO	LIKE '%BQW%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
+					WHEN	S_CUS_ITEM_NO	LIKE '%BQX%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
+					WHEN	S_CUS_ITEM_NO	LIKE '%C4X%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
+					WHEN	S_CUS_ITEM_NO	LIKE '%C6S%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
+					ELSE	''
+				END
+			)	AS	S_CUS_ITEM_NO,
 			D_ITEM_NO,
 			CONVERT(VARCHAR(20), QTY_SHIP) AS QTY_SHIP,		
 		    CONVERT(VARCHAR(20), BOX ) AS BOX,					
@@ -409,13 +428,14 @@ AS
 				LTRIM(RTRIM(prod_cat_desc))		AS D_MODELNO,
 				DETAILS_RMA.ITEM_NO				AS S_PATTERN,
 				LTRIM(RTRIM(SEARCH_DESC))		AS D_PATTERN,
-				(	SELECT TOP (1) ITEM_NO 
-					FROM	CCPRDSTR_SQL				(NOLOCK)
-					WHERE	ccprdstr_sql.CUS_NO			= DETAILS_RMA.CUS_NO
-					AND		ccprdstr_sql.MODELNO		= DETAILS_RMA.MODELNO
-					AND		ccprdstr_sql.VERSIONNO		= DETAILS_RMA.VERSIONNO	
-					AND		ccprdstr_sql.COMP_ITEM_NO	= DETAILS_RMA.ITEM_NO					
-					) AS KIT,
+				S_KIT							AS KIT,
+				--(	SELECT TOP (1) ITEM_NO 
+				--	FROM	CCPRDSTR_SQL				(NOLOCK)
+				--	WHERE	ccprdstr_sql.CUS_NO			= DETAILS_RMA.CUS_NO
+				--	AND		ccprdstr_sql.MODELNO		= DETAILS_RMA.MODELNO
+				--	AND		ccprdstr_sql.VERSIONNO		= DETAILS_RMA.VERSIONNO	
+				--	AND		ccprdstr_sql.COMP_ITEM_NO	= DETAILS_RMA.ITEM_NO					
+				--	) AS KIT,
 				DETAILS_RMA.CANTIDAD_ORDENADA AS CANTIDAD_ENVIADA,
 				ISNULL(PACKING_NO,'-')					AS PACKING_NO,
 				ISNULL(INVOICE_NO,'-')					AS INVOICE_NO,
@@ -1007,11 +1027,11 @@ AS
 
 	IF @PP_TIPO_ORDEN	= 1
 	BEGIN
-		SET @VP_PROGRAMA	= 'R-REM'
+		SET @VP_PROGRAMA	= 'R-'
 	END
 	ELSE IF @PP_TIPO_ORDEN	= 2
 	BEGIN
-		SET @VP_PROGRAMA	= 'R-' + @VP_PROGRAMA
+		SET @VP_PROGRAMA	= 'S-' + @VP_PROGRAMA
 	END
 
 	IF @VP_PROGRAMA IS NULL OR @VP_PROGRAMA = ''
@@ -1089,6 +1109,10 @@ AS
 		BEGIN
 			BEGIN TRANSACTION 
 			BEGIN TRY
+				IF @PP_K_USUARIO_ACCION NOT IN (139,87)
+				BEGIN
+					RAISERROR ('Usuario no válido para realizar la acción.', 16, 1 )
+				END
 				---==================================================================================================================================================================
 				---==================================================================================================================================================================
 				---==================================================================================================================================================================
@@ -1295,19 +1319,15 @@ AS
 	-- // SECCION#3 ////////////////////////////////////////////////////////// MENSAJE DE SALIDA
 	
 	IF @VP_MENSAJE<>''
-		BEGIN
-		
+		BEGIN		
 		--SET		@VP_MENSAJE = 'No es posible [Asignar] el Packing al material en [INVENTARIO_EMBARQUE]: ' + @VP_MENSAJE 
 		SET		@VP_MENSAJE = @VP_MENSAJE + ' ( '
 		SET		@VP_MENSAJE = @VP_MENSAJE + '[#PACKING.'+ @VP_PACKING_NUEVO + ']'
 		SET		@VP_MENSAJE = @VP_MENSAJE + ' )'
-
 		END
 	
 	SELECT	@VP_MENSAJE AS MENSAJE, @VP_PACKING_NUEVO AS CLAVE
-
-	-- //////////////////////////////////////////////////////////////
-	
+	-- //////////////////////////////////////////////////////////////	
 GO
 ------ //////////////////////////////////////////////////////////////
 ------ //////////////////////////////////////////////////////////////
