@@ -13,7 +13,8 @@ GO
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_PR_QC_LIBERA_RMA]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_PR_QC_LIBERA_RMA]
 GO
---			EXEC [dbo].[PG_PR_QC_LIBERA_RMA] 13164,'J7#34659/Q10/S34659001/*2551622/Q35/S34659004/*2551623/Q10/S34659001/*2551624/Q10/S34659001/*2551625/Q10/S34659001/*2551626/Q10/S34659001/*2551627/Q15/S34659001/*2551628/Q15/S34659001/*2551621'
+--			EXEC [dbo].[PG_PR_QC_LIBERA_RMA] 13164, ---'J1137#37810/Q15/S37810001/*11090823L/Q15/S37810002/*11090821L'
+--			'J1107#36789/Q20/S36789001/*P00034803/Q13/S36789002/*P00034703/Q1/S36789003/*P00034603/Q19/S36789004/*P000348S03/Q3/S36789005/*P000347S03/Q8/S36789006/*P000346S03'
 CREATE PROCEDURE [dbo].[PG_PR_QC_LIBERA_RMA]
 	--@PP_K_SISTEMA_EXE			INT,
 	--@PP_K_USUARIO_ACCION		INT,
@@ -72,16 +73,11 @@ BEGIN TRY
 		
 		--Buscamos la posicion de la primera y obtenemos los caracteres hasta esa posicion
 		SELECT @VP_VALOR_K_RMA		= LEFT(@PP_ETIQUETA_EMBARQUE		, @VP_POSICION_K_RMA		- 1)
-		
-		----SET @VP_K_RMA = CONVERT( INTEGER,REPLACE(@VP_VALOR_K_RMA,'J','') )			
 
-		--SELECT @VP_VALOR_K_RMA
-
+		-- SE OBTIENE LA INFORMACIÓN DE LA ETIQUETA SIN LA JOBO / RMA
 		SELECT @PP_ETIQUETA_EMBARQUE	= STUFF(@PP_ETIQUETA_EMBARQUE		, 1, @VP_POSICION_K_RMA, '')
 	END
 	-- /////////////////////////////////////////////////////
-		
-	--SELECT @PP_ETIQUETA_EMBARQUE
 
 	DECLARE  @VP_POSICION		INT
 			,@VP_VALOR			VARCHAR(500)
@@ -139,7 +135,7 @@ BEGIN TRY
 				--FROM	ARCUSFIL_PROGRAM_MODEL		(NOLOCK)
 				--WHERE	S_ARCUSFIL_PROGRAM_MODEL	= @VP_MODELNO
 
-				SELECT	@VP_D_MODELNO				= PROD_CAT_DESC
+				SELECT	@VP_D_MODELNO				= LTRIM(RTRIM(PROD_CAT_DESC))
 				FROM	IMCATFIL_SQL				(NOLOCK)	
 				WHERE	LTRIM(RTRIM(PROD_CAT))		= @VP_MODELNO
 
@@ -152,8 +148,8 @@ BEGIN TRY
 				DECLARE @VP_HORA	INT = FORMAT(CAST(GETDATE() AS TIME(0)), N'hhmmss');
 				--===================================================================================================================
 				IF (	SELECT	COUNT(SERIAL)
-						FROM	QCLIBERA_SQL	
-						WHERE	SERIAL2	= @VP_K_DETALLE	)	<=  0
+						FROM	QCLIBERA_SQL	(NOLOCK)
+						WHERE	SERIAL2	= @VP_K_DETALLE		)	<=  0
 				BEGIN
 					INSERT INTO	QCLIBERA_SQL	(
 					--INSERT INTO	@TA_DATOS_ETIQUETA	(
@@ -181,16 +177,17 @@ BEGIN TRY
 					END
 
 					UPDATE	DETAILS_RMA
-					SET		K_STATUS_RMA	= 30
-					WHERE	SERIAL			= @VP_SERIE
-					AND		K_STATUS_RMA	<> 30
+					SET		K_STATUS_RMA		= 30,
+							CANTIDAD_ENVIADA	= @VP_CANTIDAD
+					WHERE	SERIAL				= @VP_SERIE
+					--AND		K_STATUS_RMA	<> 30
 					IF @@ROWCOUNT = 0
 					BEGIN
 						SET @VP_MENSAJE='El registro ya fue escaneado. [SERIAL#'+ @VP_SERIE +']'
 						RAISERROR (@VP_MENSAJE, 16, 1 )
 					END
 
-						IF (	SELECT COUNT(K_INVENTARIO_EMBARQUE_RMA)	FROM INVENTARIO_EMBARQUE_RMA WHERE SERIAL_1	= @VP_SERIE		)	> 0
+						IF (	SELECT COUNT(K_INVENTARIO_EMBARQUE_RMA)	FROM INVENTARIO_EMBARQUE_RMA (NOLOCK)	WHERE SERIAL_1	= @VP_SERIE		)	> 0
 						BEGIN
 							SET @VP_MENSAJE='El registro ya se encuentra agregado a INVENTARIO_EMBARQUE. [SERIAL#'+ @VP_SERIE +']'
 							RAISERROR (@VP_MENSAJE, 16, 1 )
@@ -235,9 +232,9 @@ BEGIN TRY
 						BEGIN
 							
 							UPDATE	HEADER_RMA
-							SET		K_STATUS_RMA	= 30		--- ORDEN LIBERADA
+							SET		K_STATUS_RMA	= 13		--- ORDEN LIBERADA
 							WHERE	K_HEADER_RMA	= @VP_K_HEADER_RMA
-							AND		K_STATUS_RMA	< 15
+							AND		K_STATUS_RMA	<= 13
 							IF @@ROWCOUNT = 0
 							BEGIN
 								SET @VP_MENSAJE='El estatus de la Orden, no pudo ser actualizado. [RMA#'+CONVERT(VARCHAR(10),@VP_K_HEADER_RMA)+']'
@@ -250,8 +247,13 @@ BEGIN TRY
 																	410,		@VP_SERIE,			@VP_CU_ITEM_NO,
 																	'QC_LIBER RMA',	'QC-LIBERA',	@PP_INSPECTOR, 
 																	''				
-					END
+					END				
 				--===================================================================================================================
+				ELSE
+				BEGIN
+						SET @VP_MENSAJE='La etiqueta ya fue escaneada con anterioridad. [Orden#'+ @VP_VALOR_K_RMA +']'
+						RAISERROR (@VP_MENSAJE, 16, 1 )
+				END
 
 					SET	@VP_CONTADOR		= 0
 					SET @VP_CANTIDAD		= ''
@@ -274,6 +276,9 @@ BEGIN CATCH
 	SET @ErrorMessage = ERROR_MESSAGE() 
 	SET @VP_MENSAJE = 'ERROR: // ' + @ErrorMessage
 END CATCH		
+
+IF	@VP_MENSAJE	= ''
+	SET	@VP_MENSAJE	= 'ESCANEADO CORRECTO'
 
 SELECT	@VP_MENSAJE AS MENSAJE
 	-- /////////////////////////////////////////////////////

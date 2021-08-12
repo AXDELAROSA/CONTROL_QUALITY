@@ -132,7 +132,7 @@ CREATE UNIQUE NONCLUSTERED
 GO
 
 -- //////////////////////////////////////////////////////////////
--- //				CI - STATUS_RMA
+-- //				CI - SELECT * FROM STATUS_RMA
 -- //////////////////////////////////////////////////////////////
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_CI_STATUS_RMA]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_CI_STATUS_RMA]
@@ -336,6 +336,16 @@ GO
 --ALTER TABLE	[dbo].[DETAILS_RMA]			--AX: 20210810				
 --ADD
 --	[S_KIT]						[VARCHAR](50) NOT NULL DEFAULT ''
+--GO
+
+--ALTER TABLE	[dbo].[DETAILS_RMA]			--AX: 20210811						
+--ADD
+--	[CANTIDAD_CORTADA]						[VARCHAR](50) NOT NULL DEFAULT 0
+--GO
+
+--ALTER TABLE	[dbo].[DETAILS_RMA]			--AX: 20210811						
+--ADD
+--	[CANTIDAD_CORTADA]						[INT]	NOT NULL DEFAULT 0
 --GO
 
 -- //////////////////////////////////////////////////////////////

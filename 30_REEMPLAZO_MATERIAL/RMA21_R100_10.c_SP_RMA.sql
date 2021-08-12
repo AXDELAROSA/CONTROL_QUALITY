@@ -39,8 +39,10 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_
 GO
 --		 EXECUTE [dbo].[PG_LI_HEADER_RMA] 0,47,'',-1,'( TODOS )',null,null
 --		 EXECUTE [dbo].[PG_LI_HEADER_RMA] 0,43,'',-1,'( TODOS )',null,null
---		 EXECUTE [dbo].[PG_LI_HEADER_RMA] 0,56,'',-1,'( TODOS )',null,null
---		 EXECUTE [dbo].[PG_LI_HEADER_RMA] 0,139,'',-1,'( TODOS )',null,null
+--		 EXECUTE [dbo].[PG_LI_HEADER_RMA] 0,56,'20200910',-1,'( TODOS )',null,null
+--		 EXECUTE [dbo].[PG_LI_HEADER_RMA] 0,139,'20200910',-1,'( TODOS )',null,null
+--		 EXECUTE [dbo].[PG_LI_HEADER_RMA] 0,167,'20200910',-1,'( TODOS )',null,null
+--		 EXECUTE [dbo].[PG_LI_HEADER_RMA] 0,167,'',-1,'( TODOS )',null,null
 
 --		 EXECUTE [dbo].[PG_LI_HEADER_RMA] 0,87,'',-1,'( TODOS )',null,null
 --		 EXECUTE [dbo].[PG_LI_HEADER_RMA] 0,165,'',-1,'( TODOS )',null,null
@@ -67,94 +69,196 @@ AS
 	-- /////////////////////////////////////////////////////////////////////
 	IF @PP_K_USUARIO_ACCION	= 43 OR @PP_K_USUARIO_ACCION	= 139
 	BEGIN
-		SELECT		TOP (1000)
-					-- =============================	 
-					--F_CREACION_RMA,	--F_ENTREGA_RMA,	--MODELNO,	--VERSIONNO,
-					-- =============================
-					(SELECT COUNT(K_DETAILS_RMA)	FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS PATTERNS,
-					(SELECT SUM(CANTIDAD_ORDENADA)	FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS CANTIDAD,
-					(SELECT SUM(PRECIO_UNITARIO	* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA)	AS PRECIO_SISTEMA,
-					(SELECT SUM(PRECIO_MANUAL	* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA)	AS PRECIO_MANUAL,
-					-- =============================
-					(SELECT SUM(NET_AREA		* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS SQFT,
-					-- =============================
-					HEADER_RMA.JOBNO	AS JOBNOS_ARRAY,
-					( CASE
-						WHEN	L_APLICA_COBRO = 1 THEN 'SÍ'
-						ELSE	'NO'
-					END	)	AS APLICA_COBRO,
-					-- =============================
-					S_STATUS_RMA	, D_STATUS_RMA,
-					S_TIPO_RMA		, D_TIPO_RMA,
-					HEADER_RMA.CUS_NO,
-					-- =============================
-					HEADER_RMA.*
-					-- =============================	
-		FROM		HEADER_RMA		(NOLOCK) 
-		INNER JOIN 	STATUS_RMA		(NOLOCK) ON STATUS_RMA.K_STATUS_RMA		= HEADER_RMA.K_STATUS_RMA
-		INNER JOIN 	TIPO_RMA		(NOLOCK) ON TIPO_RMA.K_TIPO_RMA			= HEADER_RMA.K_TIPO_RMA
-		INNER JOIN	BD_GENERAL.DBO.USUARIO_PEARL		(NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL	= HEADER_RMA.K_USUARIO_ALTA
-					-- =============================
-		WHERE		(	HEADER_RMA.K_HEADER_RMA				= @PP_BUSCAR
-					OR	C_RMA								LIKE '%'+@PP_BUSCAR+'%'	)
-					-- =============================
-		AND			( @PP_F_INIT IS NULL		OR	@PP_F_INIT<=F_CREACION_RMA)
-		AND			( @PP_F_FINISH IS NULL		OR	@PP_F_FINISH>=F_CREACION_RMA)
-					-- =============================
-		--	AND			( HEADER_RMA.K_STATUS_RMA IN (4,5,6,7,8,9,11) )
-		AND			( @PP_CUS_NO		= '( TODOS )'		OR	HEADER_RMA.CUS_NO		= @PP_CUS_NO )
-		AND			( @PP_K_STATUS_RMA	= -1				OR	HEADER_RMA.K_STATUS_RMA	= @PP_K_STATUS_RMA )
-		--AND			( @PP_MODELNO	= '( TODOS )'		OR	HEADER_RMA.MODELNO	= @PP_MODELNO )
-		--AND			USUARIO_PEARL.K_USUARIO_DEPARTAMENTO	=	(	SELECT K_USUARIO_DEPARTAMENTO FROM BD_GENERAL.DBO.USUARIO_PEARL WHERE K_USUARIO_PEARL = @PP_K_USUARIO_ACCION  )
-					-- =============================
-		AND			HEADER_RMA.L_BORRADO	<> 1
-		ORDER BY	K_STATUS_RMA	DESC,	F_CREACION_RMA	DESC
+		--================================================================================================================================================================================
+		--================================================================================================================================================================================
+		--================================================================================================================================================================================
+		IF	RTRIM(LTRIM(@PP_BUSCAR))	= '' 
+		BEGIN
+				SELECT		TOP (1000)
+							 --=============================	 
+							F_CREACION_RMA,	--F_ENTREGA_RMA,	--MODELNO,	--VERSIONNO,
+							 --=============================
+							(SELECT COUNT(K_DETAILS_RMA)	FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS PATTERNS,
+							(SELECT SUM(CANTIDAD_ORDENADA)	FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS CANTIDAD,
+							(SELECT SUM(PRECIO_UNITARIO	* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA)	AS PRECIO_SISTEMA,
+							(SELECT SUM(PRECIO_MANUAL	* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA)	AS PRECIO_MANUAL,
+							 --=============================
+							(SELECT SUM(NET_AREA		* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS SQFT,
+							 --=============================
+							HEADER_RMA.JOBNO	AS JOBNOS_ARRAY,
+							( CASE
+								WHEN	L_APLICA_COBRO = 1 THEN 'SÍ'
+								ELSE	'NO'
+							END	)	AS APLICA_COBRO,
+							 --=============================
+							S_STATUS_RMA	, D_STATUS_RMA,
+							S_TIPO_RMA		, D_TIPO_RMA,
+							HEADER_RMA.CUS_NO,
+							 --=============================
+							HEADER_RMA.*
+							 --=============================	
+				FROM		HEADER_RMA		(NOLOCK) 
+				INNER JOIN 	STATUS_RMA		(NOLOCK) ON STATUS_RMA.K_STATUS_RMA		= HEADER_RMA.K_STATUS_RMA
+				INNER JOIN 	TIPO_RMA		(NOLOCK) ON TIPO_RMA.K_TIPO_RMA			= HEADER_RMA.K_TIPO_RMA
+				INNER JOIN	BD_GENERAL.DBO.USUARIO_PEARL		(NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL	= HEADER_RMA.K_USUARIO_ALTA
+							 --=============================
+				WHERE		(	HEADER_RMA.K_HEADER_RMA				= @PP_BUSCAR
+							OR	C_RMA								LIKE '%'+@PP_BUSCAR+'%'	)
+							 ---=============================
+				AND			( @PP_F_INIT IS NULL		OR	@PP_F_INIT<=F_CREACION_RMA)
+				AND			( @PP_F_FINISH IS NULL		OR	@PP_F_FINISH>=F_CREACION_RMA)
+							 --=============================
+				AND			( @PP_CUS_NO		= '( TODOS )'		OR	HEADER_RMA.CUS_NO		= @PP_CUS_NO )
+				AND			( @PP_K_STATUS_RMA	= -1				OR	HEADER_RMA.K_STATUS_RMA	= @PP_K_STATUS_RMA )
+							 --=============================
+				AND			HEADER_RMA.L_BORRADO	<> 1
+				ORDER BY	K_STATUS_RMA	DESC,	HEADER_RMA.F_CREACION_RMA	DESC
+		END
+		ELSE
+		BEGIN
+				SELECT		TOP (1000)
+							 --=============================	 
+							F_CREACION_RMA,	--F_ENTREGA_RMA,	--MODELNO,	--VERSIONNO,
+							 --=============================
+							(SELECT COUNT(K_DETAILS_RMA)	FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS PATTERNS,
+							(SELECT SUM(CANTIDAD_ORDENADA)	FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS CANTIDAD,
+							(SELECT SUM(PRECIO_UNITARIO	* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA)	AS PRECIO_SISTEMA,
+							(SELECT SUM(PRECIO_MANUAL	* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA)	AS PRECIO_MANUAL,
+							 --=============================
+							(SELECT SUM(NET_AREA		* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS SQFT,
+							 --=============================
+							HEADER_RMA.JOBNO	AS JOBNOS_ARRAY,
+							( CASE
+								WHEN	L_APLICA_COBRO = 1 THEN 'SÍ'
+								ELSE	'NO'
+							END	)	AS APLICA_COBRO,
+							 --=============================
+							S_STATUS_RMA	, D_STATUS_RMA,
+							S_TIPO_RMA		, D_TIPO_RMA,
+							HEADER_RMA.CUS_NO,
+							 --=============================
+							HEADER_RMA.*
+							 --=============================	
+				FROM		HEADER_RMA		(NOLOCK) 
+				INNER JOIN 	STATUS_RMA		(NOLOCK) ON STATUS_RMA.K_STATUS_RMA		= HEADER_RMA.K_STATUS_RMA
+				INNER JOIN 	TIPO_RMA		(NOLOCK) ON TIPO_RMA.K_TIPO_RMA			= HEADER_RMA.K_TIPO_RMA
+				INNER JOIN	BD_GENERAL.DBO.USUARIO_PEARL		(NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL	= HEADER_RMA.K_USUARIO_ALTA
+				INNER JOIN	DETAILS_RMA		(NOLOCK) ON DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA
+							 --=============================
+				WHERE		(	HEADER_RMA.K_HEADER_RMA				= @PP_BUSCAR
+							OR	C_RMA								LIKE '%'+@PP_BUSCAR+'%'	
+							OR	DETAILS_RMA.CUS_ITEM_NO				in (@PP_BUSCAR)	 )
+							 --=============================
+				AND			( @PP_F_INIT IS NULL		OR	@PP_F_INIT<=F_CREACION_RMA)
+				AND			( @PP_F_FINISH IS NULL		OR	@PP_F_FINISH>=F_CREACION_RMA)
+							 --=============================
+				AND			( @PP_CUS_NO		= '( TODOS )'		OR	HEADER_RMA.CUS_NO		= @PP_CUS_NO )
+				AND			( @PP_K_STATUS_RMA	= -1				OR	HEADER_RMA.K_STATUS_RMA	= @PP_K_STATUS_RMA )
+							 --=============================
+				AND			HEADER_RMA.L_BORRADO	<> 1
+				ORDER BY	K_STATUS_RMA	DESC,	HEADER_RMA.F_CREACION_RMA	DESC
+		END
+		--================================================================================================================================================================================
+		--================================================================================================================================================================================
+		--================================================================================================================================================================================
 	END
 	ELSE
 	BEGIN
-		SELECT		TOP (1000)
-					-- =============================	 
-					--F_CREACION_RMA,	--F_ENTREGA_RMA,	--MODELNO,	--VERSIONNO,
-					-- =============================
-					(SELECT COUNT(K_DETAILS_RMA)	FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS PATTERNS,
-					(SELECT SUM(CANTIDAD_ORDENADA)	FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS CANTIDAD,
-					(SELECT SUM(PRECIO_UNITARIO	* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA		= HEADER_RMA.K_HEADER_RMA)	AS PRECIO_SISTEMA,
-					(SELECT SUM(PRECIO_MANUAL	* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA)		AS PRECIO_MANUAL,
-					-- =============================				 
-					(SELECT SUM(NET_AREA		* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS SQFT,
-					-- =============================
-					HEADER_RMA.JOBNO	AS JOBNOS_ARRAY,
-					( CASE
-						WHEN	L_APLICA_COBRO = 1 THEN 'SÍ'
-						ELSE	'NO'
-					END	)	AS APLICA_COBRO,
-					-- =============================
-					S_STATUS_RMA	, D_STATUS_RMA,
-					S_TIPO_RMA		, D_TIPO_RMA,
-					HEADER_RMA.CUS_NO,
-					-- =============================
-					HEADER_RMA.*
-					-- =============================	
-		FROM		HEADER_RMA		(NOLOCK) 
-		INNER JOIN 	STATUS_RMA		(NOLOCK) ON STATUS_RMA.K_STATUS_RMA		= HEADER_RMA.K_STATUS_RMA
-		INNER JOIN 	TIPO_RMA		(NOLOCK) ON TIPO_RMA.K_TIPO_RMA			= HEADER_RMA.K_TIPO_RMA
-		INNER JOIN	BD_GENERAL.DBO.USUARIO_PEARL		(NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL	= HEADER_RMA.K_USUARIO_ALTA
-					-- =============================
-		WHERE		(	HEADER_RMA.K_HEADER_RMA				= @PP_BUSCAR
-					OR	C_RMA								LIKE '%'+@PP_BUSCAR+'%'	)
-					-- =============================
-		AND			( @PP_F_INIT IS NULL		OR	@PP_F_INIT<=F_CREACION_RMA)
-		AND			( @PP_F_FINISH IS NULL		OR	@PP_F_FINISH>=F_CREACION_RMA)
-					-- =============================
-		--	AND			( HEADER_RMA.K_STATUS_RMA IN (4,5,6,7,8,9,11) )
-		AND			( @PP_CUS_NO		= '( TODOS )'		OR	HEADER_RMA.CUS_NO		= @PP_CUS_NO )
-		AND			( @PP_K_STATUS_RMA	= -1				OR	HEADER_RMA.K_STATUS_RMA	= @PP_K_STATUS_RMA )
-		--AND			( @PP_MODELNO	= '( TODOS )'		OR	HEADER_RMA.MODELNO	= @PP_MODELNO )
-		AND			USUARIO_PEARL.K_USUARIO_DEPARTAMENTO	=	(	SELECT K_USUARIO_DEPARTAMENTO FROM BD_GENERAL.DBO.USUARIO_PEARL (NOLOCK)	WHERE K_USUARIO_PEARL = @PP_K_USUARIO_ACCION  )
-					-- =============================
-		AND			HEADER_RMA.L_BORRADO	<> 1
-		ORDER BY	K_STATUS_RMA	DESC,	F_CREACION_RMA	DESC
-	END
+		--================================================================================================================================================================================
+		--================================================================================================================================================================================
+		--================================================================================================================================================================================
+		IF	RTRIM(LTRIM(@PP_BUSCAR))	= '' 
+		BEGIN
+			SELECT		TOP (1000)
+						-- =============================	 
+						--F_CREACION_RMA,	--F_ENTREGA_RMA,	--MODELNO,	--VERSIONNO,
+						-- =============================
+						(SELECT COUNT(K_DETAILS_RMA)	FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS PATTERNS,
+						(SELECT SUM(CANTIDAD_ORDENADA)	FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS CANTIDAD,
+						(SELECT SUM(PRECIO_UNITARIO	* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA		= HEADER_RMA.K_HEADER_RMA)	AS PRECIO_SISTEMA,
+						(SELECT SUM(PRECIO_MANUAL	* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA)		AS PRECIO_MANUAL,
+						-- =============================				 
+						(SELECT SUM(NET_AREA		* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS SQFT,
+						-- =============================
+						HEADER_RMA.JOBNO	AS JOBNOS_ARRAY,
+						( CASE
+							WHEN	L_APLICA_COBRO = 1 THEN 'SÍ'
+							ELSE	'NO'
+						END	)	AS APLICA_COBRO,
+						-- =============================
+						S_STATUS_RMA	, D_STATUS_RMA,
+						S_TIPO_RMA		, D_TIPO_RMA,
+						HEADER_RMA.CUS_NO,
+						-- =============================
+						HEADER_RMA.*
+						-- =============================	
+			FROM		HEADER_RMA		(NOLOCK) 
+			INNER JOIN 	STATUS_RMA		(NOLOCK) ON STATUS_RMA.K_STATUS_RMA		= HEADER_RMA.K_STATUS_RMA
+			INNER JOIN 	TIPO_RMA		(NOLOCK) ON TIPO_RMA.K_TIPO_RMA			= HEADER_RMA.K_TIPO_RMA
+			INNER JOIN	BD_GENERAL.DBO.USUARIO_PEARL		(NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL	= HEADER_RMA.K_USUARIO_ALTA
+						-- =============================
+			WHERE		(	HEADER_RMA.K_HEADER_RMA				= @PP_BUSCAR
+						OR	C_RMA								LIKE '%'+@PP_BUSCAR+'%'	)
+						-- =============================
+			AND			( @PP_F_INIT IS NULL		OR	@PP_F_INIT<=F_CREACION_RMA)
+			AND			( @PP_F_FINISH IS NULL		OR	@PP_F_FINISH>=F_CREACION_RMA)
+						-- =============================
+			AND			( @PP_CUS_NO		= '( TODOS )'		OR	HEADER_RMA.CUS_NO		= @PP_CUS_NO )
+			AND			( @PP_K_STATUS_RMA	= -1				OR	HEADER_RMA.K_STATUS_RMA	= @PP_K_STATUS_RMA )
+			AND			USUARIO_PEARL.K_USUARIO_DEPARTAMENTO	=	(	SELECT K_USUARIO_DEPARTAMENTO FROM BD_GENERAL.DBO.USUARIO_PEARL (NOLOCK)	WHERE K_USUARIO_PEARL = @PP_K_USUARIO_ACCION  )
+						-- =============================
+			AND			HEADER_RMA.L_BORRADO	<> 1
+			ORDER BY	K_STATUS_RMA	DESC,	F_CREACION_RMA	DESC
+		END
+		ELSE
+		BEGIN
+			SELECT		TOP (1000)
+						-- =============================	 
+						--F_CREACION_RMA,	--F_ENTREGA_RMA,	--MODELNO,	--VERSIONNO,
+						-- =============================
+						(SELECT COUNT(K_DETAILS_RMA)	FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS PATTERNS,
+						(SELECT SUM(CANTIDAD_ORDENADA)	FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS CANTIDAD,
+						(SELECT SUM(PRECIO_UNITARIO	* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA		= HEADER_RMA.K_HEADER_RMA)	AS PRECIO_SISTEMA,
+						(SELECT SUM(PRECIO_MANUAL	* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA)		AS PRECIO_MANUAL,
+						-- =============================				 
+						(SELECT SUM(NET_AREA		* CANTIDAD_ORDENADA) FROM DETAILS_RMA (NOLOCK) WHERE	DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA) AS SQFT,
+						-- =============================
+						HEADER_RMA.JOBNO	AS JOBNOS_ARRAY,
+						( CASE
+							WHEN	L_APLICA_COBRO = 1 THEN 'SÍ'
+							ELSE	'NO'
+						END	)	AS APLICA_COBRO,
+						-- =============================
+						S_STATUS_RMA	, D_STATUS_RMA,
+						S_TIPO_RMA		, D_TIPO_RMA,
+						HEADER_RMA.CUS_NO,
+						-- =============================
+						HEADER_RMA.*
+						-- =============================	
+			FROM		HEADER_RMA		(NOLOCK) 
+			INNER JOIN 	STATUS_RMA		(NOLOCK) ON STATUS_RMA.K_STATUS_RMA		= HEADER_RMA.K_STATUS_RMA
+			INNER JOIN 	TIPO_RMA		(NOLOCK) ON TIPO_RMA.K_TIPO_RMA			= HEADER_RMA.K_TIPO_RMA
+			INNER JOIN	BD_GENERAL.DBO.USUARIO_PEARL		(NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL	= HEADER_RMA.K_USUARIO_ALTA
+			INNER JOIN	DETAILS_RMA		(NOLOCK) ON DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA
+						-- =============================
+			WHERE		(	HEADER_RMA.K_HEADER_RMA				= @PP_BUSCAR
+						OR	C_RMA								LIKE '%'+@PP_BUSCAR+'%'	
+						OR	DETAILS_RMA.CUS_ITEM_NO				LIKE '%'+@PP_BUSCAR+'%'	)
+						-- =============================
+			AND			( @PP_F_INIT IS NULL		OR	@PP_F_INIT<=F_CREACION_RMA)
+			AND			( @PP_F_FINISH IS NULL		OR	@PP_F_FINISH>=F_CREACION_RMA)
+						-- =============================
+			AND			( @PP_CUS_NO		= '( TODOS )'		OR	HEADER_RMA.CUS_NO		= @PP_CUS_NO )
+			AND			( @PP_K_STATUS_RMA	= -1				OR	HEADER_RMA.K_STATUS_RMA	= @PP_K_STATUS_RMA )
+			AND			USUARIO_PEARL.K_USUARIO_DEPARTAMENTO	=	(	SELECT K_USUARIO_DEPARTAMENTO FROM BD_GENERAL.DBO.USUARIO_PEARL (NOLOCK)	WHERE K_USUARIO_PEARL = @PP_K_USUARIO_ACCION  )
+						-- =============================
+			AND			HEADER_RMA.L_BORRADO	<> 1
+			ORDER BY	K_STATUS_RMA	DESC,	F_CREACION_RMA	DESC
+		END
+		--================================================================================================================================================================================
+		--================================================================================================================================================================================
+		--================================================================================================================================================================================
+		END
 	-- /////////////////////////////////////////////////////////////////////
 GO
 
@@ -176,13 +280,6 @@ AS
 	SELECT	DETAILS_RMA.ITEM_NO				AS S_PATTERN,
 			LTRIM(RTRIM(SEARCH_DESC))		AS D_PATTERN,
 			S_KIT	AS	KIT,
-			--(	SELECT TOP (1) ITEM_NO 
-			--	FROM	CCPRDSTR_SQL		(NOLOCK)
-			--	WHERE	ccprdstr_sql.CUS_NO			= DETAILS_RMA.CUS_NO
-			--	AND		ccprdstr_sql.MODELNO		= DETAILS_RMA.MODELNO
-			--	AND		ccprdstr_sql.VERSIONNO		= DETAILS_RMA.VERSIONNO	
-			--	AND		ccprdstr_sql.COMP_ITEM_NO	= DETAILS_RMA.ITEM_NO					
-			--	) AS KIT,
 			[DETAILS_RMA].* 
 	FROM	[DETAILS_RMA]		(NOLOCK)
 	INNER JOIN	IMITMIDX_SQL	(NOLOCK)	ON IMITMIDX_SQL.ITEM_NO	= DETAILS_RMA.ITEM_NO
@@ -405,6 +502,11 @@ AS
 	--FROM	ARCUSFIL_PROGRAM		(NOLOCK)
 	--INNER JOIN	HEADER_RMA			(NOLOCK) ON HEADER_RMA.PROGRAM	= S_ARCUSFIL_PROGRAM 
 	--AND		HEADER_RMA.K_HEADER_RMA			= @PP_K_HEADER_RMA
+
+	SELECT	@CB_ARCUSFIL_PROGRAM		= RTRIM(LTRIM(S_ARCUSFIL_PROGRAM_MODEL)) + ' // ' + RTRIM(LTRIM(D_ARCUSFIL_PROGRAM_MODEL))
+	FROM	ARCUSFIL_PROGRAM_MODEL		(NOLOCK)
+	INNER JOIN	HEADER_RMA				(NOLOCK) ON HEADER_RMA.MODELNO	= S_ARCUSFIL_PROGRAM_MODEL
+	AND		HEADER_RMA.K_HEADER_RMA		= @PP_K_HEADER_RMA
 
 	SELECT	@CB_ARCUSFIL_PROGRAM		= RTRIM(LTRIM(S_ARCUSFIL_PROGRAM_MODEL)) + ' // ' + RTRIM(LTRIM(D_ARCUSFIL_PROGRAM_MODEL))
 	FROM	ARCUSFIL_PROGRAM_MODEL		(NOLOCK)

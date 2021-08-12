@@ -161,6 +161,7 @@ GO
 --		 EXECUTE [dbo].[PG_GET_DETALLE_PACKING_RMA] 0 ,0,  '18/19/20/151/152/153/154/155' , 'XXXXXXXXXX'
 --		 EXECUTE [dbo].[PG_GET_DETALLE_PACKING_RMA] 0 ,0,  '101/102/103/104/105' , 'XXXXXXXXXX'
 --		 EXECUTE [dbo].[PG_GET_DETALLE_PACKING_RMA] 0 ,0,  '126/127' , 'XXXXXXXXXX'
+--		 EXECUTE [dbo].[PG_GET_DETALLE_PACKING_RMA] 0 ,0,  '1402/1403' , 'XXXXXXXXXX'
 CREATE PROCEDURE [dbo].[PG_GET_DETALLE_PACKING_RMA]
 	@PP_K_SISTEMA_EXE			INT,
 	@PP_K_USUARIO_ACCION		INT,
@@ -175,6 +176,10 @@ AS
 			K_MATERIAL_SELECCIONADO		INT IDENTITY(1,1),
 			K_DETAILS_RMA				INT
 		)
+	SET NOCOUNT ON
+
+	DECLARE @TBL_ENCABEZADOS	TABLE 
+	(		TA_K_HEADER_RMA		INT		)
 	SET NOCOUNT ON
 	
 	IF @PP_PACKING_NO = 'XXXXXXXXXX'
@@ -193,10 +198,18 @@ AS
 			--Buscamos la posicion de la primera y obtenemos los caracteres hasta esa posicion
 			SELECT @VP_VALOR_K_DETAILS_RMA	= LEFT(@PP_ARRAY_K_DETAILS_RMA, @VP_POSICION_K_DETAILS_RMA - 1)
 
-			-- /////////INSERTAMOS LA PIEL EN UNA TABLA TEMPORAL////////////////////////////////////////////////////////////
+			-- /////////INSERTAMOS EL DETALLE POR DETALLE EN UNA TABLA TEMPORAL////////////////////////////////////////////////////////////
 			INSERT	INTO	@TBL_MATERIAL_SELECCIONADO
 			VALUES	( @VP_VALOR_K_DETAILS_RMA )
 			SET NOCOUNT ON
+
+			-- /////////INSERTAMOS LOS ENCABEZADOS DE LOS DETALLES EN UNA TABLA TEMPORAL////////////////////////////////////////////////////////////
+			INSERT	INTO	@TBL_ENCABEZADOS
+			SELECT	K_HEADER_RMA
+			FROM	DETAILS_RMA		(NOLOCK)
+			WHERE	K_DETAILS_RMA	= @VP_VALOR_K_DETAILS_RMA
+			SET NOCOUNT ON
+
 			--Reemplazamos lo procesado con nada con la funcion stuff
 			SELECT @PP_ARRAY_K_DETAILS_RMA	= STUFF(@PP_ARRAY_K_DETAILS_RMA, 1, @VP_POSICION_K_DETAILS_RMA, '')
 		END		-- WHILE
@@ -210,7 +223,33 @@ AS
 		ORDER	BY PROD_CAT
 		SET NOCOUNT ON
 	END
+	--===============================================================================================================================================================
+	--===============================================================================================================================================================
+	--===============================================================================================================================================================
+	DECLARE @TBL_ATENCION			TABLE (
+			--K_DETALLE_PACKING		INT IDENTITY(1,1),
+			TA_ATENCION_A			VARCHAR(150)		)
 
+	INSERT	INTO @TBL_ATENCION
+	SELECT	TOP	 (1)	
+			ATENCION_A
+	FROM	HEADER_RMA	(NOLOCK)
+	WHERE	K_HEADER_RMA	IN (	SELECT DISTINCT TA_K_HEADER_RMA
+									FROM	@TBL_ENCABEZADOS		)
+
+	DECLARE  @VP_RECIPIENTS			NVARCHAR(MAX)	= ''
+
+	SELECT  @VP_RECIPIENTS	=	@VP_RECIPIENTS + ', ' + TA_ATENCION_A
+	FROM	@TBL_ATENCION
+
+	IF	LEFT(@VP_RECIPIENTS,1) =','
+		SET @VP_RECIPIENTS	= STUFF(@VP_RECIPIENTS, 1, 2, '')
+
+	--SELECT  @VP_RECIPIENTS AS ATENCION_A
+
+	--===============================================================================================================================================================
+	--===============================================================================================================================================================
+	--===============================================================================================================================================================
 	DECLARE @TBL_DETALLE_PACKING  TABLE (
 			K_DETALLE_PACKING			INT IDENTITY(1,1),
 			ITEM_NO						VARCHAR(100),
@@ -253,11 +292,16 @@ AS
 			--PRECIO_MANUAL,
 			( SUM(CANTIDAD_ENVIADA) * MAX(NET_AREA)	)
 	FROM	DETAILS_RMA		(NOLOCK)
-	INNER JOIN IMITMIDX_SQL	(NOLOCK) ON IMITMIDX_SQL.ITEM_NO	= DETAILS_RMA.ITEM_NO
+	INNER JOIN	IMITMIDX_SQL	(NOLOCK) ON IMITMIDX_SQL.ITEM_NO	= DETAILS_RMA.ITEM_NO
+	--INNER JOIN	HEADER_RMA		(NOLOCK) ON HEADER_RMA.K_HEADER_RMA	= DETAILS_RMA.K_HEADER_RMA
 	WHERE	K_DETAILS_RMA IN ( SELECT K_DETAILS_RMA FROM  @TBL_MATERIAL_SELECCIONADO	)
 	GROUP BY	CUS_NO, MODELNO, CUS_ITEM_NO, DETAILS_RMA.ITEM_NO,ITEM_DESC_1,	PRECIO_UNITARIO, PRECIO_MANUAL,DETAILS_RMA.S_KIT
 	ORDER BY	CUS_NO, MODELNO, CUS_ITEM_NO, ITEM_DESC_1
 	SET NOCOUNT ON
+
+	--===============================================================================================================================================================
+	--===============================================================================================================================================================
+	--===============================================================================================================================================================
 
 	INSERT INTO @TBL_DETALLE_PACKING
 	SELECT	' ','  ','', 'Totals:', '',
@@ -269,24 +313,27 @@ AS
 	SET NOCOUNT ON
 
 	SELECT	K_DETALLE_PACKING,	
-			CUS_ITEM_NO,
-			(	CASE
-					WHEN	S_CUS_ITEM_NO	LIKE '%BQW%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
-					WHEN	S_CUS_ITEM_NO	LIKE '%BQX%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
-					WHEN	S_CUS_ITEM_NO	LIKE '%C4X%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
-					WHEN	S_CUS_ITEM_NO	LIKE '%C6S%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
-					ELSE	''
-				END
-			)	AS	S_CUS_ITEM_NO,
+		CONCAT(
+				CUS_ITEM_NO,
+				(	CASE
+						WHEN	S_CUS_ITEM_NO	LIKE '%BQW%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
+						WHEN	S_CUS_ITEM_NO	LIKE '%BQX%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
+						WHEN	S_CUS_ITEM_NO	LIKE '%C4X%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
+						WHEN	S_CUS_ITEM_NO	LIKE '%C6S%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
+						ELSE	''
+					END
+				)			)				AS CUS_ITEM_NO,
+			''								AS S_CUS_ITEM_NO,
 			D_ITEM_NO,
-			CONVERT(VARCHAR(20), QTY_SHIP) AS QTY_SHIP,		
-		    CONVERT(VARCHAR(20), BOX ) AS BOX,					
-		    CONVERT(VARCHAR(20), COST ) AS COST,					
-			CONVERT(VARCHAR(20), SQFT) AS SQFT,				
+			CONVERT(VARCHAR(20), QTY_SHIP)	AS QTY_SHIP,		
+		    CONVERT(VARCHAR(20), BOX )		AS BOX,					
+		    CONVERT(VARCHAR(20), COST )		AS COST,					
+			CONVERT(VARCHAR(20), SQFT)		AS SQFT,				
 			(	CASE 
 					WHEN D_ITEM_NO = 'Totals:' THEN ' '
 					ELSE CONVERT(VARCHAR(10),K_DETALLE_PACKING) 
-				END		)	AS ID_DETALLE
+				END		)	AS ID_DETALLE,
+			@VP_RECIPIENTS	as ATENCION_A
 	FROM		@TBL_DETALLE_PACKING AS DETALLE_PACKING
 	ORDER BY	K_DETALLE_PACKING
 	--////////////////////////////////////////////////////////////////
@@ -302,6 +349,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_GET
 GO
 --		 EXECUTE [dbo].[PG_GET_DETALLE_PACKING_RMA_INFO] 0 ,0,  '18/19/20/151/152/153/154/155' , 'XXXXXXXXXX'
 --		 EXECUTE [dbo].[PG_GET_DETALLE_PACKING_RMA_INFO] 0 ,0,  '101/102/103/104/105' , 'XXXXXXXXXX'
+--		 EXECUTE [dbo].[PG_GET_DETALLE_PACKING_RMA_INFO] 0 ,0,  '1402/1403' , 'XXXXXXXXXX'
 CREATE PROCEDURE [dbo].[PG_GET_DETALLE_PACKING_RMA_INFO]
 	@PP_K_SISTEMA_EXE			INT,
 	@PP_K_USUARIO_ACCION		INT,
