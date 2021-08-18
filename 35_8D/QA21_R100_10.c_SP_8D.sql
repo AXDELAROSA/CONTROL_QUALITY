@@ -2,78 +2,68 @@
 -- // ARCHIVO:			
 -- //////////////////////////////////////////////////////////////
 -- // BASE DE DATOS:	[DATA_02]
--- // MODULO:			QA INSPECCION DE MATERIAL
+-- // MODULO:			QC 8D
 -- // OPERACION:		LIBERACION / STORED PROCEDURE
 -- //////////////////////////////////////////////////////////////
 -- // Autor:			FEG
--- // Fecha creación:	20/AGO/2020
+-- // Fecha creación:	16/AGO/2021
 -- //////////////////////////////////////////////////////////////  
 
 USE [DATA_02]
 GO
 
 -- //////////////////////////////////////////////////////////////
-
-
-
--- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> SELECT / LISTADO
 -- //////////////////////////////////////////////////////////////
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_INSPECCION_MATERIAL]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_LI_INSPECCION_MATERIAL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_8D]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_8D]
 GO
 
 /*
- EXEC	[dbo].[PG_LI_INSPECCION_MATERIAL] 0,0,  '' , 70 , 180 
+ EXEC	[dbo].[PG_LI_8D] 0,0,  '' , ''
 */
 
-CREATE PROCEDURE [dbo].[PG_LI_INSPECCION_MATERIAL]
+CREATE PROCEDURE [dbo].[PG_LI_8D]
 	@PP_K_SISTEMA_EXE					INT,
 	@PP_K_USUARIO_ACCION				INT,
 	-- ===========================
 	@PP_BUSCAR							VARCHAR(200),
 	-- ===========================
-	@PP_K_ITEM							INT,
-	@PP_K_ITEM_TIPO						INT,
-	@PP_K_ITEM_AGREGAR					INT
+	@PP_DATE							DATE
 AS
-
-	DECLARE @VP_MENSAJE				VARCHAR(300) = ''
 	
 	-- ///////////////////////////////////////////
-
-	SELECT	
-			INSPECCION_MATERIAL.*,
-			0 AS COPIAR,
-			PART_NUMBER_ITEM_PEARL AS NUMERO_PARTE,
-			OPCION_1,
-			OPCION_2,
-			OPCION_3,
-			OPCION_4,
-			OPCION_5,
-			D_ESTATUS_INSPECCION_MATERIAL, S_ESTATUS_INSPECCION_MATERIAL, 
-			D_TIPO_INSPECCION_MATERIAL, S_TIPO_INSPECCION_MATERIAL, 
-			K_USUARIO_PEARL AS D_USUARIO_CAMBIO
-			-- =============================	
-	FROM	INSPECCION_MATERIAL
-	INNER JOIN INSPECCION_OPCION ON INSPECCION_OPCION.K_INSPECCION_MATERIAL = INSPECCION_MATERIAL.K_INSPECCION_MATERIAL
-	--INNER JOIN COMPRAS_Pruebas.dbo.ITEM ON ITEM.K_ITEM = INSPECCION_MATERIAL.K_ITEM
-	INNER JOIN COMPRAS.dbo.ITEM ON ITEM.K_ITEM = INSPECCION_MATERIAL.K_ITEM
-	INNER JOIN ESTATUS_INSPECCION_MATERIAL ON INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL = ESTATUS_INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL		
-	INNER JOIN TIPO_INSPECCION_MATERIAL ON INSPECCION_MATERIAL.K_TIPO_INSPECCION_MATERIAL = TIPO_INSPECCION_MATERIAL.K_TIPO_INSPECCION_MATERIAL
-	INNER JOIN BD_GENERAL.dbo.USUARIO_PEARL ON INSPECCION_MATERIAL.K_USUARIO_CAMBIO = BD_GENERAL.dbo.USUARIO_PEARL.K_USUARIO_PEARL
+	SELECT	[K_8D],				
+			-- =================
+			[K_8D_CUSTOMER],		
+			[K_RMA],				
+			[K_ESTATUS_8D],		
+			-- =================
+			CASE WHEN [EXTERNAL_FORMAT] = 0 THEN 'NO' ELSE 'SI' END AS FORMAT_EXTERNAL,	
+			-- =================
+			[TITLE],				
+			[PRODUCT_PROCESS],		
+			[DATE_OPENED],		
+			[LAST_UPDATE],		
+			[DUE_DATE],			
+			[DATE_CLOSED],
+			D_USUARIO_PEARL
 			-- =============================
-	WHERE	(	D_TIPO_INSPECCION_MATERIAL				LIKE '%'+@PP_BUSCAR+'%'
-			OR	INSPECCION								LIKE '%'+@PP_BUSCAR+'%' 
-			OR	PART_NUMBER_ITEM_PEARL					LIKE '%'+@PP_BUSCAR+'%' )
-			-- =============================
-	AND		( @PP_K_ITEM = -1		OR	INSPECCION_MATERIAL.K_ITEM = @PP_K_ITEM )
-	AND		INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL = 1 --ACTIVA
-	AND		K_CLASS_ITEM = @PP_K_ITEM_TIPO
-	AND		INSPECCION_MATERIAL.K_ITEM <> @PP_K_ITEM_AGREGAR
-			-- =============================
-	ORDER BY	F_INSPECCION_MATERIAL, K_ITEM DESC
+	FROM	[8D] (NOLOCK)
+	INNER JOIN  BD_GENERAL.DBO.USUARIO_PEARL (NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL = [8D].[K_USUARIO_ALTA]
+	-- =============================
+	WHERE 	( [K_8D_CUSTOMER]				LIKE '%'+@PP_BUSCAR+'%'
+				OR	[TITLE]					LIKE '%'+@PP_BUSCAR+'%'
+				OR	[PRODUCT_PROCESS]		LIKE '%'+@PP_BUSCAR+'%' )
+	-- =============================
+	AND		( [DATE_OPENED] = CASE WHEN @PP_DATE = '' THEN [DATE_OPENED]		ELSE	 @PP_DATE END
+				OR	[LAST_UPDATE] = CASE WHEN @PP_DATE = '' THEN [LAST_UPDATE]	ELSE	 @PP_DATE END
+				OR	[DATE_CLOSED] = CASE WHEN @PP_DATE = '' THEN [DATE_CLOSED]	ELSE	 @PP_DATE END )
+	-- =============================
+	AND K_ESTATUS_8D = 1 -- ACTIVA	
+	-- =============================	
+	ORDER BY [DATE_OPENED] DESC
 	
 	-- ////////////////////////////////////////////////
 	-- ////////////////////////////////////////////////
@@ -86,234 +76,82 @@ GO
 -- // STORED PROCEDURE ---> SELECT / FICHA
 -- //////////////////////////////////////////////////////////////
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_INSPECCION_MATERIAL]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_SK_INSPECCION_MATERIAL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_8D]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_SK_8D]
 GO
 
 /*
- EXEC	[dbo].[PG_SK_INSPECCION_MATERIAL] 0,144,1
+ EXEC	[dbo].[PG_SK_8D] 0,144,1
 */
 
-CREATE PROCEDURE [dbo].[PG_SK_INSPECCION_MATERIAL]
-	@PP_K_SISTEMA_EXE				INT,
-	@PP_K_USUARIO_ACCION			INT,
+CREATE PROCEDURE [dbo].[PG_SK_8D]
+	@PP_K_SISTEMA_EXE		INT,
+	@PP_K_USUARIO_ACCION	INT,
 	-- ===========================
-	@PP_K_INSPECCION_MATERIAL		INT
+	@PP_K_8D				INT
 AS
 
-	DECLARE @VP_MENSAJE						VARCHAR(300) = ''
 	-- ///////////////////////////////////////////
-
-	SELECT	
-			INSPECCION_MATERIAL.*,
-			INSPECCION_OPCION.*,
-			D_ESTATUS_INSPECCION_MATERIAL, S_ESTATUS_INSPECCION_MATERIAL, 
-			D_TIPO_INSPECCION_MATERIAL, S_TIPO_INSPECCION_MATERIAL, 
-			K_USUARIO_PEARL AS D_USUARIO_CAMBIO
-			-- =============================	
-	FROM	INSPECCION_MATERIAL, ESTATUS_INSPECCION_MATERIAL,
-			TIPO_INSPECCION_MATERIAL, INSPECCION_OPCION,
-			BD_GENERAL.dbo.USUARIO_PEARL
+	SELECT	[K_8D],				
+			-- =================
+			[K_8D_CUSTOMER],		
+			[K_RMA],				
+			[K_ESTATUS_8D],		
+			-- =================
+			[EXTERNAL_FORMAT],	
+			-- =================
+			[TITLE],				
+			[PRODUCT_PROCESS],		
+			[DATE_OPENED],		
+			[LAST_UPDATE],		
+			[DUE_DATE],			
+			[DATE_CLOSED],
+			D_USUARIO_PEARL
 			-- =============================
-	WHERE	INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL = ESTATUS_INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL
-	AND		INSPECCION_MATERIAL.K_TIPO_INSPECCION_MATERIAL = TIPO_INSPECCION_MATERIAL.K_TIPO_INSPECCION_MATERIAL
-	AND		INSPECCION_MATERIAL.K_INSPECCION_MATERIAL = INSPECCION_OPCION.K_INSPECCION_MATERIAL
-	AND		INSPECCION_MATERIAL.K_USUARIO_CAMBIO = BD_GENERAL.dbo.USUARIO_PEARL.K_USUARIO_PEARL
-			-- =============================
-	AND		INSPECCION_MATERIAL.K_INSPECCION_MATERIAL=@PP_K_INSPECCION_MATERIAL
-
-
+	FROM	[8D] (NOLOCK)
+	INNER JOIN  BD_GENERAL.DBO.USUARIO_PEARL (NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL = [8D].[K_USUARIO_ALTA]
+	-- =============================
+	WHERE 	[8D].K_8D = @PP_K_8D
+	AND K_ESTATUS_8D = 1 -- ACTIVA
 	-- ////////////////////////////////////////////////
 	-- ////////////////////////////////////////////////
 GO
 
 
 
-
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_INSPECCION_MATERIAL_X_K_ITEM_CON_OPCION]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_SK_INSPECCION_MATERIAL_X_K_ITEM_CON_OPCION]
-GO
-
-/*
- EXEC	[dbo].[PG_SK_INSPECCION_MATERIAL_X_K_ITEM_CON_OPCION] 0,0,   '00296-00001' , 1 , 82 , 201000002 ,  , 0 , 2 
-*/
-
-CREATE PROCEDURE [dbo].[PG_SK_INSPECCION_MATERIAL_X_K_ITEM_CON_OPCION]
-	@PP_K_SISTEMA_EXE				INT,
-	@PP_K_USUARIO_ACCION			INT,
-	-- ===========================
-	@PP_K_ORDEN_COMPRA_PEDIDO		VARCHAR(50),
-	@PP_K_ENTREGA					INT,
-	@PP_K_ITEM						INT,
-	@PP_LOTE_PEARL					INT,
-	@PP_K_INSPECCION_MATERIAL		INT,
-	@PP_PRIMER_INSPECCION			INT, --#0 Cuando se abre ficha, #1 cuando se oprime adelande o atras 
-	@PP_TIPO_MOVIMIENTO				INT --#0 ANTERIOR, #1 SIGUIENTE
-AS
-
-	DECLARE @VP_MENSAJE						VARCHAR(300) = ''
-
-	DECLARE @VP_N_INSPECCION_X_ITEM INT = 0
-
-	-- ////////////////////////////////////////////////
-	SELECT @VP_N_INSPECCION_X_ITEM = COUNT(K_INSPECCION_MATERIAL)
-	FROM INSPECCION_MATERIAL
-	WHERE K_ITEM = @PP_K_ITEM
-	AND		INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL = 1 -- ACTIVA
-
-	IF @VP_N_INSPECCION_X_ITEM IS NULL
-		SET @VP_N_INSPECCION_X_ITEM = 0
-		
-	-- ////////////////////////////////////////////////
-	IF @PP_TIPO_MOVIMIENTO = 1 -- SIGUIENTE
-		SELECT	TOP 1
-				INSPECCION_MATERIAL.*,
-				INSPECCION_OPCION.*,
-				D_ESTATUS_INSPECCION_MATERIAL, S_ESTATUS_INSPECCION_MATERIAL, 
-				D_TIPO_INSPECCION_MATERIAL, S_TIPO_INSPECCION_MATERIAL, 
-				K_USUARIO_PEARL AS D_USUARIO_CAMBIO,
-				ISNULL([INSPECCION_MATERIAL_ORDEN_COMPRA].OPCION_SELECCIONADA, '') AS OPCION_SELECCIONADA,
-				ISNULL([INSPECCION_MATERIAL_ORDEN_COMPRA].ACEPTADO, '') AS ACEPTADO,
-				ISNULL([INSPECCION_MATERIAL_ORDEN_COMPRA].COMENTARIO, '') AS COMENTARIO,
-				@VP_N_INSPECCION_X_ITEM AS TOTAL_INSPECCION
-				-- =============================	
-		FROM	INSPECCION_MATERIAL
-				-- =============================
-				INNER JOIN ESTATUS_INSPECCION_MATERIAL ON INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL = ESTATUS_INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL
-				INNER JOIN TIPO_INSPECCION_MATERIAL ON INSPECCION_MATERIAL.K_TIPO_INSPECCION_MATERIAL = TIPO_INSPECCION_MATERIAL.K_TIPO_INSPECCION_MATERIAL
-				INNER JOIN INSPECCION_OPCION ON INSPECCION_MATERIAL.K_INSPECCION_MATERIAL = INSPECCION_OPCION.K_INSPECCION_MATERIAL
-				INNER JOIN BD_GENERAL.dbo.USUARIO_PEARL ON INSPECCION_MATERIAL.K_USUARIO_CAMBIO = BD_GENERAL.dbo.USUARIO_PEARL.K_USUARIO_PEARL
-				LEFT  JOIN [INSPECCION_MATERIAL_ORDEN_COMPRA] ON [INSPECCION_MATERIAL_ORDEN_COMPRA].K_INSPECCION_MATERIAL = INSPECCION_MATERIAL.K_INSPECCION_MATERIAL
-						AND	[INSPECCION_MATERIAL_ORDEN_COMPRA].K_ORDEN_COMPRA_PEDIDO = @PP_K_ORDEN_COMPRA_PEDIDO
-						AND	[INSPECCION_MATERIAL_ORDEN_COMPRA].K_ENTREGA = @PP_K_ENTREGA
-						AND [INSPECCION_MATERIAL_ORDEN_COMPRA].K_ITEM = @PP_K_ITEM
-						AND [INSPECCION_MATERIAL_ORDEN_COMPRA].LOTE_PEARL = @PP_LOTE_PEARL
-				-- =============================
-		WHERE	INSPECCION_MATERIAL.K_ITEM=@PP_K_ITEM
-		AND		INSPECCION_MATERIAL.K_INSPECCION_MATERIAL > ( CASE	WHEN @PP_PRIMER_INSPECCION = 1	THEN 0
-															ELSE @PP_K_INSPECCION_MATERIAL END )
-		-- =============================
-		AND		ESTATUS_INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL = 1 -- ACTIVA
-		-- =============================
-		ORDER BY INSPECCION_MATERIAL.K_INSPECCION_MATERIAL ASC
-
-	-- ////////////////////////////////////////////////
-	IF @PP_TIPO_MOVIMIENTO = 0 -- ANTERIOR
-		SELECT	TOP 1
-				INSPECCION_MATERIAL.*,
-				INSPECCION_OPCION.*,
-				D_ESTATUS_INSPECCION_MATERIAL, S_ESTATUS_INSPECCION_MATERIAL, 
-				D_TIPO_INSPECCION_MATERIAL, S_TIPO_INSPECCION_MATERIAL, 
-				K_USUARIO_PEARL AS D_USUARIO_CAMBIO,
-				ISNULL([INSPECCION_MATERIAL_ORDEN_COMPRA].OPCION_SELECCIONADA, '') AS OPCION_SELECCIONADA,
-				ISNULL([INSPECCION_MATERIAL_ORDEN_COMPRA].ACEPTADO, '') AS ACEPTADO,
-				ISNULL([INSPECCION_MATERIAL_ORDEN_COMPRA].COMENTARIO, '') AS COMENTARIO,
-				@VP_N_INSPECCION_X_ITEM AS TOTAL_INSPECCION
-				-- =============================	
-		FROM	INSPECCION_MATERIAL
-				-- =============================
-				INNER JOIN ESTATUS_INSPECCION_MATERIAL ON INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL = ESTATUS_INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL
-				INNER JOIN TIPO_INSPECCION_MATERIAL ON INSPECCION_MATERIAL.K_TIPO_INSPECCION_MATERIAL = TIPO_INSPECCION_MATERIAL.K_TIPO_INSPECCION_MATERIAL
-				INNER JOIN INSPECCION_OPCION ON INSPECCION_MATERIAL.K_INSPECCION_MATERIAL = INSPECCION_OPCION.K_INSPECCION_MATERIAL
-				INNER JOIN BD_GENERAL.dbo.USUARIO_PEARL ON INSPECCION_MATERIAL.K_USUARIO_CAMBIO = BD_GENERAL.dbo.USUARIO_PEARL.K_USUARIO_PEARL
-				LEFT  JOIN [INSPECCION_MATERIAL_ORDEN_COMPRA] ON [INSPECCION_MATERIAL_ORDEN_COMPRA].K_INSPECCION_MATERIAL = INSPECCION_MATERIAL.K_INSPECCION_MATERIAL
-						AND	[INSPECCION_MATERIAL_ORDEN_COMPRA].K_ORDEN_COMPRA_PEDIDO = @PP_K_ORDEN_COMPRA_PEDIDO
-						AND	[INSPECCION_MATERIAL_ORDEN_COMPRA].K_ENTREGA = @PP_K_ENTREGA
-						AND [INSPECCION_MATERIAL_ORDEN_COMPRA].K_ITEM = @PP_K_ITEM
-						AND [INSPECCION_MATERIAL_ORDEN_COMPRA].LOTE_PEARL = @PP_LOTE_PEARL
-				-- =============================
-		WHERE	INSPECCION_MATERIAL.K_ITEM=@PP_K_ITEM
-		AND		INSPECCION_MATERIAL.K_INSPECCION_MATERIAL < ( CASE	WHEN @PP_PRIMER_INSPECCION = 1	THEN 0
-																	ELSE @PP_K_INSPECCION_MATERIAL END )
-		-- =============================
-		AND		ESTATUS_INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL = 1 -- ACTIVA
-		-- =============================
-		ORDER BY INSPECCION_MATERIAL.K_INSPECCION_MATERIAL DESC
-
-
-		-- ////////////////////////////////////////////////
-	IF @PP_TIPO_MOVIMIENTO = 2 -- PARA ACTUALIZAR INSPECCION FO_AUTORIZAR_INSPECCION_MATERIAL
-		SELECT	TOP 1
-				INSPECCION_MATERIAL.*,
-				INSPECCION_OPCION.*,
-				D_ESTATUS_INSPECCION_MATERIAL, S_ESTATUS_INSPECCION_MATERIAL, 
-				D_TIPO_INSPECCION_MATERIAL, S_TIPO_INSPECCION_MATERIAL, 
-				K_USUARIO_PEARL AS D_USUARIO_CAMBIO,
-				ISNULL([INSPECCION_MATERIAL_ORDEN_COMPRA].OPCION_SELECCIONADA, '') AS OPCION_SELECCIONADA,
-				ISNULL([INSPECCION_MATERIAL_ORDEN_COMPRA].ACEPTADO, '') AS ACEPTADO,
-				ISNULL([INSPECCION_MATERIAL_ORDEN_COMPRA].COMENTARIO, '') AS COMENTARIO,
-				@VP_N_INSPECCION_X_ITEM AS TOTAL_INSPECCION
-				-- =============================	
-		FROM	INSPECCION_MATERIAL
-				-- =============================
-				INNER JOIN ESTATUS_INSPECCION_MATERIAL ON INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL = ESTATUS_INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL
-				INNER JOIN TIPO_INSPECCION_MATERIAL ON INSPECCION_MATERIAL.K_TIPO_INSPECCION_MATERIAL = TIPO_INSPECCION_MATERIAL.K_TIPO_INSPECCION_MATERIAL
-				INNER JOIN INSPECCION_OPCION ON INSPECCION_MATERIAL.K_INSPECCION_MATERIAL = INSPECCION_OPCION.K_INSPECCION_MATERIAL
-				INNER JOIN BD_GENERAL.dbo.USUARIO_PEARL ON INSPECCION_MATERIAL.K_USUARIO_CAMBIO = BD_GENERAL.dbo.USUARIO_PEARL.K_USUARIO_PEARL
-				LEFT  JOIN [INSPECCION_MATERIAL_ORDEN_COMPRA] ON [INSPECCION_MATERIAL_ORDEN_COMPRA].K_INSPECCION_MATERIAL = INSPECCION_MATERIAL.K_INSPECCION_MATERIAL
-						AND	[INSPECCION_MATERIAL_ORDEN_COMPRA].K_ORDEN_COMPRA_PEDIDO = @PP_K_ORDEN_COMPRA_PEDIDO
-						AND	[INSPECCION_MATERIAL_ORDEN_COMPRA].K_ENTREGA = @PP_K_ENTREGA
-						AND [INSPECCION_MATERIAL_ORDEN_COMPRA].K_ITEM = @PP_K_ITEM
-						AND [INSPECCION_MATERIAL_ORDEN_COMPRA].LOTE_PEARL = @PP_LOTE_PEARL
-				-- =============================
-		WHERE	INSPECCION_MATERIAL.K_ITEM = @PP_K_ITEM
-		AND		INSPECCION_MATERIAL.K_INSPECCION_MATERIAL = @PP_K_INSPECCION_MATERIAL 
-		-- =============================
-		ORDER BY INSPECCION_MATERIAL.K_INSPECCION_MATERIAL DESC
-
-	-- ////////////////////////////////////////////////
-	-- ////////////////////////////////////////////////
-GO
-
-
-
--- USE DATA_02PRUEBAS
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> SELECT / FICHA
 -- //////////////////////////////////////////////////////////////
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_INSPECCION_MATERIAL_X_K_ITEM]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_SK_INSPECCION_MATERIAL_X_K_ITEM]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_8D_EXTERNAL]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_SK_8D_EXTERNAL]
 GO
 
 /*
-SELECT * FROM INSPECCION_MATERIAL
- EXEC	[dbo].[PG_SK_INSPECCION_MATERIAL_X_K_ITEM] 0,0, 70
+ EXEC	[dbo].[PG_SK_8D_EXTERNAL] 0,144,2
 */
 
-CREATE PROCEDURE [dbo].[PG_SK_INSPECCION_MATERIAL_X_K_ITEM]
-	@PP_K_SISTEMA_EXE				INT,
-	@PP_K_USUARIO_ACCION			INT,
+CREATE PROCEDURE [dbo].[PG_SK_8D_EXTERNAL]
+	@PP_K_SISTEMA_EXE		INT,
+	@PP_K_USUARIO_ACCION	INT,
 	-- ===========================
-	@PP_K_ITEM						INT
+	@PP_K_8D				INT
 AS
 
-	DECLARE @VP_MENSAJE				VARCHAR(300) = ''
-	
 	-- ///////////////////////////////////////////
-
-	SELECT	
-			INSPECCION_MATERIAL.*,
-			D_ESTATUS_INSPECCION_MATERIAL, S_ESTATUS_INSPECCION_MATERIAL, 
-			D_TIPO_INSPECCION_MATERIAL, S_TIPO_INSPECCION_MATERIAL, 
-			D_USUARIO_PEARL AS D_USUARIO_CAMBIO
-			-- =============================	
-	FROM	INSPECCION_MATERIAL, ESTATUS_INSPECCION_MATERIAL,
-			TIPO_INSPECCION_MATERIAL,
-			BD_GENERAL.dbo.USUARIO_PEARL
-			-- =============================
-	WHERE	INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL = ESTATUS_INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL
-	AND		INSPECCION_MATERIAL.K_TIPO_INSPECCION_MATERIAL = TIPO_INSPECCION_MATERIAL.K_TIPO_INSPECCION_MATERIAL
-	AND		INSPECCION_MATERIAL.K_USUARIO_CAMBIO = BD_GENERAL.dbo.USUARIO_PEARL.K_USUARIO_PEARL
-			-- =============================
-	AND		K_ITEM=@PP_K_ITEM
-	AND		ESTATUS_INSPECCION_MATERIAL.K_ESTATUS_INSPECCION_MATERIAL = 1 -- ACTIVA
-	--ORDER BY TIPO_INSPECCION_MATERIAL.K_TIPO_INSPECCION_MATERIAL 
-	ORDER BY INSPECCION_MATERIAL.K_INSPECCION_MATERIAL 
-
+	SELECT	[K_EXTERNAL_8D],
+			-- ==============
+			[K_8D],				
+			-- =============	
+			[RUTA],			
+			[NOMBRE_ARCHIVO]		
+			-- ==============
+	FROM	[EXTERNAL_8D] (NOLOCK)
+	WHERE 	[EXTERNAL_8D].K_8D = @PP_K_8D
 	-- ////////////////////////////////////////////////
 	-- ////////////////////////////////////////////////
 GO
+
 
 
 
@@ -322,132 +160,204 @@ GO
 -- //////////////////////////////////////////////////////////////
 
 -- USE DATA_02
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_INSPECCION_MATERIAL]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_IN_INSPECCION_MATERIAL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_UP_8D]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_IN_UP_8D]
 GO
 /*
- EXECUTE [PG_IN_INSPECCION_MATERIAL] 0,0,   82 , 4 , 'Ingrese la ruta del archivo Test Result' , '' , '' , '' , '' , '' 
+ EXECUTE [PG_IN_UP_8D] 0,144, 0 , '' , 0 , 1 , '' , '' , '2019/10/01' , '2019/10/01' , '2019/10/01' , '2019/10/01' , 'C:\Users\Francisco Esteban\Desktop\SERIAL REPETIDO.xlsx' , 'SERIAL REPETIDO.xlsx' 
+ EXECUTE [PG_IN_UP_8D] 0,144, 0 , '' , 0 , 1 , '' , '' , '2019/10/01' , '2019/10/01' , '2019/10/01' , '2019/10/01' , '\\10.1.1.5\documents\Quality\8D POR SISTEMA\TEST.txt' , 'TEST.txt' 
+
 */
-CREATE PROCEDURE [dbo].[PG_IN_INSPECCION_MATERIAL]
+CREATE PROCEDURE [dbo].[PG_IN_UP_8D]
 	@PP_K_SISTEMA_EXE					INT,
 	@PP_K_USUARIO_ACCION				INT,
 	-- ===========================	
-	@PP_K_ITEM							INT,
-	@PP_K_TIPO_INSPECCION_MATERIAL		INT,
+	@PP_K_8D							INT,
+	@PP_K_8D_CUSTOMER					VARCHAR(150),
+	@PP_K_RMA							INT,
 	-- ===========================	
-	@PP_INSPECCION						VARCHAR(255),
+	@PP_EXTERNAL_FORMAT					INT,
 	-- ============================		
-	@PP_OPCION_1						VARCHAR(100),
-	@PP_OPCION_2						VARCHAR(100),
-	@PP_OPCION_3						VARCHAR(100),
-	@PP_OPCION_4						VARCHAR(100),
-	@PP_OPCION_5						VARCHAR(100)
+	@PP_TITLE							VARCHAR(MAX),
+	@PP_PRODUCT_PROCESS					VARCHAR(MAX),
+	@PP_DATE_OPENED						DATE,
+	@PP_LAST_UPDATE						DATE,
+	@PP_DUE_DATE						DATE,
+	@PP_DATE_CLOSED						DATE,
+	-- =================							
+	@PP_NOMBRE_ARCHIVO					VARCHAR(255)	
+	--- =================
 AS			
 	
-	DECLARE @VP_MENSAJE		VARCHAR(300) = ''
-	DECLARE @VP_K_INSPECCION_MATERIAL	INT = 0
+	DECLARE @VP_MENSAJE		VARCHAR(255) = ''
 
 	-- // SECCION#1 /////////////////////////////////////////////////////////// VALIDACIONES + REGLAS DE NEGOCIO 	
-	IF @PP_K_TIPO_INSPECCION_MATERIAL IN (4, 5, 6, 7, 8)	-- ESTE TIPO DE INSPECCION SOLO SE PUEDEN AGREGAR UNA VEZ AL # PARTE
-		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_INSERT]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
-															@PP_K_ITEM, @PP_K_TIPO_INSPECCION_MATERIAL,
-															@OU_RESULTADO_VALIDACION = @VP_MENSAJE		OUTPUT
+	--IF @PP_K_TIPO_INSPECCION_MATERIAL IN (4, 5, 6, 7, 8)	-- ESTE TIPO DE INSPECCION SOLO SE PUEDEN AGREGAR UNA VEZ AL # PARTE
+	--	EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_INSERT]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
+	--														@PP_K_ITEM, @PP_K_TIPO_INSPECCION_MATERIAL,
+	--														@OU_RESULTADO_VALIDACION = @VP_MENSAJE		OUTPUT
 
-	-- ///////SI LA INSPECCION ES #6 SUAVIDAD O #7 MARCA NATURAL VALIDA QUE YA SE ALLA CONFIGURADO LA INSPECCION DE GROSS///////////////////////////////////////////////////////
-	IF @VP_MENSAJE=''
-		BEGIN
-			IF @PP_K_TIPO_INSPECCION_MATERIAL IN (6, 7) 
-				BEGIN
-					DECLARE	@VP_N_K_INSPECCION_MATERIAL INT = 0
-					SELECT	@VP_N_K_INSPECCION_MATERIAL = COUNT(K_INSPECCION_MATERIAL)
-					FROM	[INSPECCION_MATERIAL]
-					WHERE	K_ITEM = @PP_K_ITEM
-					AND	K_TIPO_INSPECCION_MATERIAL = 5 --#5 GROSS/THICKNESS
-					AND K_ESTATUS_INSPECCION_MATERIAL = 1 -- ACTIVA
-
-					IF @VP_N_K_INSPECCION_MATERIAL IS NULL
-						SET @VP_N_K_INSPECCION_MATERIAL = 0
-					-- ===========================
-
-					IF @VP_N_K_INSPECCION_MATERIAL = 0
-						SET @VP_MENSAJE = 'Primero debe dar de alta la Inspeccion tipo: GROSS/THICKNESS.'
-				END
-		END
 	-- // SECCION#2 ////////////////////////////////////////////////////////// ACCION A REALIZAR
-	
 	IF @VP_MENSAJE=''
 		BEGIN
 			BEGIN TRANSACTION 
 			BEGIN TRY
-				EXECUTE BD_GENERAL.dbo.[PG_SK_CATALOGO_K_MAX_GET]	@PP_K_SISTEMA_EXE,
-																	--'DATA_02PRUEBAS', 
-																	'DATA_02', 
-																	'INSPECCION_MATERIAL', 'K_INSPECCION_MATERIAL',
-																	@OU_K_TABLA_DISPONIBLE = @VP_K_INSPECCION_MATERIAL	OUTPUT
+				DECLARE @VP_RUTA_DEFAULT VARCHAR(MAX) = ''	
+				SELECT @VP_RUTA_DEFAULT = CONCAT(SERVIDOR, RUTA)
+				FROM BD_GENERAL.DBO.RUTA_ARCHIVO
+				WHERE D_RUTA_ARCHIVO = 'RUTA_8D_POR_SISTEMA'
 
-				-- ///////SE INSERTA LA INSPECCION DEL MATERIAL///////////////////////////////////////////////////////
-				INSERT INTO [INSPECCION_MATERIAL]
-					(	[K_INSPECCION_MATERIAL],
-						-- ===========================
-						[K_TIPO_INSPECCION_MATERIAL],
-						[K_ESTATUS_INSPECCION_MATERIAL],
-						[K_ITEM],
-						-- ===========================
-						[INSPECCION],
-						[F_INSPECCION_MATERIAL],
-						-- ===========================
-						[K_USUARIO_ALTA], [F_ALTA], [K_USUARIO_CAMBIO], [F_CAMBIO],
-						[L_BORRADO], [K_USUARIO_BAJA], [F_BAJA]  )
-				VALUES	
-					(	@VP_K_INSPECCION_MATERIAL,
-						-- ===========================	
-						@PP_K_TIPO_INSPECCION_MATERIAL,
-						1, -- ACTIVA
-						@PP_K_ITEM,
-						-- ===========================
-						@PP_INSPECCION,
-						GETDATE(),
-						-- ===========================
-						@PP_K_USUARIO_ACCION, GETDATE(), @PP_K_USUARIO_ACCION, GETDATE(),
-						0, NULL, NULL )
+				IF ( @VP_RUTA_DEFAULT IS NULL OR @VP_RUTA_DEFAULT = '' )
+					RAISERROR ('ERROR: No fue posible obtener la ruta default para la 8D.', 16, 1 ) --MENSAJE - Severity -State.
 
-				IF @@ROWCOUNT = 0
-					RAISERROR ('ERROR: No se ingreso la [INSPECCION_MATERIAL] ', 16, 1 ) --MENSAJE - Severity -State.
-					--=====================================================
-					
-				-- /////////////SE INSERTAN LAS OPCIONES/PARAMETROS DEPENDIENDO DEL TIPO DE INSPECCION//////////////////////////////
-				DECLARE @VP_K_INSPECCION_OPCION	INT = 0
-				EXECUTE BD_GENERAL.dbo.[PG_SK_CATALOGO_K_MAX_GET]	@PP_K_SISTEMA_EXE,
-																	--'DATA_02PRUEBAS', 
-																	'DATA_02', 
-																	'INSPECCION_OPCION', 'K_INSPECCION_OPCION',
-																	@OU_K_TABLA_DISPONIBLE = @VP_K_INSPECCION_OPCION	OUTPUT
 
-				-- ///////SE INSERTA LA INSPECCION DEL MATERIAL///////////////////////////////////////////////////////
-				INSERT INTO [INSPECCION_OPCION]
-					(	[K_INSPECCION_OPCION],
-						[K_INSPECCION_MATERIAL],
-						-- ===========================
-						[OPCION_1],
-						[OPCION_2],
-						[OPCION_3],
-						[OPCION_4],
-						[OPCION_5]	)
-				VALUES	
-					(	@VP_K_INSPECCION_OPCION,
-						@VP_K_INSPECCION_MATERIAL,
-						-- ===========================	
-						@PP_OPCION_1,
-						@PP_OPCION_2,
-						@PP_OPCION_3,
-						@PP_OPCION_4,
-						@PP_OPCION_5	)
-				
-				IF @@ROWCOUNT = 0
-					RAISERROR ('ERROR: No se ingreso la [INSPECCION_OPCION] ', 16, 1 ) --MENSAJE - Severity -State.
-					--=====================================================
-				-- //////////////////////////////////////////////////////////////
+				IF @PP_K_8D = 0
+					BEGIN
+						EXECUTE BD_GENERAL.dbo.[PG_SK_CATALOGO_K_MAX_GET]	@PP_K_SISTEMA_EXE,
+																			--'DATA_02PRUEBAS', 
+																			'DATA_02', 
+																			'[8D]', '[K_8D]',
+																			@OU_K_TABLA_DISPONIBLE = @PP_K_8D	OUTPUT
 
+						-- ///////SE INSERTA EL ENCABEZADO DEL 8D///////////////////////////////////////////////////////
+						INSERT INTO [8D]
+							(	[K_8D],			
+								-- =================
+								[K_8D_CUSTOMER],		
+								[K_RMA],			
+								-- =================
+								[EXTERNAL_FORMAT],	
+								-- =================
+								[TITLE],				
+								[PRODUCT_PROCESS],
+								[DATE_OPENED],		
+								[LAST_UPDATE],		
+								[DUE_DATE],		
+								[DATE_CLOSED],
+								-- ===========================
+								[K_USUARIO_ALTA], [F_ALTA], [K_USUARIO_CAMBIO], [F_CAMBIO],
+								[L_BORRADO], [K_USUARIO_BAJA], [F_BAJA]  )
+						VALUES	
+							(	@PP_K_8D,			
+								@PP_K_8D_CUSTOMER,
+								@PP_K_RMA,
+								-- =================
+								@PP_EXTERNAL_FORMAT,
+								-- =================
+								@PP_TITLE,
+								@PP_PRODUCT_PROCESS,
+								@PP_DATE_OPENED,
+								@PP_LAST_UPDATE,	
+								@PP_DUE_DATE,	
+								@PP_DATE_CLOSED,
+								-- ===========================
+								@PP_K_USUARIO_ACCION, GETDATE(), @PP_K_USUARIO_ACCION, GETDATE(),
+								0, NULL, NULL )
+
+						IF @@ROWCOUNT = 0
+							RAISERROR ('ERROR: No fue posible Crear la [8D].', 16, 1 ) --MENSAJE - Severity -State.
+						
+						-- ///////SE CREA LA CARPETA PRINCIPAL DE LA 8D///////////////////////////////////////////////////////
+						--DECLARE @CREAR_CARPETA NVARCHAR(255)= N'\\10.1.1.5\documents\Quality\8D POR SISTEMA\' + CONVERT(VARCHAR(25), @PP_K_8D)
+						DECLARE @CREAR_CARPETA NVARCHAR(MAX)= @VP_RUTA_DEFAULT + CONVERT(VARCHAR(25), @PP_K_8D)
+						SET NOCOUNT ON
+						EXECUTE master.dbo.xp_create_subdir  @CREAR_CARPETA
+						SET NOCOUNT OFF
+
+						-- ///////SI SE USA EL FORMATO DEL CLIENTE, SE SUBE EL  ARCHIVO DEL CLIENTE 8D EXTERNA///////////////////////////////////////////////////////
+						IF @PP_EXTERNAL_FORMAT = 1
+							BEGIN
+								-- ///////SE CREA LA SUBCARPETA HEADER DE LA 8D///////////////////////////////////////////////////////
+								--SET @CREAR_CARPETA = N'\\10.1.1.5\documents\Quality\8D POR SISTEMA\' + CONVERT(VARCHAR(25), @PP_K_8D)+ '\HEADER'
+								SET @CREAR_CARPETA = @VP_RUTA_DEFAULT + CONVERT(VARCHAR(25), @PP_K_8D) + '\HEADER'
+								SET NOCOUNT ON
+								EXECUTE master.dbo.xp_create_subdir  @CREAR_CARPETA
+								SET NOCOUNT OFF
+
+								INSERT INTO [EXTERNAL_8D]
+									(	[K_8D],				
+										-- =================		
+										[RUTA],				
+										[NOMBRE_ARCHIVO],
+										-- ===========================
+										[K_USUARIO_ALTA], [F_ALTA], [K_USUARIO_CAMBIO], [F_CAMBIO],
+										[L_BORRADO], [K_USUARIO_BAJA], [F_BAJA]  )
+								VALUES	
+									(	@PP_K_8D,
+										--- =================
+										CONCAT(@CREAR_CARPETA, '\'),
+										@PP_NOMBRE_ARCHIVO,									
+										-- ===========================
+										@PP_K_USUARIO_ACCION, GETDATE(), @PP_K_USUARIO_ACCION, GETDATE(),
+										0, NULL, NULL )
+								
+								IF @@ROWCOUNT = 0
+									RAISERROR ('ERROR: No fue posible subir el archivo del formato [8D] Externo.', 16, 1 ) --MENSAJE - Severity -State.
+							END
+					END
+				ELSE
+					BEGIN
+						-- ///////SE ACTUALIZA EL ENCABEZADO DEL 8D///////////////////////////////////////////////////////
+						UPDATE [8D]
+							SET [K_8D_CUSTOMER]	= @PP_K_8D_CUSTOMER,		
+								[K_RMA]				= @PP_K_RMA,
+								-- =================
+								[EXTERNAL_FORMAT]	= @PP_EXTERNAL_FORMAT,	
+								-- =================
+								[TITLE]				= @PP_TITLE,				
+								[PRODUCT_PROCESS]	= @PP_PRODUCT_PROCESS,
+								[DATE_OPENED]		= @PP_DATE_OPENED,		
+								[LAST_UPDATE]		= @PP_LAST_UPDATE,		
+								[DUE_DATE]			= @PP_DUE_DATE,		
+								[DATE_CLOSED]		= @PP_DATE_CLOSED,
+								-- ===========================
+								[K_USUARIO_CAMBIO]	= @PP_K_USUARIO_ACCION, 
+								[F_CAMBIO]			=  GETDATE()							
+						WHERE	K_8D = @PP_K_8D
+
+						IF @@ROWCOUNT = 0
+							RAISERROR ('ERROR: No fue posible Actualizar la [8D].', 16, 1 ) --MENSAJE - Severity -State.
+							
+						-- ///////SE CREA LA CARPETA PRINCIPAL DE LA 8D///////////////////////////////////////////////////////
+						--SET @CREAR_CARPETA = N'\\10.1.1.5\documents\Quality\8D POR SISTEMA\' + CONVERT(VARCHAR(25), @PP_K_8D)
+						SET @CREAR_CARPETA = @VP_RUTA_DEFAULT + CONVERT(VARCHAR(25), @PP_K_8D)
+						SET NOCOUNT ON
+						EXECUTE master.dbo.xp_create_subdir  @CREAR_CARPETA
+						SET NOCOUNT OFF
+
+						-- ///////SI SE USA EL FORMATO DEL CLIENTE, SE SUBE EL  ARCHIVO DEL CLIENTE 8D EXTERNA///////////////////////////////////////////////////////
+						IF @PP_EXTERNAL_FORMAT = 1
+							BEGIN	
+								-- ///////SE CREA LA SUBCARPETA HEADER DE LA 8D///////////////////////////////////////////////////////
+								--SET @CREAR_CARPETA = N'\\10.1.1.5\documents\Quality\8D POR SISTEMA\' + CONVERT(VARCHAR(25), @PP_K_8D)+ '\HEADER'
+								SET @CREAR_CARPETA = @VP_RUTA_DEFAULT + CONVERT(VARCHAR(25), @PP_K_8D)+ '\HEADER'
+								SET NOCOUNT ON
+								EXECUTE master.dbo.xp_create_subdir  @CREAR_CARPETA
+								SET NOCOUNT OFF
+							
+								INSERT INTO [EXTERNAL_8D]
+									(	[K_8D],				
+										-- =================		
+										[RUTA],				
+										[NOMBRE_ARCHIVO],
+										-- ===========================
+										[K_USUARIO_ALTA], [F_ALTA], [K_USUARIO_CAMBIO], [F_CAMBIO],
+										[L_BORRADO], [K_USUARIO_BAJA], [F_BAJA]  )
+								VALUES	
+									(	@PP_K_8D,
+										-- =================
+										CONCAT(@CREAR_CARPETA, '\'),
+										@PP_NOMBRE_ARCHIVO,									
+										-- ===========================
+										@PP_K_USUARIO_ACCION, GETDATE(), @PP_K_USUARIO_ACCION, GETDATE(),
+										0, NULL, NULL )
+								
+								IF @@ROWCOUNT = 0
+									RAISERROR ('ERROR: No fue posible subir el archivo del formato [8D] Externo.', 16, 1 ) --MENSAJE - Severity -State.
+							END
+					END
+
+			-- //////////////////////////////////////////////////////////////
 			COMMIT TRANSACTION 
 			END TRY
 	
@@ -456,194 +366,66 @@ AS
 				ROLLBACK TRANSACTION
 				DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
 				SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
-				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_IN_INSPECCION_MATERIAL // ' + @VP_ERROR_TRANS
+				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_IN_8D // ' + @VP_ERROR_TRANS
 			END CATCH
 				
 		END
 
 	-- // SECCION#3 ////////////////////////////////////////////////////////// MENSAJE DE SALIDA
-	
 	IF @VP_MENSAJE<>''
 		BEGIN
-		
-		SET		@VP_MENSAJE = 'No es posible [Crear] la [INSPECCION_MATERIAL]: ' + @VP_MENSAJE 
-		SET		@VP_MENSAJE = @VP_MENSAJE + ' ( '
-		SET		@VP_MENSAJE = @VP_MENSAJE + '[#INSP.'+CONVERT(VARCHAR(10),@VP_K_INSPECCION_MATERIAL)+']'
-		SET		@VP_MENSAJE = @VP_MENSAJE + ' )'
-	
+			SET		@VP_MENSAJE = 'No es posible [Crear] la [8D]: ' + @VP_MENSAJE 
+			SET		@VP_MENSAJE = @VP_MENSAJE + ' ( '
+			SET		@VP_MENSAJE = @VP_MENSAJE + '[#8D.'+CONVERT(VARCHAR(10),@PP_K_8D)+']'
+			SET		@VP_MENSAJE = @VP_MENSAJE + ' )'
 		END
 	
-	SELECT	@VP_MENSAJE AS MENSAJE, @VP_K_INSPECCION_MATERIAL AS CLAVE
+	SELECT	@VP_MENSAJE AS MENSAJE, @PP_K_8D AS CLAVE
 
 	-- //////////////////////////////////////////////////////////////
-
 GO
 
-
--- //////////////////////////////////////////////////////////////
--- // STORED PROCEDURE ---> ACTUALIZAR / FICHA
--- //////////////////////////////////////////////////////////////
--- USE DATA_02
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_UP_INSPECCION_MATERIAL]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_UP_INSPECCION_MATERIAL]
-GO
--- EXEC [PG_UP_INSPECCION_MATERIAL] 0,0,  1 , '200435AWT3' , 80.00 , 2 , 'Cual es el grosor del Hilo?' , 80 , '0.5' , '1' , '' , '' , '' 
-CREATE PROCEDURE [dbo].[PG_UP_INSPECCION_MATERIAL]
-	@PP_K_SISTEMA_EXE					INT,
-	@PP_K_USUARIO_ACCION				INT,
-	-- ===========================
-	@PP_K_INSPECCION_MATERIAL			INT,
-	-- ===========================	
-	@PP_K_ITEM							INT,
-	@PP_K_TIPO_INSPECCION_MATERIAL		INT,
-	-- ===========================	
-	@PP_INSPECCION						VARCHAR(255),
-	-- ============================		
-	@PP_OPCION_1						VARCHAR(100),
-	@PP_OPCION_2						VARCHAR(100),
-	@PP_OPCION_3						VARCHAR(100),
-	@PP_OPCION_4						VARCHAR(100),
-	@PP_OPCION_5						VARCHAR(100)
-	-- ============================		
-AS			
-
-	DECLARE @VP_MENSAJE		VARCHAR(300) = ''
-
-	-- // SECCION#1 /////////////////////////////////////////////////////////// VALIDACIONES + REGLAS DE NEGOCIO 	
-	IF @VP_MENSAJE=''
-		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_UPDATE]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
-															@PP_K_ITEM, @PP_K_INSPECCION_MATERIAL,
-															@OU_RESULTADO_VALIDACION = @VP_MENSAJE		OUTPUT
-
-	IF ( @VP_MENSAJE = '' AND @PP_K_TIPO_INSPECCION_MATERIAL IN (4, 5, 6, 7, 8) ) 
-		BEGIN
-					DECLARE @VP_N_INSPECCION_TEST_RESULT INT = 0
-					SELECT	@VP_N_INSPECCION_TEST_RESULT = COUNT(K_INSPECCION_MATERIAL)
-					FROM	[INSPECCION_MATERIAL]
-					WHERE	K_INSPECCION_MATERIAL <> @PP_K_INSPECCION_MATERIAL
-					AND		K_ITEM = @PP_K_ITEM
-					AND		K_TIPO_INSPECCION_MATERIAL IN (4, 5, 6, 7, 8)  -- TEST RESULT
-					AND		K_ESTATUS_INSPECCION_MATERIAL = 1 --ACTIVA
-
-					IF @VP_N_INSPECCION_TEST_RESULT IS NULL 
-						SET @VP_N_INSPECCION_TEST_RESULT = 0
-
-					IF @VP_N_INSPECCION_TEST_RESULT > 0
-						SET @VP_MENSAJE = 'Este tipo de inspeccion solo se puede agregar una vez'
-		END
-	-- // SECCION#2 ////////////////////////////////////////////////////////// ACCION A REALIZAR
-	
-	IF @VP_MENSAJE=''
-		BEGIN
-			BEGIN TRANSACTION 
-			BEGIN TRY
-				-- ///////SE ACTUALIZA LA INSPECCION DEL MATERIAL///////////////////////////////////////////////////////
-				UPDATE	[INSPECCION_MATERIAL]
-					SET			
-						[K_ITEM]						    = @PP_K_ITEM,
-						-- ===========================
-						[K_TIPO_INSPECCION_MATERIAL]		= @PP_K_TIPO_INSPECCION_MATERIAL,
-						[INSPECCION]						= @PP_INSPECCION,  
-						-- ===========================
-					    [F_CAMBIO]							= GETDATE(), 
-						[K_USUARIO_CAMBIO]					= @PP_K_USUARIO_ACCION
-						-- ===========================
-				WHERE	K_INSPECCION_MATERIAL = @PP_K_INSPECCION_MATERIAL
-
-				IF @@ROWCOUNT = 0
-					RAISERROR ('ERROR: No fue posible actualizar la [INSPECCION_MATERIAL] ', 16, 1 ) --MENSAJE - Severity -State.
-				--=====================================================	
-
-				-- /////////////SE ACTUALIZAN LAS OPCIONES/PARAMETROS DEPENDIENDO DEL TIPO DE INSPECCION//////////////////////////////
-				UPDATE	[INSPECCION_OPCION]
-					SET	
-						-- ===========================
-						[OPCION_1]				= @PP_OPCION_1,
-						[OPCION_2]				= @PP_OPCION_2,
-						[OPCION_3]				= @PP_OPCION_3,
-						[OPCION_4]				= @PP_OPCION_4,
-						[OPCION_5]				= @PP_OPCION_5	
-						-- ===========================
-				WHERE	K_INSPECCION_MATERIAL=@PP_K_INSPECCION_MATERIAL
-
-				IF @@ROWCOUNT = 0
-					RAISERROR ('ERROR: No fue posible actualizar la [INSPECCION_OPCION] ', 16, 1 ) --MENSAJE - Severity -State.
-				-- //////////////////////////////////////////////////////////////
-
-			COMMIT TRANSACTION 
-			END TRY
-	
-			BEGIN CATCH
-				/* Ocurrió un error, deshacemos los cambios*/ 
-				ROLLBACK TRANSACTION
-				DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
-				SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
-				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_UP_INSPECCION_MATERIAL // ' + @VP_ERROR_TRANS
-			END CATCH
-	
-		END
-
-	-- // SECCION#3 ////////////////////////////////////////////////////////// MENSAJE DE SALIDA
-	
-	IF @VP_MENSAJE<>''
-		BEGIN
-		
-		SET		@VP_MENSAJE = 'No es posible [Actualizar] la [INSPECCION_MATERIAL]: ' + @VP_MENSAJE 
-		SET		@VP_MENSAJE = @VP_MENSAJE + ' ( '
-		SET		@VP_MENSAJE = @VP_MENSAJE + '[#INSP.'+CONVERT(VARCHAR(10),@PP_K_INSPECCION_MATERIAL)+']'
-		SET		@VP_MENSAJE = @VP_MENSAJE + ' )'
-
-		END
-	
-	SELECT	@VP_MENSAJE AS MENSAJE, @PP_K_INSPECCION_MATERIAL AS CLAVE
-
-	-- //////////////////////////////////////////////////////////////
-	
-GO
 
 
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> DELETE / FICHA
 -- //////////////////////////////////////////////////////////////
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_DL_INSPECCION_MATERIAL]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_DL_INSPECCION_MATERIAL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_DL_8D]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_DL_8D]
 GO
 
 
-CREATE PROCEDURE [dbo].[PG_DL_INSPECCION_MATERIAL]
+CREATE PROCEDURE [dbo].[PG_DL_8D]
 	@PP_K_SISTEMA_EXE			INT,
 	@PP_K_USUARIO_ACCION		INT,
 	-- ===========================
-	@PP_K_INSPECCION_MATERIAL	INT,
-	@PP_K_ITEM					INT
+	@PP_K_8D					INT
 AS
 
 	DECLARE @VP_MENSAJE		VARCHAR(300) = ''
 
 	-- // SECCION#1 /////////////////////////////////////////////////////////// VALIDACIONES + REGLAS DE NEGOCIO 
-	
 	IF @VP_MENSAJE=''
 		--EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_DELETE]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
 		--									@PP_K_INSPECCION_MATERIAL, 
 		--									@OU_RESULTADO_VALIDACION = @VP_MENSAJE		OUTPUT
 
 	-- // SECCION#2 ////////////////////////////////////////////////////////// ACCION A REALIZAR
-
 	IF @VP_MENSAJE=''
 		BEGIN
 			BEGIN TRANSACTION 
 			BEGIN TRY
-
-				UPDATE [INSPECCION_MATERIAL]
-					SET K_ESTATUS_INSPECCION_MATERIAL = 0
-				WHERE	K_INSPECCION_MATERIAL = @PP_K_INSPECCION_MATERIAL
-				AND		K_ITEM = @PP_K_ITEM
+				UPDATE [8D]
+					SET K_ESTATUS_8D = 0,
+						[K_USUARIO_CAMBIO]	= @PP_K_USUARIO_ACCION, 
+						[F_CAMBIO]			=  GETDATE()
+				WHERE	K_8D = @PP_K_8D
 
 				IF @@ROWCOUNT = 0
-					RAISERROR ('ERROR: No se Elimino la [INSPECCION_MATERIAL] ', 16, 1 ) --MENSAJE - Severity -State.
-				-- //////////////////////////////////////////////////////////////
-
+					RAISERROR ('ERROR: No fue posible Eliminar la [8D] ', 16, 1 ) --MENSAJE - Severity -State.
+			
+			-- //////////////////////////////////////////////////////////////
 			COMMIT TRANSACTION 
 			END TRY
 	
@@ -652,24 +434,92 @@ AS
 				ROLLBACK TRANSACTION
 				DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
 				SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
-				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_DL_INSPECCION_MATERIAL // ' + @VP_ERROR_TRANS
+				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_DL_8D // ' + @VP_ERROR_TRANS
 			END CATCH
 		
 		END
 
 	-- // SECCION#3 ////////////////////////////////////////////////////////// MENSAJE DE SALIDA
-	
 	IF @VP_MENSAJE<>''
 		BEGIN
 		
-		SET		@VP_MENSAJE = 'No es posible [Borrar] la [INSPECCION_MATERIAL]: ' + @VP_MENSAJE 
+		SET		@VP_MENSAJE = 'No es posible [Eliminar] la [8D]: ' + @VP_MENSAJE 
 		SET		@VP_MENSAJE = @VP_MENSAJE + ' ( '
-		SET		@VP_MENSAJE = @VP_MENSAJE + '[#INSP.'+CONVERT(VARCHAR(10),@PP_K_INSPECCION_MATERIAL)+']'
+		SET		@VP_MENSAJE = @VP_MENSAJE + '[#8D.'+CONVERT(VARCHAR(10),@PP_K_8D)+']'
 		SET		@VP_MENSAJE = @VP_MENSAJE + ' )'
 
 		END
 	
-	SELECT	@VP_MENSAJE AS MENSAJE, @PP_K_INSPECCION_MATERIAL AS CLAVE
+	SELECT	@VP_MENSAJE AS MENSAJE, @PP_K_8D AS CLAVE
+
+	-- //////////////////////////////////////////////////////////////
+GO
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> DELETE / FICHA
+-- //////////////////////////////////////////////////////////////
+
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_DL_8D_EXTERNAL]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_DL_8D_EXTERNAL]
+GO
+
+
+CREATE PROCEDURE [dbo].[PG_DL_8D_EXTERNAL]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO_ACCION		INT,
+	-- ===========================
+	@PP_K_8D					INT,
+	@PP_K_EXTERNAL_8D			INT
+AS
+
+	DECLARE @VP_MENSAJE		VARCHAR(300) = ''
+
+	-- // SECCION#1 /////////////////////////////////////////////////////////// VALIDACIONES + REGLAS DE NEGOCIO 
+	IF @VP_MENSAJE=''
+		--EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_DELETE]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
+		--									@PP_K_INSPECCION_MATERIAL, 
+		--									@OU_RESULTADO_VALIDACION = @VP_MENSAJE		OUTPUT
+
+	-- // SECCION#2 ////////////////////////////////////////////////////////// ACCION A REALIZAR
+	IF @VP_MENSAJE=''
+		BEGIN
+			BEGIN TRANSACTION 
+			BEGIN TRY
+
+				DELETE [EXTERNAL_8D]
+				WHERE	K_8D = @PP_K_8D
+				AND K_EXTERNAL_8D = @PP_K_EXTERNAL_8D
+
+				IF @@ROWCOUNT = 0
+					RAISERROR ('ERROR: No fue posible Eliminar el formnato [8D] Externo.', 16, 1 ) --MENSAJE - Severity -State.
+			
+			-- //////////////////////////////////////////////////////////////
+			COMMIT TRANSACTION 
+			END TRY
+	
+			BEGIN CATCH
+				/* Ocurrió un error, deshacemos los cambios*/ 
+				ROLLBACK TRANSACTION
+				DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
+				SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
+				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_DL_8D // ' + @VP_ERROR_TRANS
+			END CATCH
+		
+		END
+
+	-- // SECCION#3 ////////////////////////////////////////////////////////// MENSAJE DE SALIDA
+	IF @VP_MENSAJE<>''
+		BEGIN
+			SET		@VP_MENSAJE = 'No es posible [Eliminar] el formato [8D] Externo: ' + @VP_MENSAJE 
+			SET		@VP_MENSAJE = @VP_MENSAJE + ' ( '
+			SET		@VP_MENSAJE = @VP_MENSAJE + '[#8D Ext.'+CONVERT(VARCHAR(10),@PP_K_EXTERNAL_8D)+']'
+			SET		@VP_MENSAJE = @VP_MENSAJE + ' )'
+
+		END
+	
+	SELECT	@VP_MENSAJE AS MENSAJE, @PP_K_EXTERNAL_8D AS CLAVE
 
 	-- //////////////////////////////////////////////////////////////
 GO

@@ -1,0 +1,5 @@
+
+SELECT * FROM [8D]
+
+SELECT * FROM [EXTERNAL_8D]
+							
