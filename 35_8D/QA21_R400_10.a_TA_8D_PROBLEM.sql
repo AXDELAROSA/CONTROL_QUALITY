@@ -2,11 +2,11 @@
 -- // ARCHIVO:			
 -- //////////////////////////////////////////////////////////////
 -- // BASE DE DATOS:	[DATA_02]
--- // MODULO:			QC 8D_SYMPTOM
+-- // MODULO:			QC 8D_PROBLEM
 -- // OPERACION:		LIBERACION / STORED PROCEDURE
 -- //////////////////////////////////////////////////////////////
 -- // Autor:			FEG
--- // Fecha creación:	18/AGO/2021
+-- // Fecha creación:	23/AGO/2021
 -- ////////////////////////////////////////////////////////////// 
 
 USE [DATA_02]
@@ -16,37 +16,34 @@ GO
 -- // DROPs
 -- //////////////////////////////////////////////////////////////
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[8D_SYMPTOM]') AND type in (N'U'))
-	DROP TABLE [dbo].[8D_SYMPTOM]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[8D_PROBLEM]') AND type in (N'U'))
+	DROP TABLE [dbo].[8D_PROBLEM]
 GO
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[8D_SYMPTOM_ACTION]') AND type in (N'U'))
-	DROP TABLE [dbo].[8D_SYMPTOM_ACTION]
-GO
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[8D_SYMPTOM_EVIDENCE]') AND type in (N'U'))
-	DROP TABLE [dbo].[8D_SYMPTOM_EVIDENCE]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[8D_PROBLEM_EVIDENCE]') AND type in (N'U'))
+	DROP TABLE [dbo].[8D_PROBLEM_EVIDENCE]
 GO
 
 -- //////////////////////////////////////////////////////////////
--- // 8D_SYMPTOM
+-- // 8D_PROBLEM
 -- //////////////////////////////////////////////////////////////
-CREATE TABLE [dbo].[8D_SYMPTOM] (
-	[K_8D_SYMPTOM]				[INT]			IDENTITY(1,1),
+CREATE TABLE [dbo].[8D_PROBLEM] (
+	[K_8D_PROBLEM]				[INT]			IDENTITY(1,1),
 	-- =================================
 	[K_8D]						[INT]			NOT NULL,
-	[SYMPTOM]					VARCHAR(MAX)	NOT NULL
+	[DESCRIPTION]				VARCHAR(MAX)	NOT NULL
 )ON [PRIMARY]	
 GO
 
 -- //////////////////////////////////////////////////////
-ALTER TABLE [dbo].[8D_SYMPTOM]
-	ADD CONSTRAINT [PK_8D_SYMPTOM]
-		PRIMARY KEY CLUSTERED ([K_8D_SYMPTOM])
+ALTER TABLE [dbo].[8D_PROBLEM]
+	ADD CONSTRAINT [PK_8D_PROBLEM]
+		PRIMARY KEY CLUSTERED ([K_8D_PROBLEM])
 GO
 
 -- //////////////////////////////////////////////////////
-ALTER TABLE [dbo].[8D_SYMPTOM] 
+ALTER TABLE [dbo].[8D_PROBLEM] 
 	ADD		[K_USUARIO_ALTA]				[INT]		NOT NULL,
 			[F_ALTA]						[DATETIME]	NOT NULL,
 			[K_USUARIO_CAMBIO]				[INT]		NOT NULL,
@@ -58,44 +55,12 @@ GO
 
 
 -- //////////////////////////////////////////////////////////////
--- // 8D_SYMPTOM_ACTION
+-- // [8D_PROBLEM_EVIDENCE]
 -- //////////////////////////////////////////////////////////////
-CREATE TABLE [dbo].[8D_SYMPTOM_ACTION] (
-	[K_8D_SYMPTOM_ACTION]		[INT]			IDENTITY(1,1),
+CREATE TABLE [dbo].[8D_PROBLEM_EVIDENCE] (
+	[K_8D_PROBLEM_EVIDENCE]		[INT]			IDENTITY(1,1),
 	-- =================================
 	[K_8D]						[INT]			NOT NULL,
-	-- =================================			
-	[ACCION]					VARCHAR(MAX)	NOT NULL,
-	[PORCENTAJE]				[INT]			NOT NULL
-	-- =================================	
-)ON [PRIMARY]	
-GO
-
--- //////////////////////////////////////////////////////
-ALTER TABLE [dbo].[8D_SYMPTOM_ACTION]
-	ADD CONSTRAINT [PK_8D_SYMPTOM_ACTION]
-		PRIMARY KEY CLUSTERED ([K_8D_SYMPTOM_ACTION])
-GO
-
--- //////////////////////////////////////////////////////
-ALTER TABLE [dbo].[8D_SYMPTOM_ACTION] 
-	ADD		[K_USUARIO_ALTA]				[INT]		NOT NULL,
-			[F_ALTA]						[DATETIME]	NOT NULL,
-			[K_USUARIO_CAMBIO]				[INT]		NOT NULL,
-			[F_CAMBIO]						[DATETIME]	NOT NULL,
-			[L_BORRADO]						[INT]		NOT NULL,
-			[K_USUARIO_BAJA]				[INT]		NULL,
-			[F_BAJA]						[DATETIME]	NULL;
-GO
-
-
--- //////////////////////////////////////////////////////////////
--- // [8D_SYMPTOM_EVIDENCE]
--- //////////////////////////////////////////////////////////////
-CREATE TABLE [dbo].[8D_SYMPTOM_EVIDENCE] (
-	[K_8D_SYMPTOM_EVIDENCE]		[INT]			IDENTITY(1,1),
-	-- =================================
-	[K_8D_SYMPTOM_ACTION]		[INT]			NOT NULL,
 	-- =================================
 	[RUTA]						VARCHAR(255)	NOT NULL,
 	[NOMBRE_ARCHIVO]			VARCHAR(255)	NOT NULL,
@@ -104,13 +69,13 @@ CREATE TABLE [dbo].[8D_SYMPTOM_EVIDENCE] (
 GO
 
 -- //////////////////////////////////////////////////////
-ALTER TABLE [dbo].[8D_SYMPTOM_EVIDENCE]
-	ADD CONSTRAINT [PK_8D_SYMPTOM_EVIDENCE]
-		PRIMARY KEY CLUSTERED ([K_8D_SYMPTOM_EVIDENCE])
+ALTER TABLE [dbo].[8D_PROBLEM_EVIDENCE]
+	ADD CONSTRAINT [PK_8D_PROBLEM_EVIDENCE]
+		PRIMARY KEY CLUSTERED ([K_8D_PROBLEM_EVIDENCE])
 GO
 
 -- //////////////////////////////////////////////////////
-ALTER TABLE [dbo].[8D_SYMPTOM_EVIDENCE] 
+ALTER TABLE [dbo].[8D_PROBLEM_EVIDENCE] 
 	ADD		[K_USUARIO_ALTA]				[INT]		NOT NULL,
 			[F_ALTA]						[DATETIME]	NOT NULL,
 			[K_USUARIO_CAMBIO]				[INT]		NOT NULL,

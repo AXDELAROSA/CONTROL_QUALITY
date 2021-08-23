@@ -166,7 +166,7 @@ GO
 /*
  EXECUTE [PG_IN_UP_8D] 0,144, 0 , '' , 0 , 1 , '' , '' , '2019/10/01' , '2019/10/01' , '2019/10/01' , '2019/10/01' , 'C:\Users\Francisco Esteban\Desktop\SERIAL REPETIDO.xlsx' , 'SERIAL REPETIDO.xlsx' 
  EXECUTE [PG_IN_UP_8D] 0,144, 0 , '' , 0 , 1 , '' , '' , '2019/10/01' , '2019/10/01' , '2019/10/01' , '2019/10/01' , '\\10.1.1.5\documents\Quality\8D POR SISTEMA\TEST.txt' , 'TEST.txt' 
-
+  EXECUTE [PG_IN_UP_8D] 0,144, 0 , '' , 0 , 1 , '' , '' , '' , '' , '' , '' , 'INSPECCION_PIEL_450321.pdf' 
 */
 CREATE PROCEDURE [dbo].[PG_IN_UP_8D]
 	@PP_K_SISTEMA_EXE					INT,
@@ -188,7 +188,7 @@ CREATE PROCEDURE [dbo].[PG_IN_UP_8D]
 	@PP_NOMBRE_ARCHIVO					VARCHAR(255)	
 	--- =================
 AS			
-	
+
 	DECLARE @VP_MENSAJE		VARCHAR(255) = ''
 
 	-- // SECCION#1 /////////////////////////////////////////////////////////// VALIDACIONES + REGLAS DE NEGOCIO 	
@@ -202,15 +202,6 @@ AS
 		BEGIN
 			BEGIN TRANSACTION 
 			BEGIN TRY
-				DECLARE @VP_RUTA_DEFAULT VARCHAR(MAX) = ''	
-				SELECT @VP_RUTA_DEFAULT = CONCAT(SERVIDOR, RUTA)
-				FROM BD_GENERAL.DBO.RUTA_ARCHIVO
-				WHERE D_RUTA_ARCHIVO = 'RUTA_8D_POR_SISTEMA'
-
-				IF ( @VP_RUTA_DEFAULT IS NULL OR @VP_RUTA_DEFAULT = '' )
-					RAISERROR ('ERROR: No fue posible obtener la ruta default para la 8D.', 16, 1 ) --MENSAJE - Severity -State.
-
-
 				IF @PP_K_8D = 0
 					BEGIN
 						EXECUTE BD_GENERAL.dbo.[PG_SK_CATALOGO_K_MAX_GET]	@PP_K_SISTEMA_EXE,
@@ -258,8 +249,8 @@ AS
 							RAISERROR ('ERROR: No fue posible Crear la [8D].', 16, 1 ) --MENSAJE - Severity -State.
 						
 						-- ///////SE CREA LA CARPETA PRINCIPAL DE LA 8D///////////////////////////////////////////////////////
-						--DECLARE @CREAR_CARPETA NVARCHAR(255)= N'\\10.1.1.5\documents\Quality\8D POR SISTEMA\' + CONVERT(VARCHAR(25), @PP_K_8D)
-						DECLARE @CREAR_CARPETA NVARCHAR(MAX)= @VP_RUTA_DEFAULT + CONVERT(VARCHAR(25), @PP_K_8D)
+						DECLARE @CREAR_CARPETA NVARCHAR(255)= N'\\10.1.1.5\documents\Quality\8D POR SISTEMA\' + CONVERT(VARCHAR(25), @PP_K_8D)
+						--DECLARE @CREAR_CARPETA NVARCHAR(MAX) =  @VP_RUTA_DEFAULT + CONVERT(VARCHAR(25), @PP_K_8D)
 						SET NOCOUNT ON
 						EXECUTE master.dbo.xp_create_subdir  @CREAR_CARPETA
 						SET NOCOUNT OFF
@@ -268,8 +259,8 @@ AS
 						IF @PP_EXTERNAL_FORMAT = 1
 							BEGIN
 								-- ///////SE CREA LA SUBCARPETA HEADER DE LA 8D///////////////////////////////////////////////////////
-								--SET @CREAR_CARPETA = N'\\10.1.1.5\documents\Quality\8D POR SISTEMA\' + CONVERT(VARCHAR(25), @PP_K_8D)+ '\HEADER'
-								SET @CREAR_CARPETA = @VP_RUTA_DEFAULT + CONVERT(VARCHAR(25), @PP_K_8D) + '\HEADER'
+								SET @CREAR_CARPETA = N'\\10.1.1.5\documents\Quality\8D POR SISTEMA\' + CONVERT(VARCHAR(25), @PP_K_8D)+ '\HEADER'
+								--SET @CREAR_CARPETA = @VP_RUTA_DEFAULT + CONVERT(VARCHAR(25), @PP_K_8D) + '\HEADER'
 								SET NOCOUNT ON
 								EXECUTE master.dbo.xp_create_subdir  @CREAR_CARPETA
 								SET NOCOUNT OFF
@@ -319,8 +310,8 @@ AS
 							RAISERROR ('ERROR: No fue posible Actualizar la [8D].', 16, 1 ) --MENSAJE - Severity -State.
 							
 						-- ///////SE CREA LA CARPETA PRINCIPAL DE LA 8D///////////////////////////////////////////////////////
-						--SET @CREAR_CARPETA = N'\\10.1.1.5\documents\Quality\8D POR SISTEMA\' + CONVERT(VARCHAR(25), @PP_K_8D)
-						SET @CREAR_CARPETA = @VP_RUTA_DEFAULT + CONVERT(VARCHAR(25), @PP_K_8D)
+						SET @CREAR_CARPETA = N'\\10.1.1.5\documents\Quality\8D POR SISTEMA\' + CONVERT(VARCHAR(25), @PP_K_8D)
+						--SET @CREAR_CARPETA = @VP_RUTA_DEFAULT + CONVERT(VARCHAR(25), @PP_K_8D)
 						SET NOCOUNT ON
 						EXECUTE master.dbo.xp_create_subdir  @CREAR_CARPETA
 						SET NOCOUNT OFF
@@ -329,8 +320,8 @@ AS
 						IF @PP_EXTERNAL_FORMAT = 1
 							BEGIN	
 								-- ///////SE CREA LA SUBCARPETA HEADER DE LA 8D///////////////////////////////////////////////////////
-								--SET @CREAR_CARPETA = N'\\10.1.1.5\documents\Quality\8D POR SISTEMA\' + CONVERT(VARCHAR(25), @PP_K_8D)+ '\HEADER'
-								SET @CREAR_CARPETA = @VP_RUTA_DEFAULT + CONVERT(VARCHAR(25), @PP_K_8D)+ '\HEADER'
+								SET @CREAR_CARPETA = N'\\10.1.1.5\documents\Quality\8D POR SISTEMA\' + CONVERT(VARCHAR(25), @PP_K_8D)+ '\HEADER'
+								--SET @CREAR_CARPETA = @VP_RUTA_DEFAULT + CONVERT(VARCHAR(25), @PP_K_8D)+ '\HEADER'
 								SET NOCOUNT ON
 								EXECUTE master.dbo.xp_create_subdir  @CREAR_CARPETA
 								SET NOCOUNT OFF
