@@ -140,7 +140,7 @@ AS
 
 				IF @VP_N_8_PROBLEM = 0
 					BEGIN
-						-- ///////SE INSERTA O ACTUALIZA EL SINTOMA DE LA 8D///////////////////////////////////////////////////////
+						-- ///////SE INSERTA O ACTUALIZA EL PROBLEMA DE LA 8D///////////////////////////////////////////////////////
 						INSERT INTO [8D_PROBLEM]
 							(	[K_8D],			
 								-- =================

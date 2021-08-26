@@ -6,49 +6,50 @@
 -- // OPERACION:		LIBERACION / STORED PROCEDURE
 -- //////////////////////////////////////////////////////////////
 -- // Autor:			FEG
--- // Fecha creación:	23/AGO/2021
+-- // Fecha creación:	25/AGO/2021
 -- //////////////////////////////////////////////////////////////  
 
 USE [DATA_02]
 GO
 
 -- //////////////////////////////////////////////////////////////
--- // STORED PROCEDURE ---> SELECT / FICHA
+-- // STORED PROCEDURE ---> SELECT / LISTADO
 -- //////////////////////////////////////////////////////////////
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_8D_CONTAINMENT_ACTION]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_SK_8D_CONTAINMENT_ACTION]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_8D_PREVENTION]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_SK_8D_PREVENTION]
 GO
 
 /*
- EXEC	[dbo].[PG_SK_8D_CONTAINMENT_ACTION] 0,144,3
+ EXEC	[dbo].[PG_SK_8D_PREVENTION] 0,0,3
 */
 
-CREATE PROCEDURE [dbo].[PG_SK_8D_CONTAINMENT_ACTION]
-	@PP_K_SISTEMA_EXE		INT,
-	@PP_K_USUARIO_ACCION	INT,
+CREATE PROCEDURE [dbo].[PG_SK_8D_PREVENTION]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
 	-- ===========================
-	@PP_K_8D				INT
+	@PP_K_8D							INT
 AS
-
+	
 	-- ///////////////////////////////////////////
-	-- ///////////////////////////////////////////
-	SELECT	[K_8D_CONTAINMENT_ACTION],	
+	SELECT	[K_8D_PREVENTION]		
 			-- =================
-			[K_8D],				
-			-- =================								
-			[ACCION],			
-			[PORCENTAJE],			
+			[K_8D],
+			-- =================				
+			[DESCRIPTION],			
+			[SIMILAR_PROCESS_PRODUCT],			
 			D_USUARIO_PEARL,
-			CONVERT(DATE, [8D_CONTAINMENT_ACTION].[F_CAMBIO]) AS [DATE]
+			[8D_PREVENTION].[F_CAMBIO]			
 			-- =================
-	FROM	[8D_CONTAINMENT_ACTION] (NOLOCK)
-	INNER JOIN  BD_GENERAL.DBO.USUARIO_PEARL (NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL = [8D_CONTAINMENT_ACTION].[K_USUARIO_CAMBIO]
+	FROM	[8D_PREVENTION] (NOLOCK)
+	INNER JOIN  BD_GENERAL.DBO.USUARIO_PEARL (NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL = [8D_PREVENTION].[K_USUARIO_CAMBIO]
 	-- =============================
 	WHERE 	[K_8D] = @PP_K_8D
+	
 	-- ////////////////////////////////////////////////
 	-- ////////////////////////////////////////////////
 GO
+
 
 
 
@@ -56,37 +57,37 @@ GO
 -- // STORED PROCEDURE ---> SELECT / FICHA
 -- //////////////////////////////////////////////////////////////
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_8D_CONTAINMENT_EVIDENCE]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_SK_8D_CONTAINMENT_EVIDENCE]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_8D_PREVENTION_EVIDENCE]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_SK_8D_PREVENTION_EVIDENCE]
 GO
 
 /*
- EXEC	[dbo].[PG_SK_8D_CONTAINMENT_EVIDENCE] 0,144,2
+ EXEC	[dbo].[PG_SK_8D_PREVENTION_EVIDENCE] 0,144,3
 */
 
-CREATE PROCEDURE [dbo].[PG_SK_8D_CONTAINMENT_EVIDENCE]
+CREATE PROCEDURE [dbo].[PG_SK_8D_PREVENTION_EVIDENCE]
 	@PP_K_SISTEMA_EXE			INT,
 	@PP_K_USUARIO_ACCION		INT,
 	-- ===========================
-	@PP_K_8D_CONTAINMENT_ACTION		INT
+	@PP_K_8D					INT
 AS
 
 	-- ///////////////////////////////////////////
-	SELECT	[K_8D_CONTAINMENT_EVIDENCE],
+	SELECT	[K_8D_PREVENTION_EVIDENCE],
 			-- =================					
-			[K_8D_CONTAINMENT_ACTION],	
+			[K_8D],	
 			-- =================							
 			[RUTA],			
 			[NOMBRE_ARCHIVO],
 			[TIPO_ARCHIVO],		
 			-- =================					
 			D_USUARIO_PEARL,
-			CONVERT(DATE, [8D_CONTAINMENT_EVIDENCE].[F_CAMBIO]) AS [DATE]		
+			CONVERT(DATE, [8D_PREVENTION_EVIDENCE].[F_CAMBIO]) AS [DATE]		
 			-- =================
-	FROM	[8D_CONTAINMENT_EVIDENCE] (NOLOCK)
-	INNER JOIN  BD_GENERAL.DBO.USUARIO_PEARL (NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL = [8D_CONTAINMENT_EVIDENCE].[K_USUARIO_CAMBIO]
+	FROM	[8D_PREVENTION_EVIDENCE] (NOLOCK)
+	INNER JOIN  BD_GENERAL.DBO.USUARIO_PEARL (NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL = [8D_PREVENTION_EVIDENCE].[K_USUARIO_CAMBIO]
 	-- =============================
-	WHERE 	[K_8D_CONTAINMENT_ACTION] = @PP_K_8D_CONTAINMENT_ACTION
+	WHERE 	[K_8D] = @PP_K_8D
 	-- ////////////////////////////////////////////////
 	-- ////////////////////////////////////////////////
 GO
@@ -99,23 +100,22 @@ GO
 -- //////////////////////////////////////////////////////////////
 
 -- USE DATA_02
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_UP_8D_CONTAINMENT_ACTION]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_IN_UP_8D_CONTAINMENT_ACTION]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_UP_8D_PREVENTION]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_IN_UP_8D_PREVENTION]
 GO
 /*
- EXECUTE [PG_IN_UP_8D_CONTAINMENT_ACTION] 0,144, 0 , '' , 0 , 1 , '' , '' , '2019/10/01' , '2019/10/01' , '2019/10/01' , '2019/10/01' , 'C:\Users\Francisco Esteban\Desktop\SERIAL REPETIDO.xlsx' , 'SERIAL REPETIDO.xlsx' 
+ EXECUTE [PG_IN_UP_8D_PREVENTION] 0,144, 0 , '' , 0 , 1 , '' , '' , '2019/10/01' , '2019/10/01' , '2019/10/01' , '2019/10/01' , 'C:\Users\Francisco Esteban\Desktop\SERIAL REPETIDO.xlsx' , 'SERIAL REPETIDO.xlsx' 
 
 */
-CREATE PROCEDURE [dbo].[PG_IN_UP_8D_CONTAINMENT_ACTION]
+CREATE PROCEDURE [dbo].[PG_IN_UP_8D_PREVENTION]
 	@PP_K_SISTEMA_EXE					INT,
 	@PP_K_USUARIO_ACCION				INT,
 	-- ===========================	
 	@PP_K_8D							INT,
-	@PP_K_CONTAINMENT_ACTION			INT,
 	-- ============================		
-	@PP_ACCION							VARCHAR(MAX),	
-	@PP_PORCENTAJE						INT	
-	--- =================
+	@PP_DESCRIPTION						VARCHAR(MAX),
+	@PP_SIMILAR_PROCESS_PRODUCT			VARCHAR(255)
+	-- ============================	
 AS			
 	
 	DECLARE @VP_MENSAJE		VARCHAR(255) = ''
@@ -131,42 +131,50 @@ AS
 		BEGIN
 			BEGIN TRANSACTION 
 			BEGIN TRY
-				IF @PP_K_CONTAINMENT_ACTION = 0
+				DECLARE @VP_N_8_PREVENTION INT = 0 
+
+				SELECT @VP_N_8_PREVENTION = COUNT([K_8D_PREVENTION])
+				FROM [8D_PREVENTION]
+				WHERE K_8D = @PP_K_8D
+
+				IF @VP_N_8_PREVENTION IS NULL
+					SET @VP_N_8_PREVENTION = 0
+
+				IF @VP_N_8_PREVENTION = 0
 					BEGIN
-						-- ///////SE INSERTA LA ACCION PARA LA CONTENCION DE LA 8D///////////////////////////////////////////////////////
-						INSERT INTO [8D_CONTAINMENT_ACTION]
-							(	[K_8D],				
-								-- =================		
-								[ACCION],
-								[PORCENTAJE],
+						-- ///////SE INSERTA O ACTUALIZA LA PREVENCION DE LA 8D///////////////////////////////////////////////////////
+						INSERT INTO [8D_PREVENTION]
+							(	[K_8D],			
+								-- =================
+								[DESCRIPTION],
+								[SIMILAR_PROCESS_PRODUCT],
 								-- ===========================
 								[K_USUARIO_ALTA], [F_ALTA], [K_USUARIO_CAMBIO], [F_CAMBIO],
 								[L_BORRADO], [K_USUARIO_BAJA], [F_BAJA]  )
 						VALUES	
-							(	@PP_K_8D,
-								--- =================
-								@PP_ACCION,		
-								@PP_PORCENTAJE,						
+							(	@PP_K_8D,	
+								-- =================
+								@PP_DESCRIPTION,	
+								@PP_SIMILAR_PROCESS_PRODUCT,							
 								-- ===========================
 								@PP_K_USUARIO_ACCION, GETDATE(), @PP_K_USUARIO_ACCION, GETDATE(),
 								0, NULL, NULL )
-						
+
 						IF @@ROWCOUNT = 0
-							RAISERROR ('ERROR: No fue posible Agregar la acción.', 16, 1 ) --MENSAJE - Severity -State.
+							RAISERROR ('ERROR: No fue posible Agregar los datos para la [8D].', 16, 1 ) --MENSAJE - Severity -State.
 					END
 				ELSE
 					BEGIN
-						UPDATE [8D_CONTAINMENT_ACTION]
-							SET [ACCION] = @PP_ACCION,
-								[PORCENTAJE] = @PP_PORCENTAJE,
+						UPDATE [8D_PREVENTION]
+							SET [DESCRIPTION] = @PP_DESCRIPTION,
+								[SIMILAR_PROCESS_PRODUCT] = @PP_SIMILAR_PROCESS_PRODUCT,
 								[K_USUARIO_CAMBIO] = @PP_K_USUARIO_ACCION,
 								[F_CAMBIO] = GETDATE()
 						WHERE [K_8D] = @PP_K_8D
-						AND [K_8D_CONTAINMENT_ACTION] = @PP_K_CONTAINMENT_ACTION
 
 						IF @@ROWCOUNT = 0
-							RAISERROR ('ERROR: No fue posible Actualizar la acción.', 16, 1 ) --MENSAJE - Severity -State.
-					END
+							RAISERROR ('ERROR: No fue posible Actualizar los datos para la [8D].', 16, 1 ) --MENSAJE - Severity -State.
+					END					
 
 			-- //////////////////////////////////////////////////////////////
 			COMMIT TRANSACTION 
@@ -177,7 +185,7 @@ AS
 				ROLLBACK TRANSACTION
 				DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
 				SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
-				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_IN_UP_8D_CONTAINMENT_ACTION // ' + @VP_ERROR_TRANS
+				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_IN_UP_8D_PREVENTION // ' + @VP_ERROR_TRANS
 			END CATCH
 				
 		END
@@ -185,7 +193,7 @@ AS
 	-- // SECCION#3 ////////////////////////////////////////////////////////// MENSAJE DE SALIDA
 	IF @VP_MENSAJE<>''
 		BEGIN
-			SET		@VP_MENSAJE = 'No es posible [AGREGAR] la acción del sintoma para la [8D]: ' + @VP_MENSAJE 
+			SET		@VP_MENSAJE = 'No es posible [AGREGAR] la prevencion de ocurrencia para la [8D]: ' + @VP_MENSAJE 
 			SET		@VP_MENSAJE = @VP_MENSAJE + ' ( '
 			SET		@VP_MENSAJE = @VP_MENSAJE + '[#8D.'+CONVERT(VARCHAR(10),@PP_K_8D)+']'
 			SET		@VP_MENSAJE = @VP_MENSAJE + ' )'
@@ -204,18 +212,17 @@ GO
 -- //////////////////////////////////////////////////////////////
 
 -- USE DATA_02
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_CONTAINMENT_EVIDENCE]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_IN_CONTAINMENT_EVIDENCE]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_PREVENTION_EVIDENCE]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_IN_PREVENTION_EVIDENCE]
 GO
 /*
- EXECUTE [PG_IN_CONTAINMENT_EVIDENCE] 0,144, 3 , 2 , 'CAMBIO # PARTE.xlsx' , '.xlsx' 
+ EXECUTE [PG_IN_PREVENTION_EVIDENCE] 0,144, 3 , 2 , 'CAMBIO # PARTE.xlsx' , '.xlsx' 
 */
-CREATE PROCEDURE [dbo].[PG_IN_CONTAINMENT_EVIDENCE]
+CREATE PROCEDURE [dbo].[PG_IN_PREVENTION_EVIDENCE]
 	@PP_K_SISTEMA_EXE					INT,
 	@PP_K_USUARIO_ACCION				INT,
 	-- ===========================	
 	@PP_K_8D							INT,
-	@PP_K_8D_CONTAINMENT_ACTION			INT,
 	-- =================							
 	@PP_NOMBRE_ARCHIVO					VARCHAR(255),	
 	@PP_TIPO_ARCHIVO					VARCHAR(50)	
@@ -225,24 +232,28 @@ AS
 	DECLARE @VP_MENSAJE		VARCHAR(255) = ''
 
 	-- // SECCION#1 /////////////////////////////////////////////////////////// VALIDACIONES + REGLAS DE NEGOCIO 	
-	--IF @PP_K_TIPO_INSPECCION_MATERIAL IN (4, 5, 6, 7, 8)	-- ESTE TIPO DE INSPECCION SOLO SE PUEDEN AGREGAR UNA VEZ AL # PARTE
-	--	EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_INSERT]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
-	--														@PP_K_ITEM, @PP_K_TIPO_INSPECCION_MATERIAL,
-	--														@OU_RESULTADO_VALIDACION = @VP_MENSAJE		OUTPUT
+	DECLARE @VP_N_8_PREVENTION INT = 0 
 
+	SELECT @VP_N_8_PREVENTION = COUNT([K_8D_PREVENTION])
+	FROM [8D_PREVENTION]
+	WHERE K_8D = @PP_K_8D
+
+	IF ( @VP_N_8_PREVENTION IS NULL OR @VP_N_8_PREVENTION = 0 )
+		SET @VP_MENSAJE = 'Debe agregar el encabezado de la prevención de ocurrencia!'
+		
 	-- // SECCION#2 ////////////////////////////////////////////////////////// ACCION A REALIZAR
 	IF @VP_MENSAJE=''
 		BEGIN
 			BEGIN TRANSACTION 
 			BEGIN TRY
-				-- ///////SE CREA LA SUBCARPETA CONTAINMENT DE LA 8D///////////////////////////////////////////////////////
-				DECLARE @CREAR_CARPETA NVARCHAR(255) = N'\\10.1.1.5\documents\Quality\8D POR SISTEMA\' + CONVERT(VARCHAR(25), @PP_K_8D)+ '\CONTAINMENT'
+				-- ///////SE CREA LA SUBCARPETA PREVENTION DE LA 8D///////////////////////////////////////////////////////
+				DECLARE @CREAR_CARPETA NVARCHAR(255) = N'\\10.1.1.5\documents\Quality\8D POR SISTEMA\' + CONVERT(VARCHAR(25), @PP_K_8D)+ '\PREVENTION'
 				SET NOCOUNT ON
 				EXECUTE master.dbo.xp_create_subdir  @CREAR_CARPETA
 				SET NOCOUNT OFF
 
-				INSERT INTO [8D_CONTAINMENT_EVIDENCE]
-					(	[K_8D_CONTAINMENT_ACTION],				
+				INSERT INTO [8D_PREVENTION_EVIDENCE]
+					(	[K_8D],				
 						-- =================		
 						[RUTA],				
 						[NOMBRE_ARCHIVO],
@@ -251,7 +262,7 @@ AS
 						[K_USUARIO_ALTA], [F_ALTA], [K_USUARIO_CAMBIO], [F_CAMBIO],
 						[L_BORRADO], [K_USUARIO_BAJA], [F_BAJA]  )
 				VALUES	
-					(	@PP_K_8D_CONTAINMENT_ACTION,
+					(	@PP_K_8D,
 						--- =================
 						CONCAT(@CREAR_CARPETA, '\'),
 						@PP_NOMBRE_ARCHIVO,	
@@ -261,7 +272,7 @@ AS
 						0, NULL, NULL )
 				
 				IF @@ROWCOUNT = 0
-					RAISERROR ('ERROR: No fue posible agregar la evidencia.', 16, 1 ) --MENSAJE - Severity -State.
+					RAISERROR ('ERROR: No fue Agregar la evidencia para la [8D].', 16, 1 ) --MENSAJE - Severity -State.
 
 			-- //////////////////////////////////////////////////////////////
 			COMMIT TRANSACTION 
@@ -272,7 +283,7 @@ AS
 				ROLLBACK TRANSACTION
 				DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
 				SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
-				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_IN_CONTAINMENT_EVIDENCE // ' + @VP_ERROR_TRANS
+				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_IN_PREVENTION_EVIDENCE // ' + @VP_ERROR_TRANS
 			END CATCH
 				
 		END
@@ -293,100 +304,22 @@ GO
 
 
 
+
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> DELETE / FICHA
 -- //////////////////////////////////////////////////////////////
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_DL_8D_CONTAINMENT_ACTION]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_DL_8D_CONTAINMENT_ACTION]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_DL_8D_PREVENTION_EVIDENCE]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_DL_8D_PREVENTION_EVIDENCE]
 GO
 
 
-CREATE PROCEDURE [dbo].[PG_DL_8D_CONTAINMENT_ACTION]
+CREATE PROCEDURE [dbo].[PG_DL_8D_PREVENTION_EVIDENCE]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
 	-- ===========================
 	@PP_K_8D						INT,
-	@PP_K_8D_CONTAINMENT_ACTION		INT
-AS
-
-	DECLARE @VP_MENSAJE		VARCHAR(300) = ''
-
-	-- // SECCION#1 /////////////////////////////////////////////////////////// VALIDACIONES + REGLAS DE NEGOCIO 
-	IF @VP_MENSAJE=''
-		BEGIN
-			-- //////SE VERIFICA QUE LA ACCION NO TENGA EVIDENCIAS ASIGNADAS////////////////////////////////
-			DECLARE @VP_N_EVIDENCE INT = 0
-			SELECT @VP_N_EVIDENCE =  COUNT([K_8D_CONTAINMENT_EVIDENCE])
-			FROM [8D_CONTAINMENT_EVIDENCE]
-			WHERE [K_8D_CONTAINMENT_ACTION] = @PP_K_8D_CONTAINMENT_ACTION
-
-			IF @VP_N_EVIDENCE IS NULL
-				SET @VP_N_EVIDENCE = 0
-
-			IF @VP_N_EVIDENCE > 0
-				SET @VP_MENSAJE = 'Contiene evidencias asignadas.'
-		END
-
-	-- // SECCION#2 ////////////////////////////////////////////////////////// ACCION A REALIZAR
-	IF @VP_MENSAJE=''
-		BEGIN
-			BEGIN TRANSACTION 
-			BEGIN TRY
-
-				DELETE [8D_CONTAINMENT_ACTION]		
-				WHERE	K_8D = @PP_K_8D
-				AND	[K_8D_CONTAINMENT_ACTION] = @PP_K_8D_CONTAINMENT_ACTION
-
-				IF @@ROWCOUNT = 0
-					RAISERROR ('ERROR: No fue posible Eliminar la Acción de la [8D].', 16, 1 ) --MENSAJE - Severity -State.
-			
-			-- //////////////////////////////////////////////////////////////
-			COMMIT TRANSACTION 
-			END TRY
-	
-			BEGIN CATCH
-				/* Ocurrió un error, deshacemos los cambios*/ 
-				ROLLBACK TRANSACTION
-				DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
-				SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
-				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_DL_8D_CONTAINMENT_ACTION // ' + @VP_ERROR_TRANS
-			END CATCH
-		
-		END
-
-	-- // SECCION#3 ////////////////////////////////////////////////////////// MENSAJE DE SALIDA
-	IF @VP_MENSAJE<>''
-		BEGIN
-			SET		@VP_MENSAJE = 'No es posible [Eliminar] la Acción para la [8D]: ' + @VP_MENSAJE 
-			SET		@VP_MENSAJE = @VP_MENSAJE + ' ( '
-			SET		@VP_MENSAJE = @VP_MENSAJE + '[#8D.'+CONVERT(VARCHAR(10),@PP_K_8D)+']'
-			SET		@VP_MENSAJE = @VP_MENSAJE + ' )'
-		END
-	
-	-- //////////////////////////////////////////////////////////////
-	SELECT	@VP_MENSAJE AS MENSAJE, @PP_K_8D AS CLAVE
-
-	-- //////////////////////////////////////////////////////////////
-GO
-
-
-
--- //////////////////////////////////////////////////////////////
--- // STORED PROCEDURE ---> DELETE / FICHA
--- //////////////////////////////////////////////////////////////
-
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_DL_8D_CONTAINMENT_EVIDENCE]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_DL_8D_CONTAINMENT_EVIDENCE]
-GO
-
-
-CREATE PROCEDURE [dbo].[PG_DL_8D_CONTAINMENT_EVIDENCE]
-	@PP_K_SISTEMA_EXE				INT,
-	@PP_K_USUARIO_ACCION			INT,
-	-- ===========================
-	@PP_K_8D_CONTAINMENT_ACTION		INT,
-	@PP_K_8D_CONTAINMENT_EVIDENCE	INT
+	@PP_K_8D_PREVENTION_EVIDENCE	INT
 AS
 
 	DECLARE @VP_MENSAJE		VARCHAR(300) = ''
@@ -403,9 +336,9 @@ AS
 			BEGIN TRANSACTION 
 			BEGIN TRY
 
-				DELETE [8D_CONTAINMENT_EVIDENCE]
-				WHERE	[K_8D_CONTAINMENT_ACTION] = @PP_K_8D_CONTAINMENT_ACTION
-				AND	K_8D_CONTAINMENT_EVIDENCE = @PP_K_8D_CONTAINMENT_EVIDENCE
+				DELETE [8D_PREVENTION_EVIDENCE]
+				WHERE	K_8D = @PP_K_8D
+				AND	K_8D_PREVENTION_EVIDENCE = @PP_K_8D_PREVENTION_EVIDENCE
 
 				IF @@ROWCOUNT = 0
 					RAISERROR ('ERROR: No fue posible Eliminar la evidencia para la [8D].', 16, 1 ) --MENSAJE - Severity -State.
@@ -419,7 +352,7 @@ AS
 				ROLLBACK TRANSACTION
 				DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
 				SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
-				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_DL_8D_CONTAINMENT_EVIDENCE // ' + @VP_ERROR_TRANS
+				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_DL_8D_PREVENTION_EVIDENCE // ' + @VP_ERROR_TRANS
 			END CATCH
 		
 		END
@@ -429,12 +362,12 @@ AS
 		BEGIN
 			SET		@VP_MENSAJE = 'No es posible [Eliminar] la evidencia para la [8D]: ' + @VP_MENSAJE 
 			SET		@VP_MENSAJE = @VP_MENSAJE + ' ( '
-			SET		@VP_MENSAJE = @VP_MENSAJE + '[#Evid.'+CONVERT(VARCHAR(10),@PP_K_8D_CONTAINMENT_EVIDENCE)+']'
+			SET		@VP_MENSAJE = @VP_MENSAJE + '[#Evid.'+CONVERT(VARCHAR(10),@PP_K_8D_PREVENTION_EVIDENCE)+']'
 			SET		@VP_MENSAJE = @VP_MENSAJE + ' )'
 		END
 	
 	-- //////////////////////////////////////////////////////////////
-	SELECT	@VP_MENSAJE AS MENSAJE, @PP_K_8D_CONTAINMENT_EVIDENCE AS CLAVE
+	SELECT	@VP_MENSAJE AS MENSAJE, @PP_K_8D_PREVENTION_EVIDENCE AS CLAVE
 
 	-- //////////////////////////////////////////////////////////////
 GO

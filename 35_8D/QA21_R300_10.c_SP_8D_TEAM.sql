@@ -103,7 +103,7 @@ AS
 		BEGIN
 			BEGIN TRANSACTION 
 			BEGIN TRY
-				-- ///////SE INSERTA O ACTUALIZA EL SINTOMA DE LA 8D///////////////////////////////////////////////////////
+				-- ///////SE INSERTA EL PARTICIPANTE A LA 8D///////////////////////////////////////////////////////
 				INSERT INTO [8D_TEAM]
 					(	[K_8D],			
 						-- =================
@@ -123,8 +123,7 @@ AS
 
 				IF @@ROWCOUNT = 0
 					RAISERROR ('ERROR: No fue posible Agregar a la persona al equipo para la [8D].', 16, 1 ) --MENSAJE - Severity -State.
-					
-
+								
 			-- //////////////////////////////////////////////////////////////
 			COMMIT TRANSACTION 
 			END TRY
