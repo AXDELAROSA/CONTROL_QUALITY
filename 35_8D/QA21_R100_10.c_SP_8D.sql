@@ -209,6 +209,11 @@ AS
 																			'DATA_02', 
 																			'[8D]', '[K_8D]',
 																			@OU_K_TABLA_DISPONIBLE = @PP_K_8D	OUTPUT
+						IF @PP_EXTERNAL_FORMAT = 1 
+							BEGIN
+								SET @PP_DATE_OPENED	= GETDATE()
+								SET @PP_LAST_UPDATE	= GETDATE()
+							END
 
 						-- ///////SE INSERTA EL ENCABEZADO DEL 8D///////////////////////////////////////////////////////
 						INSERT INTO [8D]
@@ -288,6 +293,9 @@ AS
 					END
 				ELSE
 					BEGIN
+						IF @PP_EXTERNAL_FORMAT = 1 
+							SET @PP_LAST_UPDATE	= GETDATE()
+
 						-- ///////SE ACTUALIZA EL ENCABEZADO DEL 8D///////////////////////////////////////////////////////
 						UPDATE [8D]
 							SET [K_8D_CUSTOMER]	= @PP_K_8D_CUSTOMER,		

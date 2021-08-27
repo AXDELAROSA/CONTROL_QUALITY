@@ -32,22 +32,12 @@ CREATE PROCEDURE [dbo].[PG_SK_8D_ROOT_CAUSE]
 AS
 
 	-- ///////////////////////////////////////////
-	DECLARE @VP_PROBLEM VARCHAR(MAX) = ''
-	SELECT @VP_PROBLEM = [DESCRIPTION]
-	FROM [8D_PROBLEM]
-	WHERE K_8D = @PP_K_8D
-
-	IF @VP_PROBLEM IS NULL
-		SET @VP_PROBLEM = ''
-
-	-- ///////////////////////////////////////////
 	SELECT	[K_8D_ROOT_CAUSE],	
 			-- =================
 			[K_8D],	
 			[K_CLASIFICACION_ROOT_CAUSE_8D],
 			[K_TIPO_ROOT_CAUSE_8D],		
-			-- =================
-			@VP_PROBLEM AS PROBLEM,								
+			-- =================							
 			[VALOR],					
 			D_USUARIO_PEARL,
 			CONVERT(DATE, [8D_ROOT_CAUSE].[F_CAMBIO]) AS [DATE]
