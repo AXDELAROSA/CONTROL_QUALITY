@@ -95,12 +95,18 @@ AS
 							S_TIPO_RMA		, D_TIPO_RMA,
 							HEADER_RMA.CUS_NO,
 							 --=============================
+							(CASE
+								WHEN	K_RMA IS NULL THEN	'NO'
+								ELSE	'SÍ'
+							END	)	AS [8DS],
+							 --=============================
 							HEADER_RMA.*
-							 --=============================	
+							 --=============================
 				FROM		HEADER_RMA		(NOLOCK) 
 				INNER JOIN 	STATUS_RMA		(NOLOCK) ON STATUS_RMA.K_STATUS_RMA		= HEADER_RMA.K_STATUS_RMA
 				INNER JOIN 	TIPO_RMA		(NOLOCK) ON TIPO_RMA.K_TIPO_RMA			= HEADER_RMA.K_TIPO_RMA
 				INNER JOIN	BD_GENERAL.DBO.USUARIO_PEARL		(NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL	= HEADER_RMA.K_USUARIO_ALTA
+				LEFT JOIN	[8D]			(NOLOCK) ON [8D].K_RMA					= HEADER_RMA.K_HEADER_RMA
 							 --=============================
 				WHERE		(	HEADER_RMA.K_HEADER_RMA				= @PP_BUSCAR
 							OR	C_RMA								LIKE '%'+@PP_BUSCAR+'%'	)
@@ -137,6 +143,11 @@ AS
 							S_TIPO_RMA		, D_TIPO_RMA,
 							HEADER_RMA.CUS_NO,
 							 --=============================
+							(CASE
+								WHEN	K_RMA IS NULL THEN	'NO'
+								ELSE	'SÍ'
+							END	)	AS [8DS],
+							 --=============================
 							HEADER_RMA.*
 							 --=============================	
 				FROM		HEADER_RMA		(NOLOCK) 
@@ -144,6 +155,7 @@ AS
 				INNER JOIN 	TIPO_RMA		(NOLOCK) ON TIPO_RMA.K_TIPO_RMA			= HEADER_RMA.K_TIPO_RMA
 				INNER JOIN	BD_GENERAL.DBO.USUARIO_PEARL		(NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL	= HEADER_RMA.K_USUARIO_ALTA
 				INNER JOIN	DETAILS_RMA		(NOLOCK) ON DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA
+				LEFT JOIN	[8D]			(NOLOCK) ON [8D].K_RMA					= HEADER_RMA.K_HEADER_RMA
 							 --=============================
 				WHERE		(	HEADER_RMA.K_HEADER_RMA				= @PP_BUSCAR
 							OR	C_RMA								LIKE '%'+@PP_BUSCAR+'%'	
@@ -189,13 +201,19 @@ AS
 						S_STATUS_RMA	, D_STATUS_RMA,
 						S_TIPO_RMA		, D_TIPO_RMA,
 						HEADER_RMA.CUS_NO,
-						-- =============================
+						--=============================
+						(CASE
+							WHEN	K_RMA IS NULL THEN	'NO'
+							ELSE	'SÍ'
+						END	)	AS [8DS],
+						--=============================
 						HEADER_RMA.*
 						-- =============================	
 			FROM		HEADER_RMA		(NOLOCK) 
 			INNER JOIN 	STATUS_RMA		(NOLOCK) ON STATUS_RMA.K_STATUS_RMA		= HEADER_RMA.K_STATUS_RMA
 			INNER JOIN 	TIPO_RMA		(NOLOCK) ON TIPO_RMA.K_TIPO_RMA			= HEADER_RMA.K_TIPO_RMA
 			INNER JOIN	BD_GENERAL.DBO.USUARIO_PEARL		(NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL	= HEADER_RMA.K_USUARIO_ALTA
+			LEFT JOIN	[8D]			(NOLOCK) ON [8D].K_RMA					= HEADER_RMA.K_HEADER_RMA
 						-- =============================
 			WHERE		(	HEADER_RMA.K_HEADER_RMA				= @PP_BUSCAR
 						OR	C_RMA								LIKE '%'+@PP_BUSCAR+'%'	)
@@ -232,7 +250,12 @@ AS
 						S_STATUS_RMA	, D_STATUS_RMA,
 						S_TIPO_RMA		, D_TIPO_RMA,
 						HEADER_RMA.CUS_NO,
-						-- =============================
+						--=============================
+						(CASE
+							WHEN	K_RMA IS NULL THEN	'NO'
+							ELSE	'SÍ'
+						END	)	AS [8DS],
+						--=============================
 						HEADER_RMA.*
 						-- =============================	
 			FROM		HEADER_RMA		(NOLOCK) 
@@ -240,6 +263,7 @@ AS
 			INNER JOIN 	TIPO_RMA		(NOLOCK) ON TIPO_RMA.K_TIPO_RMA			= HEADER_RMA.K_TIPO_RMA
 			INNER JOIN	BD_GENERAL.DBO.USUARIO_PEARL		(NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL	= HEADER_RMA.K_USUARIO_ALTA
 			INNER JOIN	DETAILS_RMA		(NOLOCK) ON DETAILS_RMA.K_HEADER_RMA	= HEADER_RMA.K_HEADER_RMA
+			LEFT JOIN	[8D]			(NOLOCK) ON [8D].K_RMA					= HEADER_RMA.K_HEADER_RMA
 						-- =============================
 			WHERE		(	HEADER_RMA.K_HEADER_RMA				= @PP_BUSCAR
 						OR	C_RMA								LIKE '%'+@PP_BUSCAR+'%'	
