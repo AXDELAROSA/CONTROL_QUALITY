@@ -558,6 +558,42 @@ AS
 GO
 
 
+
+-- USE DATA_02
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / FICHA
+-- //////////////////////////////////////////////////////////////
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_HEADER_RMA_PARA_8D]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_SK_HEADER_RMA_PARA_8D]
+GO
+--		 EXECUTE [dbo].[PG_SK_HEADER_RMA_PARA_8D] 0,139, 1
+CREATE PROCEDURE [dbo].[PG_SK_HEADER_RMA_PARA_8D]
+	@PP_K_SISTEMA_EXE				INT,
+	@PP_K_USUARIO_ACCION			INT,
+	-- ===========================
+	@PP_K_TIPO_RMA					INT 
+AS
+	-- ///////////////////////////////////////////			
+	SELECT		TOP 1000
+				-- =============================	 
+				D_STATUS_RMA,
+				D_TIPO_RMA,
+				-- =============================
+				HEADER_RMA.*
+				-- =============================	
+	FROM		HEADER_RMA		(NOLOCK) 
+	INNER JOIN 	STATUS_RMA		(NOLOCK) ON STATUS_RMA.K_STATUS_RMA	= HEADER_RMA.K_STATUS_RMA
+	INNER JOIN 	TIPO_RMA		(NOLOCK) ON TIPO_RMA.K_TIPO_RMA		= HEADER_RMA.K_TIPO_RMA
+				-- =============================
+	WHERE		HEADER_RMA.L_BORRADO	<> 1
+	AND			HEADER_RMA.K_TIPO_RMA	= @PP_K_TIPO_RMA
+	AND			HEADER_RMA.K_HEADER_RMA NOT IN (SELECT K_RMA FROM [8D] WHERE K_ESTATUS_8D = 1)
+	ORDER BY HEADER_RMA.F_ALTA DESC
+	-- ////////////////////////////////////////////////////////////////////
+GO
+
+
+
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> SELECT / FICHA
 -- //////////////////////////////////////////////////////////////

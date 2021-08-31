@@ -1,5 +1,11 @@
 
-SELECT * FROM [8D]
+USE DATA_02Pruebas
+
+SELECT * FROM [8D] WHERE K_8D = 2
+
+--UPDATE [8D] 
+--SET K_RMA = 5
+--WHERE K_8D = 2
 
 SELECT * FROM [EXTERNAL_8D]
 							

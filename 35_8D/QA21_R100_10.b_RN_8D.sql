@@ -24,17 +24,18 @@ GO
 -- // STORED PROCEDURE ---> RN_BORRABLE
 -- //////////////////////////////////////////////////////////////
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_INSPECCION_MATERIAL_EXISTE_EN_ORDEN]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_EXISTE_EN_ORDEN]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_8D_VALIDAR_FECHA]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_RN_8D_VALIDAR_FECHA]
 GO
 
 
-CREATE PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_EXISTE_EN_ORDEN]
+CREATE PROCEDURE [dbo].[PG_RN_8D_VALIDAR_FECHA]
 	@PP_K_SISTEMA_EXE				[INT],
 	@PP_K_USUARIO_ACCION			[INT],
 	-- ===========================		
-	@PP_ITEM						[INT],
-	@PP_K_INSPECCION_MATERIAL		[INT],
+	@PP_DATE_OPENED					[DATE],
+	@PP_LAST_UPDATE					[DATE],
+	@PP_DUE_DATE					[DATE],
 	-- ============================	
 	@OU_RESULTADO_VALIDACION		[VARCHAR] (200)		OUTPUT
 AS
@@ -44,230 +45,18 @@ AS
 	SET		@VP_RESULTADO	= ''
 		
 	-- /////////////////////////////////////////////////////
+	IF @PP_DATE_OPENED > @PP_LAST_UPDATE
+		SET @VP_RESULTADO = 'La fecha de Actualización no puede ser menor a la fecha de creación.'
 
-	
-	DECLARE @VP_N_K_INSPECCION_MATERIAL INT = 0
-	SELECT @VP_N_K_INSPECCION_MATERIAL = COUNT(K_INSPECCION_MATERIAL)
-	FROM [INSPECCION_MATERIAL_ORDEN_COMPRA]
-	WHERE K_ITEM = @PP_ITEM
-	AND	K_INSPECCION_MATERIAL = @PP_K_INSPECCION_MATERIAL
-
-	IF @VP_N_K_INSPECCION_MATERIAL IS NULL
-		SET @VP_N_K_INSPECCION_MATERIAL = 0
-	-- ===========================
-
-	IF @VP_N_K_INSPECCION_MATERIAL > 0
-		SET @VP_RESULTADO = 'La inspeccion ya se aplico por lo menos a una orden'
+	IF @VP_RESULTADO = ''
+		IF @PP_DATE_OPENED > @PP_DUE_DATE 
+			SET @VP_RESULTADO = 'La fecha de Vencimiento no puede ser menor a la fecha de creación'
 	-- /////////////////////////////////////////////////////
 	
 	SET @OU_RESULTADO_VALIDACION = @VP_RESULTADO
 
 	-- /////////////////////////////////////////////////////
 GO
-
-
-
--- //////////////////////////////////////////////////////////////
--- // STORED PROCEDURE ---> RN_BORRABLE
--- //////////////////////////////////////////////////////////////
-
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_INSPECCION_MATERIAL_TEST_RESULT_EXISTE]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_TEST_RESULT_EXISTE]
-GO
-
-
-CREATE PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_TEST_RESULT_EXISTE]
-	@PP_K_SISTEMA_EXE				[INT],
-	@PP_K_USUARIO_ACCION			[INT],
-	-- ===========================		
-	@PP_ITEM						[INT],
-	@PP_K_TIPO_INSPECCION_MATERIAL	[INT],
-	-- ============================	
-	@OU_RESULTADO_VALIDACION		[VARCHAR] (200)		OUTPUT
-AS
-
-	DECLARE @VP_RESULTADO	VARCHAR(300)
-	
-	SET		@VP_RESULTADO	= ''
-		
-	-- /////////////////////////////////////////////////////
-
-	
-	DECLARE	@VP_N_K_INSPECCION_MATERIAL INT = 0
-	SELECT	@VP_N_K_INSPECCION_MATERIAL = COUNT(K_INSPECCION_MATERIAL)
-	FROM	[INSPECCION_MATERIAL]
-	WHERE	K_ITEM = @PP_ITEM
-	AND	K_TIPO_INSPECCION_MATERIAL = @PP_K_TIPO_INSPECCION_MATERIAL 
-	AND K_ESTATUS_INSPECCION_MATERIAL = 1 -- ACTIVA
-
-	IF @VP_N_K_INSPECCION_MATERIAL IS NULL
-		SET @VP_N_K_INSPECCION_MATERIAL = 0
-	-- ===========================
-
-	IF @VP_N_K_INSPECCION_MATERIAL > 0
-		SET @VP_RESULTADO = 'Este tipo de inspeccion solo se puede agregar una vez'
-	-- /////////////////////////////////////////////////////
-	
-	SET @OU_RESULTADO_VALIDACION = @VP_RESULTADO
-
-	-- /////////////////////////////////////////////////////
-GO
-
-
--- ====================================================================================================
--- ====================================================================================================
--- ////////////////////////////////////////////////////////////////////////////////////////////////////
--- ====================================================================================================
--- ====================================================================================================
-
-
-
--- //////////////////////////////////////////////////////////////
--- // STORED PROCEDURE ---> VALIDACION INSERT
--- //////////////////////////////////////////////////////////////
-
-
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_INSPECCION_MATERIAL_INSERT]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_INSERT]
-GO
-
-
-CREATE PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_INSERT]
-	@PP_K_SISTEMA_EXE					[INT],
-	@PP_K_USUARIO_ACCION				[INT],
-	-- ===========================	
-	@PP_ITEM							[INT],
-	@PP_K_TIPO_INSPECCION_MATERIAL		[INT],
-	-- ============================	
-	@OU_RESULTADO_VALIDACION			[VARCHAR] (200)		OUTPUT
-AS
-
-	DECLARE @VP_RESULTADO	VARCHAR(300)
-	
-	SET		@VP_RESULTADO	= ''
-		
-	-- ///////////////////////////////////////////
-
-	IF @VP_RESULTADO=''
-		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_TEST_RESULT_EXISTE]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
-																		@PP_ITEM, @PP_K_TIPO_INSPECCION_MATERIAL,
-																		@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
-	-- ///////////////////////////////////////////
-	
-	IF	@VP_RESULTADO<>''
-		SET	@VP_RESULTADO = @VP_RESULTADO + ' //INS//'
-	
-	-- ///////////////////////////////////////////
-		
-	SET @OU_RESULTADO_VALIDACION = @VP_RESULTADO
-
-	-- /////////////////////////////////////////////////////
-GO
-
-
-
-
-
--- //////////////////////////////////////////////////////////////
--- // STORED PROCEDURE ---> VALIDACION UPDATE
--- //////////////////////////////////////////////////////////////
-
-
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_INSPECCION_MATERIAL_UPDATE]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_UPDATE]
-GO
-
-
-CREATE PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_UPDATE]
-	@PP_K_SISTEMA_EXE					[INT],
-	@PP_K_USUARIO_ACCION				[INT],
-	-- ===========================		
-	@PP_ITEM							[INT],
-	@PP_K_INSPECCION_MATERIAL			[INT],
-	-- ============================	
-	@OU_RESULTADO_VALIDACION			[VARCHAR] (200)		OUTPUT
-AS
-
-	DECLARE @VP_RESULTADO	VARCHAR(300)
-	
-	SET		@VP_RESULTADO	= ''
-		
-	-- ///////////////////////////////////////////
-	IF @VP_RESULTADO=''
-		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_EXISTE_EN_ORDEN]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
-																	@PP_ITEM, @PP_K_INSPECCION_MATERIAL,
-																	@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
-	
-	-- //////////////////////////////////////
-
-	IF	@VP_RESULTADO<>''
-		SET	@VP_RESULTADO = @VP_RESULTADO + ' //UPD//'
-	
-	-- ///////////////////////////////////////////
-		
-	SET @OU_RESULTADO_VALIDACION = @VP_RESULTADO
-
-	-- /////////////////////////////////////////////////////
-GO
-
-
-
-
-
-
--- //////////////////////////////////////////////////////////////
--- // STORED PROCEDURE ---> VALIDACION DELETE
--- //////////////////////////////////////////////////////////////
-
-
---IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_INSPECCION_MATERIAL_DELETE]') AND type in (N'P', N'PC'))
---	DROP PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_DELETE]
---GO
-
-
---CREATE PROCEDURE [dbo].[PG_RN_INSPECCION_MATERIAL_DELETE]
---	@PP_K_SISTEMA_EXE					[INT],
---	@PP_K_USUARIO_ACCION				[INT],
---	-- ===========================		
---	@PP_K_INSPECCION_MATERIAL							[INT],	
---	-- ===========================		
---	@OU_RESULTADO_VALIDACION			[VARCHAR] (200)		OUTPUT
---AS
-
---	DECLARE @VP_RESULTADO	VARCHAR(300)
-	
---	SET		@VP_RESULTADO	= ''
-		
---	-- ///////////////////////////////////////////
-
---	--IF @VP_RESULTADO=''
---	--	EXECUTE [dbo].[PG_RN_DATA_ACCESO_DELETE]		@PP_L_DEBUG, @PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,	
---	--													1, -- @PP_K_DATA_SISTEMA,	
---	--													@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
---	-- ///////////////////////////////////////////
-
---	IF @VP_RESULTADO=''
---		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_EXISTE]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
---															@PP_K_INSPECCION_MATERIAL,	 
---															@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
---	-- ///////////////////////////////////////////
-
---	IF @VP_RESULTADO=''
---		EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_ES_BORRABLE]	 @PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
---															@PP_K_INSPECCION_MATERIAL,	 
---															@OU_RESULTADO_VALIDACION = @VP_RESULTADO		OUTPUT
---	-- ///////////////////////////////////////////
-
---	IF	@VP_RESULTADO<>''
---		SET	@VP_RESULTADO = @VP_RESULTADO + ' //DEL//'
-	
---	-- ///////////////////////////////////////////
-		
---	SET @OU_RESULTADO_VALIDACION = @VP_RESULTADO
-
---	-- /////////////////////////////////////////////////////
---GO
-
 
 
 -- ////////////////////////////////////////////////////////////////////////////////////////////////////////////

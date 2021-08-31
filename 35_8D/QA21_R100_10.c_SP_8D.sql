@@ -34,28 +34,35 @@ CREATE PROCEDURE [dbo].[PG_LI_8D]
 AS
 	
 	-- ///////////////////////////////////////////
-	SELECT	[K_8D],				
+	SELECT	[8D].[K_8D],				
 			-- =================
+			[K_8D_PEARL],		
 			[K_8D_CUSTOMER],		
 			[K_RMA],				
 			[K_ESTATUS_8D],		
 			-- =================
-			CASE WHEN [EXTERNAL_FORMAT] = 0 THEN 'NO' ELSE 'SI' END AS FORMAT_EXTERNAL,	
+			( CASE WHEN [EXTERNAL_FORMAT] = 0 THEN 'NO' 
+				ELSE 'SI' END ) AS FORMAT_EXTERNAL,	
 			-- =================
-			[TITLE],				
+			( CASE WHEN [EXTERNAL_FORMAT] = 0 THEN [TITLE]
+				ELSE CONCAT([RUTA], [NOMBRE_ARCHIVO]) END) AS [TITLE],				
 			[PRODUCT_PROCESS],		
 			[DATE_OPENED],		
 			[LAST_UPDATE],		
 			[DUE_DATE],			
-			[DATE_CLOSED],
+			-- =============================
+			( CASE WHEN [DATE_CLOSED] IS NULL THEN 'N/A'
+				ELSE CONVERT(VARCHAR(10), [DATE_CLOSED]) END ) AS [DATE_CLOSED],
+			-- =============================
 			D_USUARIO_PEARL
 			-- =============================
 	FROM	[8D] (NOLOCK)
 	INNER JOIN  BD_GENERAL.DBO.USUARIO_PEARL (NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL = [8D].[K_USUARIO_ALTA]
+	LEFT JOIN [EXTERNAL_8D] (NOLOCK) ON [EXTERNAL_8D].K_8D = [8D].K_8D
 	-- =============================
-	WHERE 	( [K_8D_CUSTOMER]				LIKE '%'+@PP_BUSCAR+'%'
-				OR	[TITLE]					LIKE '%'+@PP_BUSCAR+'%'
-				OR	[PRODUCT_PROCESS]		LIKE '%'+@PP_BUSCAR+'%' )
+	WHERE 	( [K_RMA]					LIKE '%'+@PP_BUSCAR+'%'
+			OR	[TITLE]					LIKE '%'+@PP_BUSCAR+'%'
+			OR	[PRODUCT_PROCESS]		LIKE '%'+@PP_BUSCAR+'%' )
 	-- =============================
 	AND		( [DATE_OPENED] = CASE WHEN @PP_DATE = '' THEN [DATE_OPENED]		ELSE	 @PP_DATE END
 				OR	[LAST_UPDATE] = CASE WHEN @PP_DATE = '' THEN [LAST_UPDATE]	ELSE	 @PP_DATE END
@@ -94,6 +101,7 @@ AS
 	-- ///////////////////////////////////////////
 	SELECT	[K_8D],				
 			-- =================
+			[K_8D_PEARL],
 			[K_8D_CUSTOMER],		
 			[K_RMA],				
 			[K_ESTATUS_8D],		
@@ -105,7 +113,8 @@ AS
 			[DATE_OPENED],		
 			[LAST_UPDATE],		
 			[DUE_DATE],			
-			[DATE_CLOSED],
+			( CASE WHEN [DATE_CLOSED] IS NULL THEN 'N/A'
+				ELSE CONVERT(VARCHAR(10), [DATE_CLOSED]) END ) AS [DATE_CLOSED],
 			D_USUARIO_PEARL
 			-- =============================
 	FROM	[8D] (NOLOCK)
@@ -113,6 +122,42 @@ AS
 	-- =============================
 	WHERE 	[8D].K_8D = @PP_K_8D
 	AND K_ESTATUS_8D = 1 -- ACTIVA
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / FICHA
+-- //////////////////////////////////////////////////////////////
+
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_8D_RMA]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_SK_8D_RMA]
+GO
+
+/*
+ EXEC	[dbo].[PG_SK_8D_RMA] 0,144,1
+*/
+
+CREATE PROCEDURE [dbo].[PG_SK_8D_RMA]
+	@PP_K_SISTEMA_EXE		INT,
+	@PP_K_USUARIO_ACCION	INT,
+	-- ===========================
+	@PP_K_RMA				INT
+AS
+
+	-- ///////////////////////////////////////////
+	DECLARE @VP_K_RMA INT = 0
+	SELECT	@VP_K_RMA = K_RMA
+	FROM	[8D] (NOLOCK)
+	-- =============================
+	WHERE 	[8D].K_RMA = @PP_K_RMA
+
+	IF @VP_K_RMA IS NULL
+		SET @VP_K_RMA = 0
+
+	SELECT @VP_K_RMA AS K_RMA
 	-- ////////////////////////////////////////////////
 	-- ////////////////////////////////////////////////
 GO
@@ -141,7 +186,7 @@ AS
 	-- ///////////////////////////////////////////
 	SELECT	[K_EXTERNAL_8D],
 			-- ==============
-			[K_8D],				
+			[K_8D],			
 			-- =============	
 			[RUTA],			
 			[NOMBRE_ARCHIVO]		
@@ -164,10 +209,9 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_
 	DROP PROCEDURE [dbo].[PG_IN_UP_8D]
 GO
 /*
- EXECUTE [PG_IN_UP_8D] 0,144, 0 , '' , 0 , 1 , '' , '' , '2019/10/01' , '2019/10/01' , '2019/10/01' , '2019/10/01' , 'C:\Users\Francisco Esteban\Desktop\SERIAL REPETIDO.xlsx' , 'SERIAL REPETIDO.xlsx' 
- EXECUTE [PG_IN_UP_8D] 0,144, 0 , '' , 0 , 1 , '' , '' , '2019/10/01' , '2019/10/01' , '2019/10/01' , '2019/10/01' , '\\10.1.1.5\documents\Quality\8D POR SISTEMA\TEST.txt' , 'TEST.txt' 
-  EXECUTE [PG_IN_UP_8D] 0,144, 0 , '' , 0 , 1 , '' , '' , '' , '' , '' , '' , 'INSPECCION_PIEL_450321.pdf' 
-*/
+ EXECUTE [PG_IN_UP_8D] 0,144, 0 , '' , 0 , 1 , '' , '' , '2021/08/31' , '2021/08/31' , '2021/08/31' , 'IT_DEV_QC_8D.pptx' 
+ 
+ */
 CREATE PROCEDURE [dbo].[PG_IN_UP_8D]
 	@PP_K_SISTEMA_EXE					INT,
 	@PP_K_USUARIO_ACCION				INT,
@@ -183,7 +227,7 @@ CREATE PROCEDURE [dbo].[PG_IN_UP_8D]
 	@PP_DATE_OPENED						DATE,
 	@PP_LAST_UPDATE						DATE,
 	@PP_DUE_DATE						DATE,
-	@PP_DATE_CLOSED						DATE,
+	--@PP_DATE_CLOSED						DATE,
 	-- =================							
 	@PP_NOMBRE_ARCHIVO					VARCHAR(255)	
 	--- =================
@@ -192,10 +236,9 @@ AS
 	DECLARE @VP_MENSAJE		VARCHAR(255) = ''
 
 	-- // SECCION#1 /////////////////////////////////////////////////////////// VALIDACIONES + REGLAS DE NEGOCIO 	
-	--IF @PP_K_TIPO_INSPECCION_MATERIAL IN (4, 5, 6, 7, 8)	-- ESTE TIPO DE INSPECCION SOLO SE PUEDEN AGREGAR UNA VEZ AL # PARTE
-	--	EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_INSERT]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
-	--														@PP_K_ITEM, @PP_K_TIPO_INSPECCION_MATERIAL,
-	--														@OU_RESULTADO_VALIDACION = @VP_MENSAJE		OUTPUT
+	EXECUTE [dbo].[PG_RN_8D_VALIDAR_FECHA]		@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
+												@PP_DATE_OPENED, @PP_LAST_UPDATE, @PP_DUE_DATE,
+												@OU_RESULTADO_VALIDACION = @VP_MENSAJE		OUTPUT
 
 	-- // SECCION#2 ////////////////////////////////////////////////////////// ACCION A REALIZAR
 	IF @VP_MENSAJE=''
@@ -204,21 +247,55 @@ AS
 			BEGIN TRY
 				IF @PP_K_8D = 0
 					BEGIN
+						-- ///////SE OBTIENE EL NUEVO CONSECUTIVO DE LA 8D///////////////////////////////////////////////////////
 						EXECUTE BD_GENERAL.dbo.[PG_SK_CATALOGO_K_MAX_GET]	@PP_K_SISTEMA_EXE,
 																			--'DATA_02PRUEBAS', 
 																			'DATA_02', 
 																			'[8D]', '[K_8D]',
 																			@OU_K_TABLA_DISPONIBLE = @PP_K_8D	OUTPUT
+
+						-- ///////SE ASIGNAN LAS FECHAS ACTUALES CUANDO ES UN FORMATO EXTERNO///////////////////////////////////////////////////////
 						IF @PP_EXTERNAL_FORMAT = 1 
 							BEGIN
 								SET @PP_DATE_OPENED	= GETDATE()
 								SET @PP_LAST_UPDATE	= GETDATE()
 							END
 
+						-- ///////SE OBTIENE EL IDENTIFICAR DE LA 8D INTERNO///////////////////////////////////////////////////////
+						DECLARE @VP_N_8D				INT = 0
+						DECLARE @VP_DATE				DATE = GETDATE()						
+						DECLARE @VP_8D_INTERNO_NUEVO	VARCHAR(50) = ''
+
+						SELECT @VP_N_8D = COUNT(K_8D)
+						FROM	[8D]
+						WHERE	K_ESTATUS_8D = 1 -- ACTIVO
+						AND		CONVERT(DATE, F_ALTA) = @VP_DATE
+
+						IF @VP_N_8D IS NULL OR @VP_N_8D = 0
+							BEGIN
+								SET @VP_8D_INTERNO_NUEVO = CONCAT('8D', FORMAT(GETDATE(),'MMddyy'), '-', '1' )								
+							END
+						ELSE
+							BEGIN
+								DECLARE @VP_8D_INTERNO_ULTIMO	VARCHAR(50) = ''
+								SELECT TOP 1 @VP_8D_INTERNO_ULTIMO = [K_8D_PEARL]
+								FROM	[8D]
+								WHERE	K_ESTATUS_8D = 1 -- ACTIVO
+								AND		CONVERT(DATE, F_ALTA) = @VP_DATE
+								ORDER BY CONVERT(INT, SUBSTRING([K_8D_PEARL], 10, 3 )) DESC
+
+								DECLARE @VP_CONSECUTIVO INT = CONVERT(INT, SUBSTRING(@VP_8D_INTERNO_ULTIMO, 10, 3 ))
+								SET @VP_CONSECUTIVO = @VP_CONSECUTIVO + 1
+
+								SET @VP_8D_INTERNO_NUEVO = CONCAT('8D', FORMAT(GETDATE(),'MMddyy'), '-', CONVERT(VARCHAR(5), @VP_CONSECUTIVO) )	
+								SET @VP_8D_INTERNO_NUEVO = LTRIM(RTRIM(@VP_8D_INTERNO_NUEVO))
+							END
+
 						-- ///////SE INSERTA EL ENCABEZADO DEL 8D///////////////////////////////////////////////////////
 						INSERT INTO [8D]
 							(	[K_8D],			
 								-- =================
+								[K_8D_PEARL],
 								[K_8D_CUSTOMER],		
 								[K_RMA],			
 								-- =================
@@ -229,12 +306,14 @@ AS
 								[DATE_OPENED],		
 								[LAST_UPDATE],		
 								[DUE_DATE],		
-								[DATE_CLOSED],
+								--[DATE_CLOSED],
 								-- ===========================
 								[K_USUARIO_ALTA], [F_ALTA], [K_USUARIO_CAMBIO], [F_CAMBIO],
 								[L_BORRADO], [K_USUARIO_BAJA], [F_BAJA]  )
 						VALUES	
-							(	@PP_K_8D,			
+							(	@PP_K_8D,	
+							-- =================
+								@VP_8D_INTERNO_NUEVO,		
 								@PP_K_8D_CUSTOMER,
 								@PP_K_RMA,
 								-- =================
@@ -245,7 +324,7 @@ AS
 								@PP_DATE_OPENED,
 								@PP_LAST_UPDATE,	
 								@PP_DUE_DATE,	
-								@PP_DATE_CLOSED,
+								--@PP_DATE_CLOSED,
 								-- ===========================
 								@PP_K_USUARIO_ACCION, GETDATE(), @PP_K_USUARIO_ACCION, GETDATE(),
 								0, NULL, NULL )
@@ -308,7 +387,7 @@ AS
 								[DATE_OPENED]		= @PP_DATE_OPENED,		
 								[LAST_UPDATE]		= @PP_LAST_UPDATE,		
 								[DUE_DATE]			= @PP_DUE_DATE,		
-								[DATE_CLOSED]		= @PP_DATE_CLOSED,
+								--[DATE_CLOSED]		= @PP_DATE_CLOSED,
 								-- ===========================
 								[K_USUARIO_CAMBIO]	= @PP_K_USUARIO_ACCION, 
 								[F_CAMBIO]			=  GETDATE()							

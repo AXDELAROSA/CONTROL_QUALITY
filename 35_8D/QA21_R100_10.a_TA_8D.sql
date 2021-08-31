@@ -125,6 +125,7 @@ SET NOCOUNT OFF
 CREATE TABLE [dbo].[8D] (
 	[K_8D]				[INT]			NOT NULL,
 	-- =================================
+	[K_8D_PEARL]		VARCHAR(50)		NOT NULL,
 	[K_8D_CUSTOMER]		VARCHAR(150)	DEFAULT '',
 	[K_RMA]				[INT]			DEFAULT 0,
 	[K_ESTATUS_8D]		[INT]			DEFAULT 1,
