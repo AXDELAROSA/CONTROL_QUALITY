@@ -139,31 +139,26 @@ GO
 -- //////////////////////////////////////////////////////////////
 
 -- USE DATA_02
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_UP_8D_SYMPTOM_ACTION]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_IN_UP_8D_SYMPTOM_ACTION]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_UP_8D_SYMPTOM]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_IN_UP_8D_SYMPTOM]
 GO
 /*
- EXECUTE [PG_IN_UP_8D_SYMPTOM_ACTION] 0,144, 0 , '' , 0 , 1 , '' , '' , '2019/10/01' , '2019/10/01' , '2019/10/01' , '2019/10/01' , 'C:\Users\Francisco Esteban\Desktop\SERIAL REPETIDO.xlsx' , 'SERIAL REPETIDO.xlsx' 
+ EXECUTE [PG_IN_UP_8D_SYMPTOM] 0,144, 0 , '' , 0 , 1 , '' , '' , '2019/10/01' , '2019/10/01' , '2019/10/01' , '2019/10/01' , 'C:\Users\Francisco Esteban\Desktop\SERIAL REPETIDO.xlsx' , 'SERIAL REPETIDO.xlsx' 
 
 */
-CREATE PROCEDURE [dbo].[PG_IN_UP_8D_SYMPTOM_ACTION]
+CREATE PROCEDURE [dbo].[PG_IN_UP_8D_SYMPTOM]
 	@PP_K_SISTEMA_EXE					INT,
 	@PP_K_USUARIO_ACCION				INT,
 	-- ===========================	
 	@PP_K_8D							INT,
-	@PP_K_SYMPTOM_ACTION				INT,
 	-- ============================		
-	@PP_SYMPTOM							VARCHAR(MAX),
-	-- ============================		
-	@PP_ACCION							VARCHAR(MAX),	
-	@PP_PORCENTAJE						INT	
+	@PP_SYMPTOM							VARCHAR(MAX)
 	--- =================
 AS			
 	
 	DECLARE @VP_MENSAJE		VARCHAR(255) = ''
 
 	-- // SECCION#1 /////////////////////////////////////////////////////////// VALIDACIONES + REGLAS DE NEGOCIO 	
-	--IF @PP_K_TIPO_INSPECCION_MATERIAL IN (4, 5, 6, 7, 8)	-- ESTE TIPO DE INSPECCION SOLO SE PUEDEN AGREGAR UNA VEZ AL # PARTE
 	--	EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_INSERT]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
 	--														@PP_K_ITEM, @PP_K_TIPO_INSPECCION_MATERIAL,
 	--														@OU_RESULTADO_VALIDACION = @VP_MENSAJE		OUTPUT
@@ -179,10 +174,7 @@ AS
 				FROM [8D_SYMPTOM]
 				WHERE K_8D = @PP_K_8D
 
-				IF @VP_N_8_SYMPTOM IS NULL
-					SET @VP_N_8_SYMPTOM = 0
-
-				IF @VP_N_8_SYMPTOM = 0
+				IF ( @VP_N_8_SYMPTOM IS NULL OR @VP_N_8_SYMPTOM = 0 )
 					BEGIN
 						-- ///////SE INSERTA O ACTUALIZA EL SINTOMA DE LA 8D///////////////////////////////////////////////////////
 						INSERT INTO [8D_SYMPTOM]
@@ -215,6 +207,73 @@ AS
 							RAISERROR ('ERROR: No fue posible Actualizar el sintoma a la [8D].', 16, 1 ) --MENSAJE - Severity -State.
 					END					
 
+			-- //////////////////////////////////////////////////////////////
+			COMMIT TRANSACTION 
+			END TRY
+	
+			BEGIN CATCH
+				/* Ocurrió un error, deshacemos los cambios*/ 
+				ROLLBACK TRANSACTION
+				DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
+				SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
+				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_IN_UP_8D_SYMPTOM // ' + @VP_ERROR_TRANS
+			END CATCH
+				
+		END
+
+	-- // SECCION#3 ////////////////////////////////////////////////////////// MENSAJE DE SALIDA
+	IF @VP_MENSAJE<>''
+		BEGIN
+			SET		@VP_MENSAJE = 'No es posible [AGREGAR] el sintoma para la [8D]: ' + @VP_MENSAJE 
+			SET		@VP_MENSAJE = @VP_MENSAJE + ' ( '
+			SET		@VP_MENSAJE = @VP_MENSAJE + '[#8D.'+CONVERT(VARCHAR(10),@PP_K_8D)+']'
+			SET		@VP_MENSAJE = @VP_MENSAJE + ' )'
+		END
+	
+	SELECT	@VP_MENSAJE AS MENSAJE, @PP_K_8D AS CLAVE
+
+	-- //////////////////////////////////////////////////////////////
+GO
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> INSERT
+-- //////////////////////////////////////////////////////////////
+
+-- USE DATA_02
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_UP_8D_SYMPTOM_ACTION]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_IN_UP_8D_SYMPTOM_ACTION]
+GO
+/*
+ EXECUTE [PG_IN_UP_8D_SYMPTOM_ACTION] 0,144, 0 , '' , 0 , 1 , '' , '' , '2019/10/01' , '2019/10/01' , '2019/10/01' , '2019/10/01' , 'C:\Users\Francisco Esteban\Desktop\SERIAL REPETIDO.xlsx' , 'SERIAL REPETIDO.xlsx' 
+
+*/
+CREATE PROCEDURE [dbo].[PG_IN_UP_8D_SYMPTOM_ACTION]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================	
+	@PP_K_8D							INT,
+	@PP_K_SYMPTOM_ACTION				INT,
+	-- ============================		
+	@PP_ACCION							VARCHAR(MAX),	
+	@PP_PORCENTAJE						INT	
+	--- =================
+AS			
+	
+	DECLARE @VP_MENSAJE		VARCHAR(255) = ''
+
+	-- // SECCION#1 /////////////////////////////////////////////////////////// VALIDACIONES + REGLAS DE NEGOCIO 	
+	--	EXECUTE [dbo].[PG_RN_INSPECCION_MATERIAL_INSERT]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
+	--														@PP_K_ITEM, @PP_K_TIPO_INSPECCION_MATERIAL,
+	--														@OU_RESULTADO_VALIDACION = @VP_MENSAJE		OUTPUT
+
+	-- // SECCION#2 ////////////////////////////////////////////////////////// ACCION A REALIZAR
+	IF @VP_MENSAJE=''
+		BEGIN
+			BEGIN TRANSACTION 
+			BEGIN TRY
 				IF @PP_K_SYMPTOM_ACTION = 0
 					BEGIN
 						-- ///////SE INSERTA LA ACCION PARA SINTOMA DE LA 8D///////////////////////////////////////////////////////

@@ -12,13 +12,6 @@
 USE [DATA_02]
 GO
 
--- //////////////////////////////////////////////////////////////
-
-
--- //////////////////////////////////////////////////////////////
-
-
-
 
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> RN_BORRABLE
@@ -40,17 +33,61 @@ CREATE PROCEDURE [dbo].[PG_RN_8D_VALIDAR_FECHA]
 	@OU_RESULTADO_VALIDACION		[VARCHAR] (200)		OUTPUT
 AS
 
-	DECLARE @VP_RESULTADO	VARCHAR(300)
+	DECLARE @VP_RESULTADO	VARCHAR(300) = ''
 	
-	SET		@VP_RESULTADO	= ''
-		
 	-- /////////////////////////////////////////////////////
-	IF @PP_DATE_OPENED > @PP_LAST_UPDATE
-		SET @VP_RESULTADO = 'La fecha de Actualización no puede ser menor a la fecha de creación.'
+	DECLARE @VP_F_ACTUAL DATE = GETDATE()
+
+	IF @PP_DATE_OPENED > @VP_F_ACTUAL
+		SET @VP_RESULTADO = 'La fecha de Apertura no puede ser mayor a la fecha Actual.'
+
+	IF @VP_RESULTADO = ''
+		IF @PP_DATE_OPENED > @PP_LAST_UPDATE
+			SET @VP_RESULTADO = 'La fecha de Actualización no puede ser menor a la fecha de creación.'
 
 	IF @VP_RESULTADO = ''
 		IF @PP_DATE_OPENED > @PP_DUE_DATE 
 			SET @VP_RESULTADO = 'La fecha de Vencimiento no puede ser menor a la fecha de creación'
+	-- /////////////////////////////////////////////////////
+	
+	SET @OU_RESULTADO_VALIDACION = @VP_RESULTADO
+
+	-- /////////////////////////////////////////////////////
+GO
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> RN_BORRABLE
+-- //////////////////////////////////////////////////////////////
+
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_RN_8D_VALIDAR_FECHA_CLOSED]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_RN_8D_VALIDAR_FECHA_CLOSED]
+GO
+
+
+CREATE PROCEDURE [dbo].[PG_RN_8D_VALIDAR_FECHA_CLOSED]
+	@PP_K_SISTEMA_EXE				[INT],
+	@PP_K_USUARIO_ACCION			[INT],
+	-- ===========================		
+	@PP_K_8D						[INT],
+	@PP_F_CLOSED					[DATE],
+	-- ============================	
+	@OU_RESULTADO_VALIDACION		[VARCHAR] (200)		OUTPUT
+AS
+
+	DECLARE @VP_RESULTADO	VARCHAR(300) = ''
+		
+	-- /////////////////////////////////////////////////////
+	DECLARE @VP_F_OPENED	DATE
+	SELECT @VP_F_OPENED = [DATE_OPENED]
+	FROM [8D] (NOLOCK)
+	WHERE K_8D = @PP_K_8D
+	
+	IF @VP_F_OPENED > @PP_F_CLOSED
+		SET @VP_RESULTADO = 'La fecha de Cierre no puede ser menor a la fecha de creación.'
+
 	-- /////////////////////////////////////////////////////
 	
 	SET @OU_RESULTADO_VALIDACION = @VP_RESULTADO

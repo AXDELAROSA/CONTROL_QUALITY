@@ -12,6 +12,8 @@
 USE [DATA_02]
 GO
 
+
+
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> SELECT / LISTADO
 -- //////////////////////////////////////////////////////////////
@@ -52,7 +54,7 @@ AS
 			[DUE_DATE],			
 			-- =============================
 			( CASE WHEN [DATE_CLOSED] IS NULL THEN 'N/A'
-				ELSE CONVERT(VARCHAR(10), [DATE_CLOSED]) END ) AS [DATE_CLOSED],
+				ELSE  CONVERT(VARCHAR(10),[DATE_CLOSED], 105)  END ) AS [DATE_CLOSED],
 			-- =============================
 			D_USUARIO_PEARL
 			-- =============================
@@ -88,7 +90,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_
 GO
 
 /*
- EXEC	[dbo].[PG_SK_8D] 0,144,1
+ EXEC	[dbo].[PG_SK_8D] 0,144,2
 */
 
 CREATE PROCEDURE [dbo].[PG_SK_8D]
@@ -114,7 +116,7 @@ AS
 			[LAST_UPDATE],		
 			[DUE_DATE],			
 			( CASE WHEN [DATE_CLOSED] IS NULL THEN 'N/A'
-				ELSE CONVERT(VARCHAR(10), [DATE_CLOSED]) END ) AS [DATE_CLOSED],
+				ELSE  CONVERT(VARCHAR(10),[DATE_CLOSED], 105)  END ) AS [DATE_CLOSED],
 			D_USUARIO_PEARL
 			-- =============================
 	FROM	[8D] (NOLOCK)

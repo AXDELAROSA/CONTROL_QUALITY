@@ -16,6 +16,10 @@ GO
 -- // DROPs
 -- //////////////////////////////////////////////////////////////
 
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[8D_ROOT_CAUSE_ISHIKAWA_EVIDENCE]') AND type in (N'U'))
+	DROP TABLE [dbo].[8D_ROOT_CAUSE_ISHIKAWA_EVIDENCE]
+GO
+
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[8D_ROOT_CAUSE]') AND type in (N'U'))
 	DROP TABLE [dbo].[8D_ROOT_CAUSE]
 GO
@@ -118,6 +122,12 @@ EXECUTE [dbo].[PG_CI_TIPO_ROOT_CAUSE_8D] 0, 0, 4, 'WHY_4',			'WHY_4', 4, '', 1
 EXECUTE [dbo].[PG_CI_TIPO_ROOT_CAUSE_8D] 0, 0, 5, 'WHY_5',			'WHY_5', 5, '', 1
 EXECUTE [dbo].[PG_CI_TIPO_ROOT_CAUSE_8D] 0, 0, 6, 'CAUSE',			'CAUSE', 6, '', 1
 EXECUTE [dbo].[PG_CI_TIPO_ROOT_CAUSE_8D] 0, 0, 7, 'CONTRIBUTION',	'CONTRIB', 7, '', 1
+EXECUTE [dbo].[PG_CI_TIPO_ROOT_CAUSE_8D] 0, 0, 8, 'CAUS_ISH_1',		'CAUS_ISH_1', 8, '', 1
+EXECUTE [dbo].[PG_CI_TIPO_ROOT_CAUSE_8D] 0, 0, 9, 'CAUS_ISH_2',		'CAUS_ISH_2', 9, '', 1
+EXECUTE [dbo].[PG_CI_TIPO_ROOT_CAUSE_8D] 0, 0, 10, 'CAUS_ISH_3',	'CAUS_ISH_3', 10, '', 1
+EXECUTE [dbo].[PG_CI_TIPO_ROOT_CAUSE_8D] 0, 0, 11, 'VAL_ISH_1',		'VAL_ISH_1', 11, '', 1
+EXECUTE [dbo].[PG_CI_TIPO_ROOT_CAUSE_8D] 0, 0, 12, 'VAL_ISH_2',		'VAL_ISH_2', 12, '', 1
+EXECUTE [dbo].[PG_CI_TIPO_ROOT_CAUSE_8D] 0, 0, 13, 'VAL_ISH_3',		'VAL_ISH_3', 13, '', 1
 GO-- ===============================================
 SET NOCOUNT OFF
 -- ===============================================
@@ -207,6 +217,7 @@ SET NOCOUNT ON
 EXECUTE [dbo].[PG_CI_CLASIFICACION_ROOT_CAUSE_8D] 0, 0, 1, 'IDEA',			'IDEA', 1, '', 1
 EXECUTE [dbo].[PG_CI_CLASIFICACION_ROOT_CAUSE_8D] 0, 0, 2, 'DETECTION',		'DETECTION', 2, '', 1
 EXECUTE [dbo].[PG_CI_CLASIFICACION_ROOT_CAUSE_8D] 0, 0, 3, 'SYSTEMATIC',	'SYSTEMATIC', 3, '', 1
+EXECUTE [dbo].[PG_CI_CLASIFICACION_ROOT_CAUSE_8D] 0, 0, 4, 'ISHIKAWA',		'ISHIKAWA', 4, '', 1
 GO-- ===============================================
 SET NOCOUNT OFF
 -- ===============================================
@@ -244,6 +255,37 @@ ALTER TABLE [dbo].[8D_ROOT_CAUSE]
 GO
 
 
+
+-- //////////////////////////////////////////////////////////////
+-- // [8D_ROOT_CAUSE_ISHIKAWA_EVIDENCE]
+-- //////////////////////////////////////////////////////////////
+CREATE TABLE [dbo].[8D_ROOT_CAUSE_ISHIKAWA_EVIDENCE] (
+	[K_8D_ROOT_CAUSE_ISHIKAWA_EVIDENCE]		[INT]			IDENTITY(1,1),
+	-- =================================
+	[K_8D]									[INT]			NOT NULL,
+	-- =================================
+	[RUTA]									VARCHAR(255)	NOT NULL,
+	[NOMBRE_ARCHIVO]						VARCHAR(255)	NOT NULL,
+	[TIPO_ARCHIVO]							VARCHAR(50)		NOT NULL	
+)ON [PRIMARY]	
+GO
+
+-- //////////////////////////////////////////////////////
+ALTER TABLE [dbo].[8D_ROOT_CAUSE_ISHIKAWA_EVIDENCE]
+	ADD CONSTRAINT [PK_8D_ROOT_CAUSE_ISHIKAWA_EVIDENCEE]
+		PRIMARY KEY CLUSTERED ([K_8D_ROOT_CAUSE_ISHIKAWA_EVIDENCE])
+GO
+
+-- //////////////////////////////////////////////////////
+ALTER TABLE [dbo].[8D_ROOT_CAUSE_ISHIKAWA_EVIDENCE] 
+	ADD		[K_USUARIO_ALTA]				[INT]		NOT NULL,
+			[F_ALTA]						[DATETIME]	NOT NULL,
+			[K_USUARIO_CAMBIO]				[INT]		NOT NULL,
+			[F_CAMBIO]						[DATETIME]	NOT NULL,
+			[L_BORRADO]						[INT]		NOT NULL,
+			[K_USUARIO_BAJA]				[INT]		NULL,
+			[F_BAJA]						[DATETIME]	NULL;
+GO
 -- //////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////
