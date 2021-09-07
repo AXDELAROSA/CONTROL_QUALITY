@@ -63,64 +63,10 @@ AS
 	AND Trans_perfo.transaccion = 'rechazar'  
 	-- =============================
 	ORDER BY Trans_perfo.fecha, Trans_perfo.hora DESC
-	-- =============================
-
-	
+		
 	-- ////////////////////////////////////////////////
 	-- ////////////////////////////////////////////////
 GO
-
-
-
-
--- //////////////////////////////////////////////////////////////
--- // STORED PROCEDURE ---> SELECT / FICHA
--- //////////////////////////////////////////////////////////////
-
---IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_8D]') AND type in (N'P', N'PC'))
---	DROP PROCEDURE [dbo].[PG_SK_8D]
---GO
-
---/*
--- EXEC	[dbo].[PG_SK_8D] 0,144,2
---*/
-
---CREATE PROCEDURE [dbo].[PG_SK_8D]
---	@PP_K_SISTEMA_EXE		INT,
---	@PP_K_USUARIO_ACCION	INT,
---	-- ===========================
---	@PP_K_8D				INT
---AS
-
---	-- ///////////////////////////////////////////
---	SELECT	[K_8D],				
---			-- =================
---			[K_8D_PEARL],
---			[K_8D_CUSTOMER],		
---			[K_RMA],				
---			[K_ESTATUS_8D],		
---			-- =================
---			[EXTERNAL_FORMAT],	
---			-- =================
---			[TITLE],				
---			[PRODUCT_PROCESS],		
---			[DATE_OPENED],		
---			[LAST_UPDATE],		
---			[DUE_DATE],			
---			( CASE WHEN [DATE_CLOSED] IS NULL THEN 'N/A'
---				ELSE  CONVERT(VARCHAR(10),[DATE_CLOSED], 105)  END ) AS [DATE_CLOSED],
---			D_USUARIO_PEARL
---			-- =============================
---	FROM	[8D] (NOLOCK)
---	INNER JOIN  BD_GENERAL.DBO.USUARIO_PEARL (NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL = [8D].[K_USUARIO_ALTA]
---	-- =============================
---	WHERE 	[8D].K_8D = @PP_K_8D
---	AND K_ESTATUS_8D = 1 -- ACTIVA
---	-- ////////////////////////////////////////////////
---	-- ////////////////////////////////////////////////
---GO
-
-
 
 
 -- //////////////////////////////////////////////////////////////

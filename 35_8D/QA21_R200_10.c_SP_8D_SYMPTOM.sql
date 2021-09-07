@@ -21,7 +21,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_
 GO
 
 /*
- EXEC	[dbo].[PG_SK_8D_SYMPTOM] 0,0,  1
+ EXEC	[dbo].[PG_SK_8D_SYMPTOM] 0,0,  2
 */
 
 CREATE PROCEDURE [dbo].[PG_SK_8D_SYMPTOM]
@@ -61,7 +61,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_
 GO
 
 /*
- EXEC	[dbo].[PG_SK_8D_SYMPTOM_ACTION] 0,144,1
+ EXEC	[dbo].[PG_SK_8D_SYMPTOM_ACTION] 0,144,2
 */
 
 CREATE PROCEDURE [dbo].[PG_SK_8D_SYMPTOM_ACTION]
