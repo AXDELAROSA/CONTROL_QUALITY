@@ -23,7 +23,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_
 GO
 
 /*
- EXEC	[dbo].[PG_LI_CERTIFICACION_REPORT_X_FECHA] 0,0, '2021-09-01', '2021-09-22'
+ EXEC	[dbo].[PG_LI_CERTIFICACION_REPORT_X_FECHA] 0,0, '2021-09-01', '2021-09-13'
 */
 
 CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_REPORT_X_FECHA]
@@ -34,18 +34,32 @@ CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_REPORT_X_FECHA]
 	@PP_F_FIN							DATE
 AS
 
-	-- ///////////////////////////////////////////	
-	DECLARE @VP_F_INICIAL_INT INT = DATA_02.[dbo].[CONVERT_DATE_TO_INT](@PP_F_INICIAL, 'yyyyMMdd')
-	DECLARE @VP_F_FIN_INT INT = DATA_02.[dbo].[CONVERT_DATE_TO_INT](@PP_F_FIN, 'yyyyMMdd')
+	-- /////////SE CREA TABLA TEMPORAL PARA LOS DATOS DE CERTIFICACION//////////////
+	DECLARE @VP_TBL_CERTIFICACION TABLE(
+		FECHA		DATE,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
 
-	-- ///////////////////////////////////////////
-	SELECT	[sello_paq], [no_parte], [programa], [orden], [mesa], [paquetes], [piezas_set], 
-			[defecto1], [cant1], [defecto2], [cant2], [defecto3], [cant3], [fecha], [turno], 
-			[insp_certi], [mezclada], [extra], [total], [id],[noserie_caja], [patron], [estacion], [hora]
+	-- /////////SE INSERTAN LOS DATOS A LA TABLA//////////////
+	INSERT INTO @VP_TBL_CERTIFICACION
+	SELECT	CONVERT(DATE, fecha) AS 'FECHA', 
+			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
+			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
 	FROM certificacion_rpt (NOLOCK)
-	WHERE fecha >= @VP_F_INICIAL_INT
-	AND fecha <= @VP_F_FIN_INT
-	ORDER BY FECHA DESC
+	WHERE CONVERT(DATE, fecha) >= @PP_F_INICIAL
+	AND CONVERT(DATE, fecha) <= @PP_F_FIN
+	GROUP BY CONVERT(DATE, fecha)
+
+	-- /////////SE CALCULAS LOS TOTALES//////////////
+	SELECT	FECHA, 
+			MUESTRA AS 'TOTAL_MUESTRA', 
+			DEFECTOS AS 'TOTAL_DEFECTOS', 
+			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS'
+	FROM @VP_TBL_CERTIFICACION
+	WHERE DEFECTOS > 0
+	ORDER BY FECHA
 	
 	-- ////////////////////////////////////////////////
 	-- ////////////////////////////////////////////////
@@ -54,255 +68,1106 @@ GO
 
 
 
----- //////////////////////////////////////////////////////////////
----- // STORED PROCEDURE ---> DELETE / FICHA
----- //////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_CERTIFICACION_REPORT_X_FECHA_TURNO]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_CERTIFICACION_REPORT_X_FECHA_TURNO]
+GO
 
---IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_UP_8D_TEAM_RECONOCIMIENTO]') AND type in (N'P', N'PC'))
---	DROP PROCEDURE [dbo].[PG_UP_8D_TEAM_RECONOCIMIENTO]
---GO
+/*
+ EXEC	[dbo].[PG_LI_CERTIFICACION_REPORT_X_FECHA_TURNO] 0,0, '2021-09-01', '2021-09-13', 2
+*/
 
---/*
---	EXEC	[dbo].[PG_UP_8D_TEAM_RECONOCIMIENTO] 0, 144, 1
---*/
+CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_REPORT_X_FECHA_TURNO]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE,
+	@VP_TURNO							INT
+AS
 
---CREATE PROCEDURE [dbo].[PG_UP_8D_TEAM_RECONOCIMIENTO]
---	@PP_K_SISTEMA_EXE			INT,
---	@PP_K_USUARIO_ACCION		INT,
---	-- ===========================
---	@PP_K_8D					INT,
---	@PP_F_CLOSED				DATE,
---	@PP_COMMENT					VARCHAR(MAX)
---AS
+	-- /////////SE CREA TABLA TEMPORAL PARA LOS DATOS DE CERTIFICACION//////////////
+	DECLARE @VP_TBL_CERTIFICACION TABLE(
+		FECHA		DATE,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
 
---	DECLARE @VP_MENSAJE		VARCHAR(300) = ''
+	-- /////////SE INSERTAN LOS DATOS A LA TABLA//////////////
+	INSERT INTO @VP_TBL_CERTIFICACION
+	SELECT	CONVERT(DATE, fecha) AS 'FECHA', 
+			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
+			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
+	FROM certificacion_rpt (NOLOCK)
+	WHERE CONVERT(DATE, fecha) >= @PP_F_INICIAL
+	AND CONVERT(DATE, fecha) <= @PP_F_FIN
+	AND turno = @VP_TURNO
+	GROUP BY CONVERT(DATE, fecha)
 
---	-- // SECCION#1 /////////////////////////////////////////////////////////// VALIDACIONES + REGLAS DE NEGOCIO 
---	EXECUTE [dbo].PG_RN_8D_VALIDAR_FECHA_CLOSED		@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
---													@PP_K_8D, @PP_F_CLOSED,
---													@OU_RESULTADO_VALIDACION = @VP_MENSAJE		OUTPUT
+	-- /////////SE CALCULAS LOS TOTALES//////////////
+	SELECT	FECHA, MUESTRA AS 'TOTAL_MUESTRA', DEFECTOS AS 'TOTAL_DEFECTOS', 
+			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS'
+	FROM @VP_TBL_CERTIFICACION
+	WHERE DEFECTOS > 0
+	ORDER BY FECHA
 
---	-- // SECCION#2 ////////////////////////////////////////////////////////// ACCION A REALIZAR
---	IF @VP_MENSAJE=''
---		BEGIN
---			BEGIN TRANSACTION 
---			BEGIN TRY
-				
---				UPDATE [8D]	
---					SET [DATE_CLOSED] = @PP_F_CLOSED,
---						COMMENT = @PP_COMMENT,
---						-- ===========================
---						[K_USUARIO_CAMBIO]	= @PP_K_USUARIO_ACCION, 
---						[F_CAMBIO]			=  GETDATE()
---				WHERE	K_8D = @PP_K_8D
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
 
---				IF @@ROWCOUNT = 0
---					RAISERROR ('ERROR: No fue posible Agregar el reconocimiento.', 16, 1 ) --MENSAJE - Severity -State.
-			
---			-- //////////////////////////////////////////////////////////////
---			COMMIT TRANSACTION 
---			END TRY
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_CERTIFICACION_REPORT_X_FECHA_TURNO_GRAF]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_CERTIFICACION_REPORT_X_FECHA_TURNO_GRAF]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_CERTIFICACION_REPORT_X_FECHA_TURNO_GRAF] 0,0, '2021-09-01', '2021-09-13'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_REPORT_X_FECHA_TURNO_GRAF]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE
+AS
+
+	-- /////////SE CREA TABLA TEMPORAL PARA LOS DATOS DE CERTIFICACION//////////////
+	DECLARE @VP_TBL_CERTIFICACION TABLE(
+		FECHA		DATE,
+		TURNO		INT,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INSERTAN LOS DATOS A LA TABLA//////////////
+	INSERT INTO @VP_TBL_CERTIFICACION
+	SELECT	CONVERT(DATE, fecha) AS 'FECHA', 
+			TURNO AS TURNO,
+			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
+			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
+	FROM certificacion_rpt (NOLOCK)
+	WHERE CONVERT(DATE, fecha) >= @PP_F_INICIAL
+	AND CONVERT(DATE, fecha) <= @PP_F_FIN
+	GROUP BY CONVERT(DATE, fecha), turno
+
+	-- /////////SE CREA TABLA TEMPORAL PARA LOS DATOS DE CERTIFICACION//////////////
+	DECLARE @VP_TBL_CERTIFICACION_TOTALES TABLE(
+		FECHA			DATE,
+		PPMS_1ER_TURNO	INT,
+		PPMS_2DO_TURNO	INT,
+		PPMS_3ER_TURNO	INT
+	)
+
+	-- /////////SE CALCULAS LOS TOTALES Y SE INGRESA A LA TABLA TEMPORAL DE TOTALES POR TURNO//////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_TOTALES
+	SELECT	FECHA, 
+			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
+				ELSE 0 END ) AS 'PPMS 1ER TURNO',
+			0,
+			0
+	FROM @VP_TBL_CERTIFICACION
+	WHERE DEFECTOS > 0
+	AND TURNO = 1
+	ORDER BY FECHA
+
+	INSERT INTO @VP_TBL_CERTIFICACION_TOTALES
+	SELECT	FECHA, 
+			0,
+			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
+				ELSE 0 END ) AS 'PPMS 2DO TURNO',
+			0
+	FROM @VP_TBL_CERTIFICACION
+	WHERE DEFECTOS > 0
+	AND TURNO = 2
+	ORDER BY FECHA
+
+	INSERT INTO @VP_TBL_CERTIFICACION_TOTALES
+	SELECT	FECHA, 
+			0,
+			0,
+			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
+				ELSE 0 END ) AS 'PPMS 3ER TURNO'
+	FROM @VP_TBL_CERTIFICACION
+	WHERE DEFECTOS > 0
+	AND TURNO = 3
+	ORDER BY FECHA
+
+	-- /////////SE MUESTRA EL RESULTADO//////////////
+	SELECT	FECHA, 
+			SUM(PPMS_1ER_TURNO) AS 'PPMS 1ER TURNO',
+			SUM(PPMS_2DO_TURNO) AS 'PPMS 2DO TURNO',
+			SUM(PPMS_3ER_TURNO) AS 'PPMS 3ER TURNO'
+	FROM @VP_TBL_CERTIFICACION_TOTALES
+	GROUP BY FECHA
+
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_CERTIFICACION_REPORT_X_MES]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_CERTIFICACION_REPORT_X_MES]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_CERTIFICACION_REPORT_X_MES] 0,0, '2021-09-13'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_REPORT_X_MES]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_FIN							DATE
+AS
+
+-- /////////SE BNTIENE EL AÑO DE LA FECHA INICIAL///////////////////////////////////////
+DECLARE @VP_YEAR INT = YEAR(@PP_F_FIN)
+
+-- /////////SE CREA TABLA TEMPORAL PARA GUARDAR LOS DATOS///////////////////////////////////////
+DECLARE @VP_TBL_CERTIFICACION_X_MES TABLE(
+		MES			INT,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
+
+	INSERT INTO @VP_TBL_CERTIFICACION_X_MES
+	SELECT	FORMAT(CONVERT(DATE, fecha), 'MM') AS 'MES', 
+			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
+			(SUM(cant1) + SUM(cant2) + SUM(cant3)) AS 'TOTAL_DEFECTOS'
+	FROM certificacion_rpt (NOLOCK)
+	WHERE YEAR(CONVERT(DATE, fecha)) = @VP_YEAR
+	GROUP BY FORMAT(CONVERT(DATE, fecha), 'MM')
+
+	SELECT	( CASE	WHEN MES = 1 THEN 'Enero'
+					WHEN MES = 2 THEN 'Febrero'
+					WHEN MES = 3 THEN 'Marzo'
+					WHEN MES = 4 THEN 'Abril'
+					WHEN MES = 5 THEN 'Mayo'
+					WHEN MES = 6 THEN 'Junio'
+					WHEN MES = 7 THEN 'Julio'
+					WHEN MES = 8 THEN 'Agosto'
+					WHEN MES = 9 THEN 'Septiembre'
+					WHEN MES = 10 THEN 'Octubre'
+					WHEN MES = 11 THEN 'Noviembre'
+					WHEN MES = 12 THEN 'Diciembre' END ) NOMBRE_MES,
+			MUESTRA AS 'TOTAL_MUESTRA', 
+			DEFECTOS AS 'TOTAL_DEFECTOS', 
+			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS'
+	FROM @VP_TBL_CERTIFICACION_X_MES
+	WHERE DEFECTOS > 0
+	ORDER BY MES
+
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_CERTIFICACION_DEFECTO_X_DIA]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_CERTIFICACION_DEFECTO_X_DIA]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_CERTIFICACION_DEFECTO_X_DIA] 0,0, '2021-09-13'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_DEFECTO_X_DIA]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_FIN							DATE
+AS
 	
---			BEGIN CATCH
---				/* Ocurrió un error, deshacemos los cambios*/ 
---				ROLLBACK TRANSACTION
---				DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
---				SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
---				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_UP_8D_TEAM_RECONOCIMIENTO // ' + @VP_ERROR_TRANS
---			END CATCH
+	-- /////////SE CREA TABLA TEMPORAL PARA GUARDAR LOS DATOS///////////////////////////////////////
+	DECLARE @VP_TBL_CERTIFICACION_DEFECTO TABLE(
+		DEFECTO		VARCHAR(50),
+		CANTIDAD	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO
+	SELECT defecto1, SUM(cant1)
+	FROM certificacion_rpt (NOLOCK)
+	WHERE CONVERT(DATE, fecha) = @PP_F_FIN
+	AND defecto1 <> ''
+	GROUP BY defecto1
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO
+	SELECT defecto2, SUM(cant2)
+	FROM certificacion_rpt (NOLOCK)
+	WHERE CONVERT(DATE, fecha) = @PP_F_FIN
+	AND defecto2 <> ''
+	GROUP BY defecto2
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO
+	SELECT defecto3, SUM(cant3)
+	FROM certificacion_rpt (NOLOCK)
+	WHERE CONVERT(DATE, fecha) = @PP_F_FIN
+	AND defecto3 <> ''
+	GROUP BY defecto3
+
+	-- /////////SE MUESTRAN LOS DATOS///////////////////////////////////////
+	SELECT 	--TOP 5 
+			DEF.DEFECTO, SUM(CANTIDAD) AS CANTIDAD
+	FROM @VP_TBL_CERTIFICACION_DEFECTO AS CERTI_DEF
+	INNER JOIN def (NOLOCK) ON DEF.CLAVE = CERTI_DEF.DEFECTO
+	GROUP BY DEF.DEFECTO
+	ORDER BY SUM(CANTIDAD) DESC
+
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_CERTIFICACION_DEFECTO_X_MES]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_CERTIFICACION_DEFECTO_X_MES]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_CERTIFICACION_DEFECTO_X_MES] 0,0, '2021-09-13'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_DEFECTO_X_MES]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_FIN							DATE
+AS
+	
+	-- /////////SE BNTIENE EL AÑO DE LA FECHA INICIAL///////////////////////////////////////
+	DECLARE @VP_YEAR INT = YEAR(@PP_F_FIN)
+	DECLARE @VP_MES INT = MONTH(@PP_F_FIN)
+	
+	-- /////////SE CREA TABLA TEMPORAL PARA GUARDAR LOS DATOS///////////////////////////////////////
+	DECLARE @VP_TBL_CERTIFICACION_DEFECTO_X_MES TABLE(
+		DEFECTO		VARCHAR(50),
+		CANTIDAD	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO_X_MES
+	SELECT defecto1, SUM(cant1)
+	FROM certificacion_rpt (NOLOCK)
+	WHERE YEAR(CONVERT(DATE, fecha)) = @VP_YEAR
+	AND MONTH(CONVERT(DATE, fecha)) = @VP_MES
+	AND defecto1 <> ''
+	GROUP BY defecto1
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO_X_MES
+	SELECT defecto2, SUM(cant2)
+	FROM certificacion_rpt (NOLOCK)
+	WHERE YEAR(CONVERT(DATE, fecha)) = @VP_YEAR
+	AND MONTH(CONVERT(DATE, fecha)) = @VP_MES
+	AND defecto2 <> ''
+	GROUP BY defecto2
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO_X_MES
+	SELECT defecto3, SUM(cant3)
+	FROM certificacion_rpt (NOLOCK)
+	WHERE YEAR(CONVERT(DATE, fecha)) = @VP_YEAR
+	AND MONTH(CONVERT(DATE, fecha)) = @VP_MES
+	AND defecto3 <> ''
+	GROUP BY defecto3
+
+	-- /////////SE MUESTRAN LOS DATOS///////////////////////////////////////
+	SELECT --TOP 5 
+			DEF.DEFECTO, SUM(CANTIDAD) AS CANTIDAD
+	FROM @VP_TBL_CERTIFICACION_DEFECTO_X_MES AS CERTI_DEF
+	INNER JOIN def (NOLOCK) ON DEF.CLAVE = CERTI_DEF.DEFECTO
+	GROUP BY DEF.DEFECTO
+	ORDER BY SUM(CANTIDAD) DESC
+
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> DELETE / FICHA
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_REPORT_X_FECHA]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_REPORT_X_FECHA]
+GO
+
+/*
+	EXEC	[dbo].[PG_LI_PPMS_REPORT_X_FECHA] 0, 144, '2021-09-01', '2021-09-13'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_REPORT_X_FECHA]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO_ACCION		INT,
+	-- ===========================
+	@PP_F_INICIAL				DATE,
+	@PP_F_FIN					DATE
+AS
+	
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS TABLE(
+		FECHA		DATE,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS
+	SELECT	CONVERT(DATE, Date) AS FECHA, 
+			SAMPLE_SIZE, 
+			ISNULL((SELECT SUM([DEFECTOS].Cant)  FROM [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK) WHERE [DEFECTOS].ID = [QC].ID), 0)
+	FROM [PPMS_PEARL].[dbo].[QC] (NOLOCK)
+	WHERE [Date] >= @PP_F_INICIAL
+	AND [Date] <= @PP_F_FIN
+	ORDER BY CONVERT(DATE, [Date])
+	
+	-- /////////SE CALCULAN LOS TOTALES//////////////
+	SELECT	FECHA, 
+			SUM(MUESTRA) AS 'TOTAL_MUESTRA', 
+			SUM(DEFECTOS) AS 'TOTAL_DEFECTOS', 
+			( CASE WHEN (SUM(MUESTRA)) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), SUM(DEFECTOS)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA)) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS'
+	FROM @VP_TBL_PPMS
+	GROUP BY FECHA
+	HAVING SUM(DEFECTOS) > 0
+	ORDER BY FECHA
+
+
+	-- //////////////////////////////////////////////////////////////
+	-- //////////////////////////////////////////////////////////////
+GO
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> DELETE / FICHA
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_REPORT_X_MES]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_REPORT_X_MES]
+GO
+
+/*
+	EXEC	[dbo].[PG_LI_PPMS_REPORT_X_MES] 0, 144, '2021-09-13'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_REPORT_X_MES]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO_ACCION		INT,
+	-- ===========================
+	@PP_F_FIN					DATE
+AS
+	
+	-- /////////SE BNTIENE EL AÑO DE LA FECHA INICIAL///////////////////////////////////////
+	DECLARE @VP_YEAR INT = YEAR(@PP_F_FIN)
+
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_X_MES TABLE(
+		MES			INT,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_X_MES
+	SELECT	FORMAT([Date], 'MM') AS MES, 
+			SAMPLE_SIZE, 
+			ISNULL((SELECT SUM([DEFECTOS].Cant)  FROM [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK)  WHERE [DEFECTOS].ID = [QC].ID), 0)
+	FROM [PPMS_PEARL].[dbo].[QC] (NOLOCK)
+	WHERE YEAR([Date]) = @VP_YEAR 	
+	
+	-- /////////SE CALCULAN LOS TOTALES//////////////
+	SELECT	( CASE	WHEN MES = 1 THEN 'Enero'
+					WHEN MES = 2 THEN 'Febrero'
+					WHEN MES = 3 THEN 'Marzo'
+					WHEN MES = 4 THEN 'Abril'
+					WHEN MES = 5 THEN 'Mayo'
+					WHEN MES = 6 THEN 'Junio'
+					WHEN MES = 7 THEN 'Julio'
+					WHEN MES = 8 THEN 'Agosto'
+					WHEN MES = 9 THEN 'Septiembre'
+					WHEN MES = 10 THEN 'Octubre'
+					WHEN MES = 11 THEN 'Noviembre'
+					WHEN MES = 12 THEN 'Diciembre' END ) NOMBRE_MES, 
+			SUM(MUESTRA) AS 'TOTAL_MUESTRA', 
+			SUM(DEFECTOS) AS 'TOTAL_DEFECTOS', 
+			( CASE WHEN (SUM(MUESTRA)) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), SUM(DEFECTOS)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA)) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS'
+	FROM @VP_TBL_PPMS_X_MES
+	GROUP BY MES
+	HAVING SUM(DEFECTOS) > 0
+	ORDER BY MES
+	
+	-- //////////////////////////////////////////////////////////////
+	-- //////////////////////////////////////////////////////////////
+GO
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> DELETE / FICHA
+-- //////////////////////////////////////////////////////////////
+
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_CERTIFICACION_TOTALES_REPORT_X_FECHA]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_CERTIFICACION_TOTALES_REPORT_X_FECHA]
+GO
+
+/*	USE [PPMS_PEARL]
+	EXEC	[dbo].[PG_LI_PPMS_CERTIFICACION_TOTALES_REPORT_X_FECHA] 0, 144, '2021-09-01', '2021-09-24'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_CERTIFICACION_TOTALES_REPORT_X_FECHA]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO_ACCION		INT,
+	-- ===========================
+	@PP_F_INICIAL				DATE,
+	@PP_F_FIN					DATE
+AS
+	-- /////////SE CREA TABLA TEMPORAL PARA LOS TOTALES//////////////
+	DECLARE @VP_TBL_PPMS_CERTIFICACION_TOTAL TABLE(
+		FECHA					DATE,
+		MUESTRA					INT,
+		DEFECTOS				INT,
+		PPMS_CERTIFICACION		INT,
+		PPMS_PRODUCCION			INT
+	)
+
+	-- /////////SE CREA TABLA TEMPORAL PARA LOS DATOS DE CERTIFICACION//////////////
+	DECLARE @VP_TBL_CERTIFICACION TABLE(
+		FECHA		DATE,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INSERTAN LOS DATOS A LA TABLA//////////////
+	INSERT INTO @VP_TBL_CERTIFICACION
+	SELECT	CONVERT(DATE, fecha) AS 'FECHA', 
+			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
+			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
+	FROM certificacion_rpt 
+	WHERE CONVERT(DATE, fecha) >= @PP_F_INICIAL
+	AND CONVERT(DATE, fecha) <= @PP_F_FIN
+	GROUP BY CONVERT(DATE, fecha)
+
+	-- /////////SE CALCULAS LOS TOTALES//////////////
+	INSERT INTO @VP_TBL_PPMS_CERTIFICACION_TOTAL
+	SELECT	FECHA, 
+			MUESTRA AS 'TOTAL_MUESTRA', 
+			DEFECTOS AS 'TOTAL_DEFECTOS', 
+			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS',
+			0
+	FROM @VP_TBL_CERTIFICACION
+	WHERE DEFECTOS > 0
+	ORDER BY FECHA
+
+	-- /////////SE CREA TABLA PARA PPMS//////////////
+	DECLARE @VP_TBL_PPMS TABLE(
+		FECHA		DATE,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA @VP_TBL_PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS
+	SELECT	CONVERT(DATE, Date) AS FECHA, 
+			SAMPLE_SIZE, 
+			ISNULL((SELECT SUM([DEFECTOS].Cant)  FROM [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK) WHERE [DEFECTOS].ID = [QC].ID), 0)
+	FROM [PPMS_PEARL].[dbo].[QC] 
+	WHERE [Date] >= @PP_F_INICIAL
+	AND [Date] <= @PP_F_FIN
+	ORDER BY CONVERT(DATE, [Date])
+	
+	-- /////////SE INGRESAN LOS DATOS DE PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_CERTIFICACION_TOTAL
+	SELECT	FECHA, 
+			SUM(MUESTRA) AS 'TOTAL_MUESTRA', 
+			SUM(DEFECTOS) AS 'TOTAL_DEFECTOS', 
+			0,
+			( CASE WHEN (SUM(MUESTRA)) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), SUM(DEFECTOS)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA)) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS'
+	FROM @VP_TBL_PPMS
+	GROUP BY FECHA
+	HAVING SUM(DEFECTOS) > 0
+	ORDER BY FECHA
+
+	-- /////////SE MUESTRA EL RESULTADO//////////////
+	SELECT	FECHA, 
+			SUM(MUESTRA) AS 'TOTAL_MUESTRA', 
+			SUM(DEFECTOS) AS 'TOTAL_DEFECTOS' ,
+			( CASE WHEN (SUM(MUESTRA)) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), SUM(DEFECTOS)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA)) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS',
+			CONVERT(DECIMAL(13,2), (SUM(PPMS_CERTIFICACION)) / (CONVERT(DECIMAL(13,2), SUM(DEFECTOS)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA)) * 1000000)) AS 'PORCENJATE_QC'
+	FROM @VP_TBL_PPMS_CERTIFICACION_TOTAL
+	GROUP BY FECHA
+	HAVING SUM(DEFECTOS) > 0
+	ORDER BY FECHA
+
+	-- //////////////////////////////////////////////////////////////
+	-- //////////////////////////////////////////////////////////////
+GO
+
+
+
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_CERTIFICACION_TOTALES_REPORT_X_MES]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_CERTIFICACION_TOTALES_REPORT_X_MES]
+GO
+
+/*	USE [PPMS_PEARL]
+	EXEC	[dbo].[PG_LI_PPMS_CERTIFICACION_TOTALES_REPORT_X_MES] 0, 144, '2021-09-13'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_CERTIFICACION_TOTALES_REPORT_X_MES]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO_ACCION		INT,
+	-- ===========================
+	@PP_F_FIN					DATE
+AS
+	-- /////////SE CREA TABLA TEMPORAL PARA LOS TOTALES//////////////
+	DECLARE @VP_TBL_PPMS_CERTIFICACION_TOTAL_X_MES TABLE(
+		MES							INT,
+		MUESTRA_CERTIFICACION		INT,
+		DEFECTOS_CERTIFICACION		INT,
+		PPMS_CERTIFICACION			INT,
+		MUESTRA_PRODUCCION			INT,
+		DEFECTOS_PRODUCCION			INT,
+		PPMS_PRODUCCION				INT
+	)
 		
---		END
-
---	-- // SECCION#3 ////////////////////////////////////////////////////////// MENSAJE DE SALIDA
---	IF @VP_MENSAJE<>''
---		BEGIN
---			SET		@VP_MENSAJE = 'No es posible [Agregar] el reconocimiento al equipo de la [8D]: ' + @VP_MENSAJE 
---			SET		@VP_MENSAJE = @VP_MENSAJE + ' ( '
---			SET		@VP_MENSAJE = @VP_MENSAJE + '[#8D.'+CONVERT(VARCHAR(10),@PP_K_8D)+']'
---			SET		@VP_MENSAJE = @VP_MENSAJE + ' )'
---		END
+	-- /////////SE BNTIENE EL AÑO DE LA FECHA INICIAL///////////////////////////////////////
+	DECLARE @VP_YEAR INT = YEAR(@PP_F_FIN)
 	
---	-- //////////////////////////////////////////////////////////////
---	SELECT	@VP_MENSAJE AS MENSAJE, @PP_K_8D AS CLAVE
+	-- /////////SE CREA TABLA TEMPORAL PARA GUARDAR LOS DATOS///////////////////////////////////////
+	DECLARE @VP_TBL_CERTIFICACION_X_MES TABLE(
+		MES			INT,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
 
---	-- //////////////////////////////////////////////////////////////
---GO
+	INSERT INTO @VP_TBL_CERTIFICACION_X_MES
+	SELECT	FORMAT(CONVERT(DATE, fecha), 'MM') AS 'MES', 
+			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
+			(SUM(cant1) + SUM(cant2) + SUM(cant3)) AS 'TOTAL_DEFECTOS'
+	FROM certificacion_rpt 
+	WHERE YEAR(CONVERT(DATE, fecha)) = @VP_YEAR
+	GROUP BY FORMAT(CONVERT(DATE, fecha), 'MM')
 
+	INSERT INTO @VP_TBL_PPMS_CERTIFICACION_TOTAL_X_MES
+	SELECT	MES,
+			MUESTRA AS 'TOTAL_MUESTRA', 
+			DEFECTOS AS 'TOTAL_DEFECTOS', 
+			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS',
+			0,
+			0,
+			0
+	FROM @VP_TBL_CERTIFICACION_X_MES
+	WHERE DEFECTOS > 0
 
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_X_MES TABLE(
+		MES			INT,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
 
-
----- //////////////////////////////////////////////////////////////
----- // STORED PROCEDURE ---> INSERT
----- //////////////////////////////////////////////////////////////
-
----- USE DATA_02
---IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_8D_TEAM]') AND type in (N'P', N'PC'))
---	DROP PROCEDURE [dbo].[PG_IN_8D_TEAM]
---GO
---/*
--- EXECUTE [PG_IN_8D_TEAM] 0,144, 0 , '' , 0 , 1 , '' , '' , '2019/10/01' , '2019/10/01' , '2019/10/01' , '2019/10/01' , 'C:\Users\Francisco Esteban\Desktop\SERIAL REPETIDO.xlsx' , 'SERIAL REPETIDO.xlsx' 
-
---*/
---CREATE PROCEDURE [dbo].[PG_IN_8D_TEAM]
---	@PP_K_SISTEMA_EXE					INT,
---	@PP_K_USUARIO_ACCION				INT,
---	-- ===========================	
---	@PP_K_8D							INT,
---	@PP_EMPLEADO						VARCHAR(255),
---	-- ============================		
---	@PP_ROL								VARCHAR(150)	
---	--- =================
---AS			
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_X_MES
+	SELECT	FORMAT([Date], 'MM') AS MES, 
+			SAMPLE_SIZE, 
+			ISNULL((SELECT SUM([DEFECTOS].Cant)  FROM [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK)  WHERE [DEFECTOS].ID = [QC].ID), 0)
+	FROM [PPMS_PEARL].[dbo].[QC] (NOLOCK)
+	WHERE YEAR([Date]) = @VP_YEAR 	
 	
---	DECLARE @VP_MENSAJE		VARCHAR(255) = ''
+	-- /////////SE CALCULAN LOS TOTALES//////////////
+	INSERT INTO @VP_TBL_PPMS_CERTIFICACION_TOTAL_X_MES
+	SELECT	MES, 
+			0,
+			0,
+			0,
+			SUM(MUESTRA) AS 'TOTAL_MUESTRA', 
+			SUM(DEFECTOS) AS 'TOTAL_DEFECTOS', 
+			( CASE WHEN (SUM(MUESTRA)) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), SUM(DEFECTOS)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA)) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS'
+	FROM @VP_TBL_PPMS_X_MES
+	GROUP BY MES
+	HAVING SUM(DEFECTOS) > 0
 
---	-- ////////SE OBTIENE EL NUMERO DE RELOJ DE LA PERSONA SELECCIONADA/////////////////////////////////////////////////////
---	/*
---	12210	JOSE ABRHAM REZA     (SISTEMAS)     [12210]
---	13164	ALEJANDRO DE LA ROSA     (SISTEMAS)     [13164]
---	13367	FRANCISCO ESTEBAN     (SISTEMAS)     [13367] 
---	*/
+	-- /////////SE MUESTRA EL RESULTADO//////////////
+	SELECT	( CASE	WHEN MES = 1 THEN 'Enero'
+					WHEN MES = 2 THEN 'Febrero'
+					WHEN MES = 3 THEN 'Marzo'
+					WHEN MES = 4 THEN 'Abril'
+					WHEN MES = 5 THEN 'Mayo'
+					WHEN MES = 6 THEN 'Junio'
+					WHEN MES = 7 THEN 'Julio'
+					WHEN MES = 8 THEN 'Agosto'
+					WHEN MES = 9 THEN 'Septiembre'
+					WHEN MES = 10 THEN 'Octubre'
+					WHEN MES = 11 THEN 'Noviembre'
+					WHEN MES = 12 THEN 'Diciembre' END ) NOMBRE_MES, 
+			SUM(MUESTRA_CERTIFICACION)	AS 'MUESTRA_CERTIFICACION', 
+			SUM(DEFECTOS_CERTIFICACION)	AS 'DEFECTOS_CERTIFICACION' ,
+			( CASE WHEN (SUM(MUESTRA_CERTIFICACION)) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), SUM(DEFECTOS_CERTIFICACION)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA_CERTIFICACION)) * 1000000) )
+				ELSE 0 END ) AS 'PPMS_CERTIFICACION',
+			--==========================================================
+			SUM(MUESTRA_PRODUCCION)	AS 'MUESTRA_PRODUCCION', 
+			SUM(DEFECTOS_PRODUCCION)	AS 'DEFECTOS_PRODUCCION',
+			( CASE WHEN (SUM(MUESTRA_PRODUCCION)) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), SUM(DEFECTOS_PRODUCCION)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA_PRODUCCION)) * 1000000) )
+				ELSE 0 END ) AS 'PPMS_PRODUCCION',
+			--==========================================================
+			CONVERT(DECIMAL(13,2),  ( SUM(PPMS_CERTIFICACION) 
+									/ ( CONVERT(DECIMAL(13,2), ( SUM(DEFECTOS_CERTIFICACION) +  SUM(DEFECTOS_PRODUCCION)  ) ) 
+										/ 
+										CONVERT(DECIMAL(13,2), ( SUM(MUESTRA_CERTIFICACION) + SUM(MUESTRA_PRODUCCION) ) ) 
+										* 
+										1000000
+									  ) 
+									) 
+					) AS 'PORCENJATE_QC_DEC',
+			CONVERT(INT,  ( SUM(PPMS_CERTIFICACION) 
+									/ ( CONVERT(DECIMAL(13,2), ( SUM(DEFECTOS_CERTIFICACION) +  SUM(DEFECTOS_PRODUCCION)  ) ) 
+										/ 
+										CONVERT(DECIMAL(13,2), ( SUM(MUESTRA_CERTIFICACION) + SUM(MUESTRA_PRODUCCION) ) ) 
+										* 
+										1000000
+									  ) 
+									) * 100 
+					) AS 'PORCENTAJE_QC'
+	FROM @VP_TBL_PPMS_CERTIFICACION_TOTAL_X_MES
+	GROUP BY MES
+	ORDER BY MES
 
---	--DECLARE @PP_PERSONA_SELECIONADA VARCHAR(MAX) = 'FRANCISCO ESTEBAN     (SISTEMAS)     [13367]'
---	DECLARE @VP_POSICION_CORCHETE_ABRIR INT = CHARINDEX('[', @PP_EMPLEADO)
---	DECLARE @VP_POSICION_CORCHETE_CERRAR INT = CHARINDEX(']', @PP_EMPLEADO)		
+	-- //////////////////////////////////////////////////////////////
+	-- //////////////////////////////////////////////////////////////
+GO
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> DELETE / FICHA
+-- //////////////////////////////////////////////////////////////
+--	USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_CERTIFICACION_TOTALES_REPORT]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_CERTIFICACION_TOTALES_REPORT]
+GO
+
+/*	USE [PPMS_PEARL]
+	EXEC	[dbo].[PG_LI_PPMS_CERTIFICACION_TOTALES_REPORT] 0,0, '2021-09-01', '2021-09-13'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_CERTIFICACION_TOTALES_REPORT]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO_ACCION		INT,
+	-- ===========================
+	@PP_F_INICIAL				DATE,
+	@PP_F_FIN					DATE
+AS
+	-- /////////SE CREA TABLA TEMPORAL PARA LOS TOTALES//////////////
+	DECLARE @VP_TBL_PPMS_CERTIFICACION_TOTAL TABLE(
+		FECHA					DATE,
+		MUESTRA					INT,
+		DEFECTOS				INT,
+		PPMS_CERTIFICACION		INT,
+		PPMS_PRODUCCION			INT
+	)
+
+	-- /////////SE CREA TABLA TEMPORAL PARA LOS DATOS DE CERTIFICACION//////////////
+	DECLARE @VP_TBL_CERTIFICACION TABLE(
+		FECHA		DATE,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INSERTAN LOS DATOS A LA TABLA//////////////
+	INSERT INTO @VP_TBL_CERTIFICACION
+	SELECT	CONVERT(DATE, fecha) AS 'FECHA', 
+			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
+			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
+	FROM certificacion_rpt (NOLOCK)
+	WHERE CONVERT(DATE, fecha) >= @PP_F_INICIAL
+	AND CONVERT(DATE, fecha) <= @PP_F_FIN
+	GROUP BY CONVERT(DATE, fecha)
+
+	-- /////////SE CALCULAS LOS TOTALES//////////////
+	INSERT INTO @VP_TBL_PPMS_CERTIFICACION_TOTAL
+	SELECT	FECHA, MUESTRA AS 'TOTAL_MUESTRA', 
+			DEFECTOS AS 'TOTAL_DEFECTOS', 
+			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS',
+			0
+	FROM @VP_TBL_CERTIFICACION
+	WHERE DEFECTOS > 0
+	ORDER BY FECHA
+
+	-- /////////SE OBTIENE EL TOTAL DE MUESTRA Y DEFECTOS DE CERTIFICACION//////////////
+	DECLARE @VP_TOTAL_MUESTRA_CERT DECIMAL(13,2) = 0,  @VP_TOTAL_DEFECTOS_CERT DECIMAL(13,2) = 0, @VP_TOTAL_PPMS_CERT INT = 0
+	SELECT	@VP_TOTAL_MUESTRA_CERT	= SUM(MUESTRA), 
+			@VP_TOTAL_DEFECTOS_CERT	= SUM(DEFECTOS) 
+	FROM @VP_TBL_CERTIFICACION
+	WHERE DEFECTOS > 0
+
+	IF @VP_TOTAL_MUESTRA_CERT > 0
+		SET @VP_TOTAL_PPMS_CERT = ( @VP_TOTAL_DEFECTOS_CERT / @VP_TOTAL_MUESTRA_CERT ) * 1000000
+
+	-- /////////SE CREA TABLA PARA PPMS//////////////
+	DECLARE @VP_TBL_PPMS TABLE(
+		FECHA		DATE,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA @VP_TBL_PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS
+	SELECT	CONVERT(DATE, Date) AS FECHA, 
+			SAMPLE_SIZE, 
+			ISNULL((SELECT SUM([DEFECTOS].Cant)  FROM [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK) WHERE [DEFECTOS].ID = [QC].ID), 0)
+	FROM [PPMS_PEARL].[dbo].[QC] (NOLOCK)
+	WHERE [Date] >= @PP_F_INICIAL
+	AND [Date] <= @PP_F_FIN
+	ORDER BY CONVERT(DATE, [Date])
 	
---	DECLARE @PP_NUMERO_RELOJ VARCHAR(10) =  SUBSTRING(@PP_EMPLEADO, (@VP_POSICION_CORCHETE_ABRIR + 1), (@VP_POSICION_CORCHETE_CERRAR - (@VP_POSICION_CORCHETE_ABRIR + 1)))
---	--SELECT @PP_NUMERO_RELOJ
---	-- // SECCION#1 /////////////////////////////////////////////////////////// VALIDACIONES + REGLAS DE NEGOCIO 	
---	DECLARE @VP_N_RELOJ INT  = 0
+	-- /////////SE INGRESAN LOS DATOS DE PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_CERTIFICACION_TOTAL
+	SELECT	FECHA, 
+			SUM(MUESTRA) AS 'TOTAL_MUESTRA', 
+			SUM(DEFECTOS) AS 'TOTAL_DEFECTOS', 
+			0,
+			( CASE WHEN (SUM(MUESTRA)) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), SUM(DEFECTOS)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA)) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS'
+	FROM @VP_TBL_PPMS
+	GROUP BY FECHA
+	HAVING SUM(DEFECTOS) > 0
+	ORDER BY FECHA
 
---	SELECT @VP_N_RELOJ = COUNT([K_8D_TEAM])
---	FROM [8D_TEAM]
---	WHERE [K_8D] = @PP_K_8D
---	AND NUMERO_RELOJ = @PP_NUMERO_RELOJ
+	-- /////////SE MUESTRA EL RESULTADO//////////////
+	SELECT	
+			SUM(MUESTRA) AS 'TOTAL_MUESTRA_FOO', 
+			SUM(DEFECTOS) AS 'TOTAL_DEFECTOS_FOO' ,
+			( CASE WHEN (SUM(MUESTRA)) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), SUM(DEFECTOS)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA)) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS_FOO',
+			CONVERT(DECIMAL(13,2), (CONVERT(DECIMAL(13,2), @VP_TOTAL_PPMS_CERT) / (CONVERT(DECIMAL(13,2), SUM(DEFECTOS)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA)) * 1000000))) AS 'TOTAL_PORCENJATE_QC_FOO'
+	FROM @VP_TBL_PPMS_CERTIFICACION_TOTAL
+	HAVING SUM(DEFECTOS) > 0
 
---	IF @VP_N_RELOJ IS NULL
---		SET @VP_N_RELOJ = 0
-
---	IF @VP_N_RELOJ > 0
---		SET @VP_MENSAJE = 'La persona que intenta Agregar ya esta dentro del equipo.'
+	-- //////////////////////////////////////////////////////////////
+	-- //////////////////////////////////////////////////////////////
+GO
 
 
---	-- // SECCION#2 ////////////////////////////////////////////////////////// ACCION A REALIZAR
---	IF @VP_MENSAJE=''
---		BEGIN
---			BEGIN TRANSACTION 
---			BEGIN TRY
---				-- ///////SE INSERTA EL PARTICIPANTE A LA 8D///////////////////////////////////////////////////////
---				INSERT INTO [8D_TEAM]
---					(	[K_8D],			
---						-- =================
---						[NUMERO_RELOJ],
---						[ROL],
---						-- ===========================
---						[K_USUARIO_ALTA], [F_ALTA], [K_USUARIO_CAMBIO], [F_CAMBIO],
---						[L_BORRADO], [K_USUARIO_BAJA], [F_BAJA]  )
---				VALUES	
---					(	@PP_K_8D,	
---						-- =================
---						@PP_NUMERO_RELOJ,	
---						@PP_ROL,							
---						-- ===========================
---						@PP_K_USUARIO_ACCION, GETDATE(), @PP_K_USUARIO_ACCION, GETDATE(),
---						0, NULL, NULL )
 
---				IF @@ROWCOUNT = 0
---					RAISERROR ('ERROR: No fue posible Agregar a la persona al equipo para la [8D].', 16, 1 ) --MENSAJE - Severity -State.
-								
---			-- //////////////////////////////////////////////////////////////
---			COMMIT TRANSACTION 
---			END TRY
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> DELETE / FICHA
+-- //////////////////////////////////////////////////////////////
+--	USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_CALIDAD_VS_PRODUCCION_GRAF_X_FECHA]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_CALIDAD_VS_PRODUCCION_GRAF_X_FECHA]
+GO
+
+/*
+	EXEC	[dbo].[PG_LI_PPMS_CALIDAD_VS_PRODUCCION_GRAF_X_FECHA] 0, 144, '2021-09-01', '2021-09-13'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_CALIDAD_VS_PRODUCCION_GRAF_X_FECHA]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO_ACCION		INT,
+	-- ===========================
+	@PP_F_INICIAL				DATE,
+	@PP_F_FIN					DATE
+AS
 	
---			BEGIN CATCH
---				/* Ocurrió un error, deshacemos los cambios*/ 
---				ROLLBACK TRANSACTION
---				DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
---				SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
---				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_IN_8D_TEAM // ' + @VP_ERROR_TRANS
---			END CATCH
-				
---		END
+	-- /////////SE CREA TABLA TEMPORAL PARA LOS TOTALES//////////////
+	DECLARE @VP_TBL_PPMS_CERTIFICACION_TOTAL TABLE(
+		FECHA					DATE,
+		MUESTRA					INT,
+		DEFECTOS				INT,
+		PPMS_CERTIFICACION		INT,
+		PPMS_PRODUCCION			INT
+	)
 
---	-- // SECCION#3 ////////////////////////////////////////////////////////// MENSAJE DE SALIDA
---	IF @VP_MENSAJE<>''
---		BEGIN
---			SET		@VP_MENSAJE = 'No es posible [AGREGAR] a la Persona al equipo para la [8D]: ' + @VP_MENSAJE 
---			SET		@VP_MENSAJE = @VP_MENSAJE + ' ( '
---			SET		@VP_MENSAJE = @VP_MENSAJE + '[#8D.'+CONVERT(VARCHAR(10),@PP_K_8D)+']'
---			SET		@VP_MENSAJE = @VP_MENSAJE + ' )'
---		END
+	-- /////////SE CREA TABLA TEMPORAL PARA LOS DATOS DE CERTIFICACION//////////////
+	DECLARE @VP_TBL_CERTIFICACION TABLE(
+		FECHA		DATE,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INSERTAN LOS DATOS A LA TABLA//////////////
+	INSERT INTO @VP_TBL_CERTIFICACION
+	SELECT	CONVERT(DATE, fecha) AS 'FECHA', 
+			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
+			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
+	FROM certificacion_rpt (NOLOCK)
+	WHERE CONVERT(DATE, fecha) >= @PP_F_INICIAL
+	AND CONVERT(DATE, fecha) <= @PP_F_FIN
+	GROUP BY CONVERT(DATE, fecha)
+
+	-- /////////SE INGRESA DATOS A TABLA DE TOTALES//////////////
+	INSERT INTO @VP_TBL_PPMS_CERTIFICACION_TOTAL
+	SELECT	FECHA, 
+			MUESTRA AS 'TOTAL_MUESTRA', 
+			DEFECTOS AS 'TOTAL_DEFECTOS', 
+			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS',
+			0
+	FROM @VP_TBL_CERTIFICACION
+	WHERE DEFECTOS > 0
+	ORDER BY FECHA
+
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS TABLE(
+		FECHA		DATE,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS
+	SELECT	CONVERT(DATE, Date) AS FECHA, 
+			SAMPLE_SIZE, 
+			ISNULL((SELECT SUM([DEFECTOS].Cant)  FROM [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK)  WHERE [DEFECTOS].ID = [QC].ID), 0)
+	FROM [PPMS_PEARL].[dbo].[QC] (NOLOCK)
+	WHERE [Date] >= @PP_F_INICIAL
+	AND [Date] <= @PP_F_FIN
+	ORDER BY CONVERT(DATE, [Date])
 	
---	SELECT	@VP_MENSAJE AS MENSAJE, @PP_K_8D AS CLAVE
+	-- /////////SE INGRESA DATOS A TABLA DE TOTALES//////////////
+	INSERT INTO @VP_TBL_PPMS_CERTIFICACION_TOTAL
+	SELECT	FECHA,
+			SUM(MUESTRA) AS 'TOTAL_MUESTRA', 
+			SUM(DEFECTOS) AS 'TOTAL_DEFECTOS', 
+			0,
+			( CASE WHEN (SUM(MUESTRA)) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), SUM(DEFECTOS)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA)) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS'
+	FROM @VP_TBL_PPMS
+	GROUP BY FECHA
+	HAVING SUM(DEFECTOS) > 0
+	ORDER BY FECHA
 
---	-- //////////////////////////////////////////////////////////////
---GO
+	-- /////////SE INGRESA DATOS A TABLA DE TOTALES//////////////
+	SELECT	FECHA AS FECHA_QC_PRD,				 
+			SUM(PPMS_CERTIFICACION)	AS TOTAL_PPMS_CALIDAD,	
+			SUM(PPMS_PRODUCCION)	AS TOTAL_PPMS_PRD,
+			CONVERT(DECIMAL(13,2), ((SUM(PPMS_CERTIFICACION)) / (CONVERT(DECIMAL(13,2), SUM(DEFECTOS)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA)) * 1000000)) * 100 ) AS 'TOTAL_PORCENTAJE_QC'
+	FROM @VP_TBL_PPMS_CERTIFICACION_TOTAL
+	GROUP BY FECHA
+	ORDER BY FECHA
+	-- //////////////////////////////////////////////////////////////
+	-- //////////////////////////////////////////////////////////////
+GO
 
 
 
 
----- //////////////////////////////////////////////////////////////
----- // STORED PROCEDURE ---> DELETE / FICHA
----- //////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> DELETE / FICHA
+-- //////////////////////////////////////////////////////////////
+--	USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_REPORT_X_FECHA_TURNO]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_REPORT_X_FECHA_TURNO]
+GO
 
---IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_DL_8D_TEAM]') AND type in (N'P', N'PC'))
---	DROP PROCEDURE [dbo].[PG_DL_8D_TEAM]
---GO
+/*
+	EXEC	[dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_REPORT_X_FECHA_TURNO] 0, 144, '2021-09-13', 2
+*/
 
-
---CREATE PROCEDURE [dbo].[PG_DL_8D_TEAM]
---	@PP_K_SISTEMA_EXE			INT,
---	@PP_K_USUARIO_ACCION		INT,
---	-- ===========================
---	@PP_K_8D					INT,
---	@PP_K_8D_TEAM				INT
---AS
-
---	DECLARE @VP_MENSAJE		VARCHAR(300) = ''
-
---	-- // SECCION#1 /////////////////////////////////////////////////////////// VALIDACIONES + REGLAS DE NEGOCIO 
-
---	-- // SECCION#2 ////////////////////////////////////////////////////////// ACCION A REALIZAR
---	IF @VP_MENSAJE=''
---		BEGIN
---			BEGIN TRANSACTION 
---			BEGIN TRY
-
---				DELETE [8D_TEAM]		
---				WHERE	K_8D = @PP_K_8D
---				AND	K_8D_TEAM = @PP_K_8D_TEAM
-
---				IF @@ROWCOUNT = 0
---					RAISERROR ('ERROR: No fue posible Eliminar a la persona del equipo de la [8D].', 16, 1 ) --MENSAJE - Severity -State.
-			
---			-- //////////////////////////////////////////////////////////////
---			COMMIT TRANSACTION 
---			END TRY
+CREATE PROCEDURE [dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_REPORT_X_FECHA_TURNO]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO_ACCION		INT,
+	-- ===========================
+	@PP_F_FIN					DATE,
+	@PP_TURNO					INT
+AS
 	
---			BEGIN CATCH
---				/* Ocurrió un error, deshacemos los cambios*/ 
---				ROLLBACK TRANSACTION
---				DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
---				SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
---				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_DL_8D_TEAM // ' + @VP_ERROR_TRANS
---			END CATCH
-		
---		END
+	-- //////SE CREA TABLA TEMPORAL//////////////////////////////////////
+	DECLARE @TBL_MATERIAL_REVISADO TABLE(
+	INSP_CERTI		VARCHAR(100),
+	T_NORMAL		INT,
+	T_EXTRA			INT,
+	TOTAL			INT
+	)
 
---	-- // SECCION#3 ////////////////////////////////////////////////////////// MENSAJE DE SALIDA
---	IF @VP_MENSAJE<>''
---		BEGIN
---			SET		@VP_MENSAJE = 'No es posible [Eliminar] a la persona del equipo de la [8D]: ' + @VP_MENSAJE 
---			SET		@VP_MENSAJE = @VP_MENSAJE + ' ( '
---			SET		@VP_MENSAJE = @VP_MENSAJE + '[#8D.'+CONVERT(VARCHAR(10),@PP_K_8D)+']'
---			SET		@VP_MENSAJE = @VP_MENSAJE + ' )'
---		END
+	-- //////SE AGREGAN LOS DATOS A LA TABLA TEMPORAL////////////////////
+	INSERT INTO @TBL_MATERIAL_REVISADO
+	SELECT	LTRIM(RTRIM(insp_certi)) AS INSP_CERTI,
+			(SUM((CASE WHEN extra = 0 THEN total ELSE 0 END))) AS T_NORMAL, 
+			(SUM((CASE WHEN extra = 1 THEN total ELSE 0 END))) AS T_EXTRA, 
+			(SUM((CASE WHEN extra = 0 THEN total ELSE 0 END))) + 
+			(SUM((CASE WHEN extra = 1 THEN total ELSE 0 END))) AS TOTAL
+	FROM certificacion_rpt (NOLOCK)
+	WHERE CONVERT(DATE, fecha) = @PP_F_FIN
+	AND certificacion_rpt.turno = @PP_TURNO  
+	GROUP BY insp_certi
+	HAVING	SUM(total) > 0
+	AND	SUM(total) < 6000
+	ORDER BY	SUM(total) DESC
+
+	-- ////SE HACE LA UNION PARA OBTENER NOMBRE Y APELLIDO///////////////////
+	SELECT CONCAT((SUBSTRING( CONCAT(EP_NOMBRE, ' '), 1, CHARINDEX(' ', CONCAT(EP_NOMBRE, ' ')))), ' ' + EP_APELLIDO_PATERNO) AS INSP_CERTI,	
+		   T_NORMAL,
+		   T_EXTRA,	
+		   TOTAL
+	FROM @TBL_MATERIAL_REVISADO
+	INNER JOIN personal (NOLOCK) ON LTRIM(RTRIM(inspector_cal)) =  INSP_CERTI
+	INNER JOIN HOWE.DBO.VISTA_GAFETES (NOLOCK) ON EN_NUM_EMP = noreloj
+	ORDER BY TOTAL DESC
+	-- //////////////////////////////////////////////////////////////
+	-- //////////////////////////////////////////////////////////////
+GO
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> DELETE / FICHA
+-- //////////////////////////////////////////////////////////////
+--	USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_ACUMULADO_DIA_X_TURNO]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_ACUMULADO_DIA_X_TURNO]
+GO
+
+/*
+	EXEC	[dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_ACUMULADO_DIA_X_TURNO] 0, 144, '2021-09-13', 1
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_ACUMULADO_DIA_X_TURNO]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO_ACCION		INT,
+	-- ===========================
+	@PP_F_FIN					DATE,
+	@PP_TURNO					INT
+AS
 	
---	-- //////////////////////////////////////////////////////////////
---	SELECT	@VP_MENSAJE AS MENSAJE, @PP_K_8D AS CLAVE
+	-- //////SE CREA TABLA TEMPORAL//////////////////////////////////////
+	DECLARE @TBL_MATERIAL_REVISADO_DIA TABLE(
+	SELLO			VARCHAR(100),
+	INSPECTOR		VARCHAR(100),
+	MUESTRA			INT,
+	DEFECTOS		INT
+	)
 
---	-- //////////////////////////////////////////////////////////////
---GO
+	-- //////SE INGRESAN LOS DATOS A LA TABLA TEMPORAL//////////////////////////////////////
+	INSERT INTO @TBL_MATERIAL_REVISADO_DIA
+	SELECT	SELLO_PAQ	AS SELLO,
+			INSPECTOR_CAL	AS INSPECTOR, 
+			SUM(total)	AS REVISADAS,
+			( SUM(cant1) + SUM(cant2) + SUM(cant3)) AS DEFECTOS
+	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN personal (NOLOCK) ON sello = sello_paq
+	WHERE CONVERT(DATE, fecha) = @PP_F_FIN
+	AND personal.turno = @PP_TURNO
+	AND insp_certi <> '' 
+	GROUP BY SELLO_PAQ, INSPECTOR_CAL
+
+	-- /////////SE CALCULAS LOS TOTALES Y SE MUESTRA EL RESULTADO//////////////
+	SELECT	CONCAT((SUBSTRING( CONCAT(EP_NOMBRE, ' '), 1, CHARINDEX(' ', CONCAT(EP_NOMBRE, ' ')))), ' ' + EP_APELLIDO_PATERNO) AS INSPECTOR, 
+			MUESTRA AS 'TOTAL_MUESTRA', 
+			DEFECTOS AS 'TOTAL_DEFECTOS', 
+			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS'
+	FROM @TBL_MATERIAL_REVISADO_DIA
+	INNER JOIN personal (NOLOCK) ON LTRIM(RTRIM(inspector_cal)) =  INSPECTOR
+	INNER JOIN HOWE.DBO.VISTA_GAFETES (NOLOCK) ON EN_NUM_EMP = noreloj
+	WHERE DEFECTOS > 0
+	ORDER BY TOTAL_PPMS DESC
+	-- //////////////////////////////////////////////////////////////
+	-- //////////////////////////////////////////////////////////////
+GO
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> DELETE / FICHA
+-- //////////////////////////////////////////////////////////////
+--	USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_ACUMULADO_MES_X_TURNO]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_ACUMULADO_MES_X_TURNO]
+GO
+
+/*
+	EXEC	[dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_ACUMULADO_MES_X_TURNO] 0, 144, '2021-09-13', 1
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_ACUMULADO_MES_X_TURNO]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO_ACCION		INT,
+	-- ===========================
+	@PP_F_FIN					DATE,
+	@PP_TURNO					INT
+AS
+	
+	-- /////////SE OBTIENE EL AÑO DE LA FECHA INICIAL///////////////////////////////////////
+	DECLARE @VP_YEAR INT = YEAR(@PP_F_FIN)
+	DECLARE @VP_MES INT = MONTH(@PP_F_FIN)
+
+	-- //////SE CREA TABLA TEMPORAL//////////////////////////////////////
+	DECLARE @TBL_MATERIAL_REVISADO_DIA TABLE(
+	INSPECTOR		VARCHAR(100),
+	MUESTRA			INT,
+	DEFECTOS		INT
+	)
+
+	-- //////SE INGRESAN LOS DATOS A LA TABLA TEMPORAL//////////////////////////////////////
+	INSERT INTO @TBL_MATERIAL_REVISADO_DIA
+	SELECT	LTRIM(RTRIM(INSPECTOR_CAL)) 	AS INSPECTOR, 
+			SUM(total)	AS REVISADAS,
+			( SUM(cant1) + SUM(cant2) + SUM(cant3)) AS DEFECTOS
+	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN personal (NOLOCK) ON sello = sello_paq
+	WHERE YEAR(CONVERT(DATE, fecha)) = @VP_YEAR
+	AND MONTH(CONVERT(DATE, fecha)) = @VP_MES
+	AND CONVERT(DATE, fecha) <= @PP_F_FIN
+	AND personal.turno = @PP_TURNO
+	AND insp_certi <> '' 
+	GROUP BY LTRIM(RTRIM(INSPECTOR_CAL)) 
+
+	-- /////////SE CALCULAS LOS TOTALES Y SE MUESTRA EL RESULTADO//////////////
+	SELECT	CONCAT((SUBSTRING( CONCAT(EP_NOMBRE, ' '), 1, CHARINDEX(' ', CONCAT(EP_NOMBRE, ' ')))), ' ' + EP_APELLIDO_PATERNO) AS INSPECTOR, 
+			MUESTRA AS 'TOTAL_MUESTRA', 
+			DEFECTOS AS 'TOTAL_DEFECTOS', 
+			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS'
+	FROM @TBL_MATERIAL_REVISADO_DIA
+	INNER JOIN personal (NOLOCK) ON LTRIM(RTRIM(inspector_cal)) =  LTRIM(RTRIM(INSPECTOR))
+	INNER JOIN HOWE.DBO.VISTA_GAFETES (NOLOCK) ON EN_NUM_EMP = noreloj
+	WHERE DEFECTOS > 0
+	ORDER BY TOTAL_PPMS DESC
+	-- //////////////////////////////////////////////////////////////
+	-- //////////////////////////////////////////////////////////////
+GO
 
 
 -- //////////////////////////////////////////////////////////////
