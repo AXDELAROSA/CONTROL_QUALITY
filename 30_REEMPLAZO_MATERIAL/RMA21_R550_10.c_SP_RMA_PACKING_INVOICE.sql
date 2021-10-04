@@ -17,7 +17,9 @@ GO
 --	[PG_GET_DETALLE_PACKING_RMA]
 --	[PG_GET_DETALLE_PACKING_RMA_INFO]
 --	[PG_LI_HEADER_RMA_INVOICE]
+--	[PG_LI_HEADER_RMA_INVOICE_REALIZADA]
 --	[PG_LI_DETAILS_RMA_INVOICE]
+--	[PG_LI_DETAILS_RMA_INVOICE_REALIZADA]
 --***************************************************	
 --ESTOS SP SIRVEN PARA GENERAR EL ARCHIVO PDF DE LA FACTURA
 --		[PG_LI_INVOICE_HEADER_RMA]
@@ -59,8 +61,8 @@ AS
 		WHERE	SERIAL_1 IN (
 								SELECT	SERIAL
 								FROM	DETAILS_RMA		(NOLOCK)
-								INNER JOIN	HEADER_RMA	ON HEADER_RMA.K_HEADER_RMA	= DETAILS_RMA.K_HEADER_RMA
-								INNER JOIN	TIPO_RMA	ON HEADER_RMA.K_TIPO_RMA	= TIPO_RMA.K_TIPO_RMA
+								INNER JOIN	HEADER_RMA	(NOLOCK)	ON HEADER_RMA.K_HEADER_RMA	= DETAILS_RMA.K_HEADER_RMA
+								INNER JOIN	TIPO_RMA	(NOLOCK)	ON HEADER_RMA.K_TIPO_RMA	= TIPO_RMA.K_TIPO_RMA
 								WHERE	DETAILS_RMA.K_STATUS_RMA	= @PP_K_STATUS_RMA
 								AND		HEADER_RMA.K_TIPO_RMA		= @PP_K_TIPO_RMA
 							)
@@ -295,7 +297,7 @@ AS
 			--PRECIO_UNITARIO,
 			--PRECIO_MANUAL,
 			( SUM(CANTIDAD_ENVIADA) * MAX(NET_AREA)	)
-	FROM	DETAILS_RMA		(NOLOCK)
+	FROM	DETAILS_RMA			(NOLOCK)
 	INNER JOIN	IMITMIDX_SQL	(NOLOCK) ON IMITMIDX_SQL.ITEM_NO	= DETAILS_RMA.ITEM_NO
 	--INNER JOIN	HEADER_RMA		(NOLOCK) ON HEADER_RMA.K_HEADER_RMA	= DETAILS_RMA.K_HEADER_RMA
 	WHERE	K_DETAILS_RMA IN ( SELECT K_DETAILS_RMA FROM  @TBL_MATERIAL_SELECCIONADO	)
@@ -458,6 +460,36 @@ AS
 	-- /////////////////////////////////////////////////////////////////////
 GO
 
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_HEADER_RMA_INVOICE_REALIZADA]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_HEADER_RMA_INVOICE_REALIZADA]
+GO
+--		 EXECUTE [DBO].[PG_LI_HEADER_RMA_INVOICE_REALIZADA] 0,0, 'IRVI02',2
+--		 EXECUTE [DBO].[PG_LI_HEADER_RMA_INVOICE_REALIZADA] 0,0, '( TODOS )',1
+CREATE PROCEDURE [dbo].[PG_LI_HEADER_RMA_INVOICE_REALIZADA]
+	@PP_K_SISTEMA_EXE				INT,
+	@PP_K_USUARIO_ACCION			INT,
+	-- ===========================
+	@PP_CUSTOMER					VARCHAR(50),
+	@PP_K_TIPO_RMA					INT
+AS
+	-- =========================================	
+	SELECT	DISTINCT	
+			INVOICE_NO,
+			--PACKING_NO,
+			CUSTOMER
+	FROM	INVENTARIO_EMBARQUE_RMA				(NOLOCK)
+	WHERE	K_ESTATUS_INVENTARIO_EMBARQUE_RMA	IN ( 4 )
+	AND		( CUSTOMER	= @PP_CUSTOMER	OR	@PP_CUSTOMER = '( TODOS )' )
+	AND		SERIAL_2	IN  (
+								SELECT	K_DETAILS_RMA 
+								FROM	DETAILS_RMA		(NOLOCK)
+								INNER JOIN HEADER_RMA	(NOLOCK)	ON HEADER_RMA.K_HEADER_RMA	= DETAILS_RMA.K_HEADER_RMA
+								WHERE	K_TIPO_RMA	= @PP_K_TIPO_RMA
+							)
+
+	-- /////////////////////////////////////////////////////////////////////
+GO
+
 
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_DETAILS_RMA_INVOICE]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_LI_DETAILS_RMA_INVOICE]
@@ -509,28 +541,133 @@ AS
 													FROM	INVENTARIO_EMBARQUE_RMA	(NOLOCK)
 													WHERE	PACKING_NO				= @PP_PACKING_NO	)
 		ORDER BY MODELNO ASC, SERIAL ASC
-	--END
-	--ELSE
-	--	BEGIN
-	--		SELECT	
-	--				OELINHST_SQL.Item_No,
-	--				OELINHST_SQL.Item_Desc_1,
-	--				-- =========================================
-	--				( CASE WHEN @PP_CUSTOMER = 'FAUR01' THEN
-	--							CONCAT(LTRIM(RTRIM(OELINHST_SQL.Cus_Item_No)), ' (', LTRIM(RTRIM(ISNULL(filler_0003, ''))) , ')') 
-	--					ELSE LTRIM(RTRIM(OELINHST_SQL.Cus_Item_No)) END ) AS Cus_Item_No,
-	--				-- =========================================
-	--				OELINHST_SQL.Qty_To_Ship,
-	--				'EA'	AS UOM_MANUAL,
-	--				OELINHST_SQL.Unit_Price,
-	--				SLS_AMT	AS	TOTAL_KIT
-	--		-- =========================================-- =========================================
-	--		FROM	OELINHST_SQL
-	--		LEFT JOIN IMITMIDX_SQL ON LTRIM(RTRIM(IMITMIDX_SQL.item_no)) = LTRIM(RTRIM(OELINHST_SQL.item_no))
-	--		WHERE	OELINHST_SQL.Inv_No	= @PP_INVOICE_NO
-	--		AND		LTRIM(RTRIM(CUS_NO)) = @PP_CUSTOMER
-	--		ORDER BY OELINHST_SQL.Line_Seq_No
-	--	END	
+	-- /////////////////////////////////////////////////////////////////////
+GO
+
+
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_DETAILS_RMA_INVOICE_REALIZADA]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_DETAILS_RMA_INVOICE_REALIZADA]
+GO
+--		 EXECUTE [DBO].[PG_LI_DETAILS_RMA_INVOICE_REALIZADA] 0,0, '559354', 'IRVI02'
+--		 EXECUTE [DBO].[PG_LI_DETAILS_RMA_INVOICE_REALIZADA] 0,0, '559368', 'IRVI02'
+--		 EXECUTE [DBO].[PG_LI_DETAILS_RMA_INVOICE_REALIZADA] 0,0, '559354', '( TODOS )'
+CREATE PROCEDURE [dbo].[PG_LI_DETAILS_RMA_INVOICE_REALIZADA]
+	@PP_K_SISTEMA_EXE				INT,
+	@PP_K_USUARIO_ACCION			INT,
+	-- ===========================
+	@PP_INVOICE_NO					VARCHAR(50),
+	@PP_CUSTOMER					VARCHAR(50)
+AS
+
+	DECLARE  @VP_TOTAL_INVOICE					AS DECIMAL(13,2) = 0
+			,@VP_QTY							INT = 0
+			--,@VP_DESCUENTO_LEYENDA				VARCHAR(150) = ''
+			,@VP_DESCUENTO_PORCENTAJE			DECIMAL(13,2) = 0
+			,@VP_DESCUENTO_TOTAL				DECIMAL(13,2) = 0
+			--,@VP_DESCUENTO_TOTAL_TEXTO			VARCHAR(20) = ''
+			,@VP_SUBTOTAL_INVOICE				DECIMAL(13,2) = 0
+
+	DECLARE @TBL_DETALLE_PACKING  TABLE (
+			LINE_SEQ_NO					INT,--INT IDENTITY(1,1),
+			ITEM_NO						VARCHAR(100),
+			ITEM_DESC_1					VARCHAR(250),
+			CUS_ITEM_NO					VARCHAR(100),
+			QTY_TO_SHIP					INT,
+			UOM_MANUAL					VARCHAR(100),
+			Unit_Price					DECIMAL(13,2),
+			TOTAL_KIT					DECIMAL(13,2) )
+	SET NOCOUNT ON
+
+			DECLARE @VP_TOTAL_DETALLE DECIMAL(13,2) = 0
+			SELECT	@VP_TOTAL_DETALLE	= SUM(SLS_AMT),
+					@VP_QTY				= SUM(Qty_To_Ship)
+			FROM	OELINHST_SQL		(NOLOCK)
+			WHERE	inv_no				= @PP_INVOICE_NO
+			AND		item_desc_2			<> 'COMPLEMENTO'
+
+			IF @VP_TOTAL_DETALLE IS NULL
+				SET @VP_TOTAL_DETALLE = 0
+
+			DECLARE @VP_TOTAL_DETALLE_COMPLEMENTO DECIMAL(13,2) = 0
+			SELECT	@VP_TOTAL_DETALLE_COMPLEMENTO = SUM(SLS_AMT)
+			FROM	OELINHST_SQL		(NOLOCK)
+			WHERE	inv_no				= @PP_INVOICE_NO
+			AND		item_desc_2			= 'COMPLEMENTO'
+
+			IF @VP_TOTAL_DETALLE_COMPLEMENTO IS NULL
+				SET @VP_TOTAL_DETALLE_COMPLEMENTO = 0
+		
+			SET @VP_SUBTOTAL_INVOICE	= @VP_TOTAL_DETALLE
+			SET @VP_DESCUENTO_TOTAL		= ( @VP_DESCUENTO_PORCENTAJE * (@VP_SUBTOTAL_INVOICE) ) / 100
+			SET @VP_TOTAL_INVOICE		= @VP_SUBTOTAL_INVOICE - @VP_DESCUENTO_TOTAL
+
+			UPDATE OEHDRHST_SQL
+				SET discount_pct = @VP_DESCUENTO_PORCENTAJE,
+					tot_sls_disc = @VP_DESCUENTO_TOTAL,
+					tot_sls_amt = ( @VP_TOTAL_INVOICE + @VP_TOTAL_DETALLE_COMPLEMENTO )
+			WHERE  inv_no = @PP_INVOICE_NO 
+
+			SET	@VP_TOTAL_INVOICE	= ( @VP_TOTAL_INVOICE + @VP_TOTAL_DETALLE_COMPLEMENTO )	
+
+	INSERT INTO @TBL_DETALLE_PACKING
+	SELECT	
+			-1,
+			'',
+			'',
+			'TOTALES:',
+			@VP_QTY,
+			--@VP_SUBTOTAL_INVOICE,
+			--'DESCUENTO'			, 
+			''			, 
+			0,--@VP_SUBTOTAL_INVOICE,
+			@VP_TOTAL_INVOICE	
+
+-- ====================================================================================================================================================================
+-- ====================================================================================================================================================================
+-- ====================================================================================================================================================================
+-- ====================================================================================================================================================================
+	SELECT 
+			LINE_SEQ_NO			,
+			ITEM_NO				,
+			ITEM_DESC_1			,
+			CUS_ITEM_NO			,
+			QTY_TO_SHIP			,
+			UOM_MANUAL			,
+			CONVERT(DECIMAL(13,2),Unit_Price)	AS Unit_Price,
+			TOTAL_KIT
+	FROM @TBL_DETALLE_PACKING
+	UNION
+	SELECT	
+			OELINHST_SQL.line_seq_no,
+			LTRIM(RTRIM(OELINHST_SQL.Item_No))	AS Item_No,
+			-- =========================================
+			CONCAT	(		LTRIM(RTRIM(OELINHST_SQL.Item_Desc_1)),
+							'   (',
+							--LTRIM(RTRIM(prod_cat_desc)),
+							ISNULL(	LTRIM(RTRIM(modeldesc)),	'-')	,
+							')    '
+			)	AS Item_Desc_1,
+			-- =========================================
+			( CASE WHEN @PP_CUSTOMER = 'FAUR01' THEN
+						CONCAT(LTRIM(RTRIM(OELINHST_SQL.Cus_Item_No)), ' (', LTRIM(RTRIM(ISNULL(filler_0003, ''))) , ')') 
+				ELSE LTRIM(RTRIM(OELINHST_SQL.Cus_Item_No)) END )	AS Cus_Item_No,
+			-- =========================================
+			CONVERT(INT,OELINHST_SQL.Qty_To_Ship) AS Qty_To_Ship,
+			'EA'	AS UOM_MANUAL,
+			--OELINHST_SQL.Unit_Price,
+			CONVERT(DECIMAL(13,2),OELINHST_SQL.Unit_Price)	AS Unit_Price,
+			SLS_AMT	AS	 TOTAL_KIT
+	-- =========================================-- =========================================
+	FROM	OELINHST_SQL	 (NOLOCK) 
+	LEFT JOIN	IMITMIDX_SQL (NOLOCK) ON LTRIM(RTRIM(IMITMIDX_SQL.item_no)) = LTRIM(RTRIM(OELINHST_SQL.item_no))
+	--INNER JOIN	IMCATFIL_SQL (NOLOCK) ON LTRIM(RTRIM(IMCATFIL_SQL.prod_cat))= LTRIM(RTRIM(IMITMIDX_SQL.prod_cat))
+	INNER JOIN	ccverhdr_sql (NOLOCK) ON LTRIM(RTRIM(ccverhdr_sql.modelno))	= LTRIM(RTRIM(IMITMIDX_SQL.prod_cat))
+	AND			ccverhdr_sql.[status]		= 'L'
+	AND			ccverhdr_sql.[specstatus]	= 'U'
+	WHERE	OELINHST_SQL.Inv_No		= @PP_INVOICE_NO
+	AND		LTRIM(RTRIM(OELINHST_SQL.CUS_NO))	= @PP_CUSTOMER
+	ORDER BY Line_Seq_No
+
 	-- /////////////////////////////////////////////////////////////////////
 GO
 
@@ -545,6 +682,7 @@ GO
 --		 EXECUTE [DBO].[PG_LI_INVOICE_HEADER_RMA] 0,0, '558571',	'JL0728-1', 'IRVI02','999999'
 --		 EXECUTE [DBO].[PG_LI_INVOICE_HEADER_RMA] 0,139,'XXXXXXXX','S-FAU0922-1','FAUR01',''
 --		 EXECUTE [DBO].[PG_LI_INVOICE_HEADER_RMA] 0,139,'XXXXXXXX','S-JL0922-2','IRVI02',''
+--		 EXECUTE [DBO].[PG_LI_INVOICE_HEADER_RMA] 0,139,'559365','R-0922-5','IRVI02','N/A'
 CREATE PROCEDURE [dbo].[PG_LI_INVOICE_HEADER_RMA]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -591,7 +729,7 @@ AS
 					'MFP'									AS	LOC,
 					(SELECT LOC_DESC FROM IMLOCFIL_SQL (NOLOCK)	WHERE	LOC= 'MFP')	AS	LOC_DESC
 					--ARCUSFIL_SQL.*
-			FROM	ARCUSFIL_SQL
+			FROM	ARCUSFIL_SQL						(NOLOCK)
 			INNER JOIN ARCUSFIL_ADDRESS AS ADRESS_BILL	(NOLOCK) ON ARCUSFIL_SQL.A4GLIdentity	= ADRESS_BILL.A4GLIdentity
 			AND			ADRESS_BILL.K_ADDRESS_TYPE	= 1		-- BILL_TO			
 			INNER JOIN ARCUSFIL_ADDRESS AS ADRESS_SHIP	(NOLOCK) ON ARCUSFIL_SQL.A4GLIdentity	= ADRESS_SHIP.A4GLIdentity
@@ -692,7 +830,7 @@ AS
 					'N/A'									AS LC_NUMBER
 					--ship_via_cd,
 					--ARCUSFIL_SQL.*
-			FROM	ARCUSFIL_SQL
+			FROM	ARCUSFIL_SQL						(NOLOCK)
 			INNER JOIN ARCUSFIL_ADDRESS AS ADRESS_BILL	(NOLOCK) ON ARCUSFIL_SQL.A4GLIdentity	= ADRESS_BILL.A4GLIdentity
 			AND			ADRESS_BILL.K_ADDRESS_TYPE	= 1		-- BILL_TO			
 			INNER JOIN ARCUSFIL_ADDRESS AS ADRESS_SHIP	(NOLOCK) ON ARCUSFIL_SQL.A4GLIdentity	= ADRESS_SHIP.A4GLIdentity
@@ -729,7 +867,7 @@ AS
 					@VP_F_PACKING_NO	AS F_PACKING,
 					'N/A'				AS TRACKING_NUMBER,
 					'N/A'				AS LC_NUMBER
-			FROM	OEHDRHST_SQL
+			FROM	OEHDRHST_SQL			(NOLOCK)
 			WHERE	Inv_No					= @PP_INVOICE_NO
 			AND		LTRIM(RTRIM(CUS_NO))	= @PP_CUSTOMER
 			AND		LTRIM(RTRIM(oe_po_no))	= @PP_PO_NUMBER
@@ -749,6 +887,7 @@ GO												--		553085', 'A-47635', 'WK1208-1', 'MAGN03'
 --		 EXECUTE [DBO].[PG_LI_INVOICE_FOOTER_RMA] 0,0,  '558594',	'R-JL0803-1', 'IRVI02',1
 --		 EXECUTE [DBO].[PG_LI_INVOICE_FOOTER_RMA] 0,139,'XXXXXXXX','S-FAU0922-1','FAUR01',2
 --		 EXECUTE [DBO].[PG_LI_INVOICE_FOOTER_RMA] 0,139,'XXXXXXXX','S-JL0922-2','IRVI02',2
+--		 EXECUTE [DBO].[PG_LI_INVOICE_FOOTER_RMA] 0,139,'559365','R-0922-5','IRVI02',2
 CREATE PROCEDURE [dbo].[PG_LI_INVOICE_FOOTER_RMA]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -917,6 +1056,7 @@ GO
 --		 EXECUTE [DBO].[PG_SK_DETAILS_RMA_INVOICE] 0,0, 'XXXXXXXX',	'JL0728-1', 'IRVI02',1
 --		 EXECUTE [DBO].[PG_SK_DETAILS_RMA_INVOICE] 0,0, '558571',	'JL0728-1', 'IRVI02',1
 --		 EXECUTE [DBO].[PG_SK_DETAILS_RMA_INVOICE] 0,0, 'XXXXXXXX','S-JL0922-2','IRVI02',2
+--		 EXECUTE [DBO].[PG_SK_DETAILS_RMA_INVOICE] 0,0, '559365','R-0922-5','IRVI02',2
 CREATE PROCEDURE [dbo].[PG_SK_DETAILS_RMA_INVOICE]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -962,10 +1102,20 @@ AS
 					DECLARE  @VP_ITEM_DESC_1	VARCHAR(150)	= ''
 							,@VP_BPO_NUMBER		VARCHAR(50)		= ''
 
-					SELECT	@VP_ITEM_DESC_1		= LTRIM(RTRIM(ITEM_DESC_1)),
+					SELECT	
+							@VP_ITEM_DESC_1		= --LTRIM(RTRIM(ITEM_DESC_1)),
+							-- =========================================
+												CONCAT	(		LTRIM(RTRIM(ITEM_DESC_1)),
+																'   (',
+																--LTRIM(RTRIM(prod_cat_desc)),
+																ISNULL(	LTRIM(RTRIM(modeldesc)),	'-')	,
+																')    '
+												),--	AS Item_Desc_1,
+							-- =========================================
 							@VP_BPO_NUMBER		= LTRIM(RTRIM(ISNULL(filler_0003, '')))
 					FROM	IMITMIDX_SQL		(NOLOCK)
-					WHERE LTRIM(RTRIM(item_no)) = @VP_CU_ITEM_NO
+					INNER JOIN	ccverhdr_sql	(NOLOCK) ON LTRIM(RTRIM(ccverhdr_sql.modelno))	= LTRIM(RTRIM(IMITMIDX_SQL.prod_cat))
+					WHERE	LTRIM(RTRIM(item_no)) = @VP_CU_ITEM_NO
 
 					-- ///////////////////////////////////////////
 					DECLARE  @VP_PRECIO_UNITARIO			DECIMAL(13,2) = 0				-- REVISAR CALCULOS PORQUE EL PRECIO ESTA A 6 DECIMALES
@@ -1061,23 +1211,52 @@ AS
 		END
 	ELSE
 	BEGIN
+		--SELECT	
+		--		OELINHST_SQL.Item_No,
+		--		OELINHST_SQL.Item_Desc_1,
+		--		-- =========================================
+		--		( CASE WHEN @PP_CUSTOMER = 'FAUR01' THEN
+		--					CONCAT(LTRIM(RTRIM(OELINHST_SQL.Cus_Item_No)), ' (', LTRIM(RTRIM(ISNULL(filler_0003, ''))) , ')') 
+		--			ELSE LTRIM(RTRIM(OELINHST_SQL.Cus_Item_No)) END ) AS Cus_Item_No,
+		--		-- =========================================
+		--		OELINHST_SQL.Qty_To_Ship,
+		--		'EA'	AS UOM_MANUAL,
+		--		OELINHST_SQL.Unit_Price,
+		--		SLS_AMT	AS	TOTAL_KIT
+		---- =========================================-- =========================================
+		--FROM	OELINHST_SQL	(NOLOCK) 
+		--LEFT JOIN IMITMIDX_SQL	(NOLOCK) ON LTRIM(RTRIM(IMITMIDX_SQL.item_no)) = LTRIM(RTRIM(OELINHST_SQL.item_no))
+		--WHERE	OELINHST_SQL.Inv_No		= @PP_INVOICE_NO
+		--AND		LTRIM(RTRIM(CUS_NO))	= @PP_CUSTOMER
+		--ORDER BY OELINHST_SQL.Line_Seq_No
+
 		SELECT	
 				OELINHST_SQL.Item_No,
-				OELINHST_SQL.Item_Desc_1,
+				-- =========================================
+				CONCAT	(		LTRIM(RTRIM(OELINHST_SQL.Item_Desc_1)),
+								'   (',
+								--LTRIM(RTRIM(prod_cat_desc)),
+								ISNULL(	LTRIM(RTRIM(modeldesc)),	'-')	,
+								')    '
+				)	AS Item_Desc_1,
 				-- =========================================
 				( CASE WHEN @PP_CUSTOMER = 'FAUR01' THEN
 							CONCAT(LTRIM(RTRIM(OELINHST_SQL.Cus_Item_No)), ' (', LTRIM(RTRIM(ISNULL(filler_0003, ''))) , ')') 
-					ELSE LTRIM(RTRIM(OELINHST_SQL.Cus_Item_No)) END ) AS Cus_Item_No,
+					ELSE LTRIM(RTRIM(OELINHST_SQL.Cus_Item_No)) END )	AS Cus_Item_No,
 				-- =========================================
 				OELINHST_SQL.Qty_To_Ship,
 				'EA'	AS UOM_MANUAL,
 				OELINHST_SQL.Unit_Price,
 				SLS_AMT	AS	TOTAL_KIT
 		-- =========================================-- =========================================
-		FROM	OELINHST_SQL
-		LEFT JOIN IMITMIDX_SQL ON LTRIM(RTRIM(IMITMIDX_SQL.item_no)) = LTRIM(RTRIM(OELINHST_SQL.item_no))
+		FROM	OELINHST_SQL	 (NOLOCK) 
+		LEFT JOIN	IMITMIDX_SQL (NOLOCK) ON LTRIM(RTRIM(IMITMIDX_SQL.item_no)) = LTRIM(RTRIM(OELINHST_SQL.item_no))
+		--INNER JOIN	IMCATFIL_SQL (NOLOCK) ON LTRIM(RTRIM(IMCATFIL_SQL.prod_cat))= LTRIM(RTRIM(IMITMIDX_SQL.prod_cat))
+		INNER JOIN	ccverhdr_sql (NOLOCK) ON LTRIM(RTRIM(ccverhdr_sql.modelno))	= LTRIM(RTRIM(IMITMIDX_SQL.prod_cat))
+		AND			ccverhdr_sql.[status]		= 'L'
+		AND			ccverhdr_sql.[specstatus]	= 'U'
 		WHERE	OELINHST_SQL.Inv_No		= @PP_INVOICE_NO
-		AND		LTRIM(RTRIM(CUS_NO))	= @PP_CUSTOMER
+		AND		LTRIM(RTRIM(OELINHST_SQL.CUS_NO))	= @PP_CUSTOMER
 		ORDER BY OELINHST_SQL.Line_Seq_No
 	END	
 	-- /////////////////////////////////////////////////////////////////////
@@ -1314,8 +1493,8 @@ AS
 							RAISERROR ('No fue posible actualizar el estatus del detalle, verifique...', 16, 1 )
 
 						-- /////////PARA INSERTAR LOS ENCABEZADOS DE LOS DETALLES QUE HAN SIDO EMBARCADOS////////////////////////////////////////////////////////////
-						IF (SELECT COUNT(K_DETAILS_RMA) FROM DETAILS_RMA	WHERE K_HEADER_RMA	= @VP_K_HEADER_RMA)	= 
-							(SELECT COUNT(K_DETAILS_RMA) FROM DETAILS_RMA	WHERE K_HEADER_RMA	= @VP_K_HEADER_RMA AND	K_STATUS_RMA = 35 )
+						IF ( SELECT COUNT(K_DETAILS_RMA) FROM DETAILS_RMA	(NOLOCK) WHERE K_HEADER_RMA	= @VP_K_HEADER_RMA)	= 
+							(SELECT COUNT(K_DETAILS_RMA) FROM DETAILS_RMA	(NOLOCK) WHERE K_HEADER_RMA	= @VP_K_HEADER_RMA AND	K_STATUS_RMA = 35 )
 						BEGIN
 							INSERT	INTO	@TBL_MATERIAL_SELECCIONADO_HEADER_RMA
 							VALUES	(	@VP_K_HEADER_RMA	)
@@ -1830,7 +2009,7 @@ AS
 		-- //////SE OBTIENE EL NUMERO DE RELOJ DEL USUARIO PEARL/////////////////////////////////////
 		DECLARE @VP_NUMERO_RELOJ INT = 0;
 		SELECT @VP_NUMERO_RELOJ = K_EMPLEADO_PEARL				
-		FROM BD_GENERAL.DBO.USUARIO_PEARL 
+		FROM BD_GENERAL.DBO.USUARIO_PEARL		(NOLOCK)
 		WHERE K_USUARIO_PEARL = @PP_K_USUARIO_ACCION
 
 		-- ///////SE GUARDA EL LOG DEL MATERIAL EMBARCADO PARA EL RASTREO//////////////////////////////////////////////
@@ -1926,9 +2105,9 @@ AS
 		BEGIN
 			DECLARE @VP_N_SERIAL_EXISTE INT = 0
 
-			SELECT  @VP_N_SERIAL_EXISTE = COUNT([K_MATERIAL_PROGRAMADO]) 
-			FROM [MATERIAL_PROGRAMADO] 
-			WHERE SERIAL = @VP_SERIAL
+			SELECT  @VP_N_SERIAL_EXISTE		= COUNT([K_MATERIAL_PROGRAMADO]) 
+			FROM	[MATERIAL_PROGRAMADO]	(NOLOCK)
+			WHERE	SERIAL = @VP_SERIAL
 
 			IF ( @VP_N_SERIAL_EXISTE IS NULL OR @VP_N_SERIAL_EXISTE = 0 )
 				BEGIN
