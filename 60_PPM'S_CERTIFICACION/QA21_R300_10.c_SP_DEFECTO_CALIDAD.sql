@@ -218,7 +218,7 @@ AS
 				
 				-- ////////SE GUARDA EL LOG///////////////////////////////////////////////////////			
 				EXECUTE DATA_02.[dbo].[PG_IN_PEARL_LOG]		@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
-															@PP_USER, @PP_COMPUTER_NAME, 'Modificar Sellos',
+															@PP_USER, @PP_COMPUTER_NAME, 'Modificar defecto',
 															'', 'DL', '', @PP_CLAVE
 			COMMIT TRANSACTION 
 			END TRY

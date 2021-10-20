@@ -1,6 +1,41 @@
 
 
 USE PPMS_PEARL
+SELECT TOP 1 * FROM rechazos WHERE ORDEN = '43103'
+
+-- 100051983-001  44801               
+--UPDATE rechazos 
+--SET ORDEN = '44801',
+--	noparte  = '100051983-001'
+--WHERE ORDEN = '43103' AND ID = 2092213
+
+SELECT TOP 1 * FROM DEF
+
+select	orden, rechazos.noparte, rechazos.defecto, tipodef, 
+		count(rechazos.defecto)as qty, originalqty, lote, 
+		muestra, perforado, inspprod, turno, mesa, fisica, perfora,kitdesc 
+		from rechazos, numpart, DEF, 
+			(	select jobno, Item_No, sum(OriginalQty)as originalqty, KitDesc 
+				from DATA_02.dbo.ccjoblin_sql 
+				WHERE jobno='43103' group by jobno, Item_No, KitDesc
+			) a  
+		where rechazos.noparte = numpart.noparte 
+		and rechazos.defecto = clave 
+		and item_no=nopartepearl 
+		and orden= jobno 
+		and orden = '43103' 
+		group by orden, rechazos.noparte, rechazos.defecto, tipodef, lote, muestra, 
+		perforado, inspprod, turno, mesa, fisica, originalqty, perfora, kitdesc 
+		order by rechazos.noparte, turno
+
+	SELECT DISTINCT ITEM_NO FROM DATA_02.dbo.ccjoblin_sql WHERE JOBNO = '43103'
+	
+	SELECT * FROM numpart 
+	WHERE noparte = '200766DTX7'
+
+	SELECT * FROM numpart 
+	WHERE nopartepearl IN (SELECT ITEM_NO FROM DATA_02.dbo.ccjoblin_sql WHERE JOBNO IN ('44801', '43103') )
+
 -- ////////////////CERTIFICACION//////////////////////////////////////////////
 	select distinct cus_item_no, imitmidx_sql.item_no, imitmidx_sql.prod_cat, imcatfil_sql.prod_cat_desc 
 	from DATA_02.DBO.part_no_view, DATA_02.DBO.imitmidx_sql, DATA_02.DBO.imcatfil_sql  
@@ -15,10 +50,11 @@ USE PPMS_PEARL
 	AND MODELNO = 'RUA' 
 	AND VERSIONNO = '0036'
 
+	SELECT * FROM DATA_02.DBO.PEARL_LOG WHERE SCREEN_OPT = 'Modificar SELLOS' ORDER BY CKEY DESC
 
 	SELECT *
 	FROM certificacion_rpt (NOLOCK)
-	WHERE  FECHA = '20211012'
+	WHERE  NO_PARTE = '200489BTX7'
 
 	SELECT *
 	FROM certificacion_rpt (NOLOCK)

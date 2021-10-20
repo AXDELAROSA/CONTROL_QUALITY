@@ -39,7 +39,7 @@ AS
 			inspector_cal AS INSPECTOR,
 			TURNO			
 	FROM  [PPMS_PEARL].[dbo].personal (NOLOCK)
-	ORDER BY inspector_cal
+	ORDER BY SELLO
 	
 	-- ////////////////////////////////////////////////
 	-- ////////////////////////////////////////////////
@@ -135,7 +135,7 @@ AS
 						-- ////////SE GUARDA EL LOG///////////////////////////////////////////////////////			
 						EXECUTE DATA_02.[dbo].[PG_IN_PEARL_LOG]		@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
 																	@PP_USER, @PP_COMPUTER_NAME, 'Modificar Sellos',
-																	'', 'ADD', @PP_COMENTARIO, @PP_SELLO
+																	@PP_N_RELOJ, 'ADD', @PP_COMENTARIO, @PP_SELLO
 					END
 				ELSE
 					BEGIN
@@ -151,7 +151,7 @@ AS
 						-- ////////SE GUARDA EL LOG///////////////////////////////////////////////////////			
 						EXECUTE DATA_02.[dbo].[PG_IN_PEARL_LOG]		@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
 																	@PP_USER, @PP_COMPUTER_NAME, 'Modificar Sellos',
-																	'', 'UP', @PP_COMENTARIO, @PP_SELLO
+																	@PP_N_RELOJ, 'UP', @PP_COMENTARIO, @PP_SELLO
 					END
 			COMMIT TRANSACTION 
 			END TRY
@@ -202,7 +202,6 @@ CREATE PROCEDURE [dbo].[PG_DL_SELLO_INSPECTOR_CALIDAD]
 	@PP_K_USUARIO_ACCION				INT,
 	-- ===========================
 	@PP_SELLO							VARCHAR(50),
-	@PP_COMENTARIO						VARCHAR(25),
 	-- ===========================
 	@PP_USER							VARCHAR(50),
 	@PP_COMPUTER_NAME					VARCHAR(255)									
@@ -223,7 +222,7 @@ AS
 				-- ////////SE GUARDA EL LOG///////////////////////////////////////////////////////			
 				EXECUTE DATA_02.[dbo].[PG_IN_PEARL_LOG]		@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
 															@PP_USER, @PP_COMPUTER_NAME, 'Modificar Sellos',
-															'', 'DL', @PP_COMENTARIO, @PP_SELLO
+															'', 'DL', '', @PP_SELLO
 			COMMIT TRANSACTION 
 			END TRY
 	
