@@ -70,7 +70,24 @@ select	orden, rechazos.noparte, rechazos.defecto, tipodef,
 	GROUP BY inspector_cal, noreloj
 	HAVING COUNT(sello) > 1
 
+	SELECT	CONVERT(DATE, fecha) AS 'FECHA', 
+			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
+			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
+	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN personal (NOLOCK) ON sello = sello_paq
+	WHERE CONVERT(DATE, fecha) = '2021-10-01'
+	AND personal.turno = 1
+	GROUP BY CONVERT(DATE, fecha)
+	order by fecha
 	
+	SELECT sum(total)
+	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN personal (NOLOCK) ON sello = sello_paq
+	WHERE CONVERT(DATE, fecha) = '2021-10-01'
+	AND personal.turno = 1
+
+	SELECT * FROM personal (NOLOCK)
+	SELECT * FROM DEF (NOLOCK) ORDER BY clave
 	-- //////////PPMS////////////////////////////////////////////////////
 	SELECT * FROM [PPMS_PEARL].[dbo].[QC] WHERE CONVERT(DATE, Date) = '2021-09-13' ORDER BY INSPECTOR
 	SELECT * FROM [PPMS_PEARL].[dbo].[QC] WHERE ID = 303022 -- CONVERT(DATE, Date) = '2021-09-01'

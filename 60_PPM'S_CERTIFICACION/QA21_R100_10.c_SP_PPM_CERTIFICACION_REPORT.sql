@@ -23,7 +23,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_
 GO
 
 /*
- EXEC	[dbo].[PG_LI_CERTIFICACION_REPORT_CONCENTRADO_X_HORA] 0,0, '2021-10-01', '2021-10-21'
+ EXEC	[dbo].[PG_LI_CERTIFICACION_REPORT_CONCENTRADO_X_HORA] 0,0, '2021-10-01', '2021-10-25'
 */
 
 CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_REPORT_CONCENTRADO_X_HORA]
@@ -81,8 +81,9 @@ AS
 			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
 			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
 	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN personal (NOLOCK) ON sello = sello_paq
 	WHERE CONVERT(DATE, fecha) = @PP_F_FIN
-	AND turno = 1
+	AND personal.turno = 1
 	GROUP BY CONVERT(DATE, fecha)
 
 
@@ -108,8 +109,9 @@ AS
 			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
 			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
 	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN personal (NOLOCK) ON sello = sello_paq
 	WHERE CONVERT(DATE, fecha) = @PP_F_FIN
-	AND turno = 2
+	AND personal.turno = 2
 	GROUP BY CONVERT(DATE, fecha)
 
 
@@ -132,8 +134,9 @@ AS
 			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
 			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
 	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN personal (NOLOCK) ON sello = sello_paq
 	WHERE CONVERT(DATE, fecha) = @PP_F_FIN
-	AND turno = 3
+	AND personal.turno = 3
 	GROUP BY CONVERT(DATE, fecha)
 
 
@@ -219,7 +222,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_
 GO
 
 /*
- EXEC	[dbo].[PG_LI_CERTIFICACION_REPORT_X_FECHA_TURNO] 0,0, '2021-10-01', '2021-10-21', 3
+ EXEC	[dbo].[PG_LI_CERTIFICACION_REPORT_X_FECHA_TURNO] 0,0, '2021-10-01', '2021-10-22', 1
 */
 
 CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_REPORT_X_FECHA_TURNO]
@@ -244,9 +247,10 @@ AS
 			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
 			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
 	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN personal (NOLOCK) ON sello = sello_paq
 	WHERE CONVERT(DATE, fecha) >= @PP_F_INICIAL
 	AND CONVERT(DATE, fecha) <= @PP_F_FIN
-	AND turno = @VP_TURNO
+	AND personal.turno = @VP_TURNO
 	GROUP BY CONVERT(DATE, fecha)
 
 	-- /////////SE CALCULAS LOS TOTALES//////////////
@@ -295,13 +299,14 @@ AS
 	-- /////////SE INSERTAN LOS DATOS A LA TABLA//////////////
 	INSERT INTO @VP_TBL_CERTIFICACION
 	SELECT	CONVERT(DATE, fecha) AS 'FECHA', 
-			TURNO AS TURNO,
+			personal.TURNO AS TURNO,
 			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
 			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
 	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN personal (NOLOCK) ON sello = sello_paq
 	WHERE CONVERT(DATE, fecha) >= @PP_F_INICIAL
 	AND CONVERT(DATE, fecha) <= @PP_F_FIN
-	GROUP BY CONVERT(DATE, fecha), turno
+	GROUP BY CONVERT(DATE, fecha), personal.turno
 
 	-- /////////SE CREA TABLA TEMPORAL PARA LOS DATOS DE CERTIFICACION//////////////
 	DECLARE @VP_TBL_CERTIFICACION_TOTALES TABLE(
@@ -494,7 +499,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_
 GO
 
 /*
- EXEC	[dbo].[PG_LI_CERTIFICACION_DEFECTO_ACUMULADO_X_DIA_TURNO] 0,0, '2021-09-13', 1
+ EXEC	[dbo].[PG_LI_CERTIFICACION_DEFECTO_ACUMULADO_X_DIA_TURNO] 0,0, '2021-10-25', 3
 */
 
 CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_DEFECTO_ACUMULADO_X_DIA_TURNO]
@@ -512,13 +517,6 @@ AS
 		DEFECTO		VARCHAR(50),
 		CANTIDAD	INT
 	)
-
-	--CREATE TABLE #CERTIFICACION_DEFECTO_ACUMULADO(
-	--	SELLO		VARCHAR(20),
-	--	INSPECTOR	VARCHAR(255),
-	--	DEFECTO		VARCHAR(50),
-	--	CANTIDAD	INT
-	--)
 
 	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
 	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO
@@ -563,39 +561,122 @@ AS
 	AND personal.turno = @PP_TURNO
 	AND insp_certi <> '' 
 	GROUP BY SELLO_PAQ, INSPECTOR_CAL, DEFECTO
-	HAVING  SUM(cant2)   > 0
+	HAVING  SUM(cant3)   > 0
 
 	-- /////////SE MUESTRAN LOS DATOS///////////////////////////////////////
 	SELECT 	CERTI_DEF.SELLO,
-			CONCAT((SUBSTRING( CONCAT(EP_NOMBRE, ' '), 1, CHARINDEX(' ', CONCAT(EP_NOMBRE, ' ')))), ' ' + EP_APELLIDO_PATERNO) AS INSPECTOR,		
-			--INSPECTOR,	
+			--CONCAT((SUBSTRING( CONCAT(EP_NOMBRE, ' '), 1, CHARINDEX(' ', CONCAT(EP_NOMBRE, ' ')))), ' ' + EP_APELLIDO_PATERNO) AS INSPECTOR,		
+			(	SELECT TOP 1 CONCAT((SUBSTRING( CONCAT(EP_NOMBRE, ' '), 1, CHARINDEX(' ', CONCAT(EP_NOMBRE, ' ')))), ' ' + EP_APELLIDO_PATERNO)
+				FROM HOWE.DBO.VISTA_GAFETES (NOLOCK)
+				INNER JOIN personal (NOLOCK) ON LTRIM(RTRIM(inspector_cal)) =  LTRIM(RTRIM(INSPECTOR)) AND EN_NUM_EMP = noreloj	) AS INSPECTOR,	
 			DEFECTO,	
 			CANTIDAD	
 	FROM @VP_TBL_CERTIFICACION_DEFECTO AS CERTI_DEF
-	INNER JOIN personal (NOLOCK) ON personal.sello =  CERTI_DEF.SELLO
-	INNER JOIN HOWE.DBO.VISTA_GAFETES (NOLOCK) ON EN_NUM_EMP = noreloj
+	--INNER JOIN personal (NOLOCK) ON personal.sello =  CERTI_DEF.SELLO
+	--INNER JOIN HOWE.DBO.VISTA_GAFETES (NOLOCK) ON EN_NUM_EMP = noreloj
 	ORDER BY INSPECTOR
-
-	-- ////////////////////SE OBTIENEN LOS DEFECTOS EN FORMA DE COLUMNAS//////////////////////////	
-	--DECLARE @VP_COLUMNA_DEFECTO NVARCHAR(MAX) = '', @VP_QUERY AS NVARCHAR(MAX) = ''
-	--SELECT @VP_COLUMNA_DEFECTO = STUFF(( SELECT ',' + QUOTENAME(DEFECTO) 
-	--						FROM #CERTIFICACION_DEFECTO_ACUMULADO 
-	--						GROUP BY DEFECTO
-	--						ORDER BY DEFECTO
-	--						FOR XML PATH(''), TYPE ).value('.', 'NVARCHAR(MAX)') ,1, 1,'' ) 									 										 			
-								 			
-	--SET @VP_QUERY = N'SELECT SELLO, INSPECTOR, ' + @VP_COLUMNA_DEFECTO + N' into [tempdb].[dbo].[CERTIFICACION_DEFECTO_ACUMULADO_PIVOT]  from ( SELECT SELLO, INSPECTOR, CANTIDAD, DEFECTO from #CERTIFICACION_DEFECTO_ACUMULADO ) x pivot ( SUM(CANTIDAD) for DEFECTO in (' + @VP_COLUMNA_DEFECTO + N') ) p ' 
-	--EXEC sp_executesql @VP_QUERY;	
-
-	--SELECT * FROM [tempdb].[dbo].CERTIFICACION_DEFECTO_ACUMULADO_PIVOT
-
-	--SET NOCOUNT ON
-	--DROP TABLE #CERTIFICACION_DEFECTO_ACUMULADO
-	--DROP TABLE [tempdb].[dbo].[CERTIFICACION_DEFECTO_ACUMULADO_PIVOT]
 
 	-- ////////////////////////////////////////////////
 	-- ////////////////////////////////////////////////
 GO
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_CERTIFICACION_DEFECTO_ACUMULADO_X_MES_TURNO]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_CERTIFICACION_DEFECTO_ACUMULADO_X_MES_TURNO]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_CERTIFICACION_DEFECTO_ACUMULADO_X_MES_TURNO] 0,0, '2021-10-01', '2021-10-25', 1
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_DEFECTO_ACUMULADO_X_MES_TURNO]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE,
+	@PP_TURNO							INT
+AS
+	
+	-- /////////SE CREA TABLA TEMPORAL PARA GUARDAR LOS DATOS///////////////////////////////////////
+	DECLARE @VP_TBL_CERTIFICACION_DEFECTO TABLE(
+		SELLO		VARCHAR(20),
+		INSPECTOR	VARCHAR(255),
+		DEFECTO		VARCHAR(50),
+		CANTIDAD	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO
+	SELECT	SELLO_PAQ		AS SELLO,
+			INSPECTOR_CAL	AS INSPECTOR, 
+			DEFECTO,
+			( SUM(cant1)) AS DEFECTOS
+	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN personal (NOLOCK) ON sello = sello_paq
+	INNER JOIN def (NOLOCK) ON DEF.CLAVE = certificacion_rpt.defecto1
+	WHERE CONVERT(DATE, fecha) >= @PP_F_INICIAL
+	AND CONVERT(DATE, fecha) <= @PP_F_FIN
+	AND personal.turno = @PP_TURNO
+	AND insp_certi <> '' 
+	GROUP BY SELLO_PAQ, INSPECTOR_CAL, DEFECTO
+	HAVING  SUM(cant1)   > 0
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO
+	SELECT	SELLO_PAQ	AS SELLO,
+			INSPECTOR_CAL	AS INSPECTOR, 
+			DEFECTO,
+			( SUM(cant2)) AS DEFECTOS
+	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN personal (NOLOCK) ON sello = sello_paq
+	INNER JOIN def (NOLOCK) ON DEF.CLAVE = certificacion_rpt.defecto2
+	WHERE CONVERT(DATE, fecha) >= @PP_F_INICIAL
+	AND CONVERT(DATE, fecha) <= @PP_F_FIN
+	AND personal.turno = @PP_TURNO
+	AND insp_certi <> '' 
+	GROUP BY SELLO_PAQ, INSPECTOR_CAL, DEFECTO
+	HAVING  SUM(cant2)   > 0
+	
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO
+	SELECT	SELLO_PAQ	AS SELLO,
+			INSPECTOR_CAL	AS INSPECTOR, 
+			DEFECTO,
+			( SUM(cant3)) AS DEFECTOS
+	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN personal (NOLOCK) ON sello = sello_paq
+	INNER JOIN def (NOLOCK) ON DEF.CLAVE = certificacion_rpt.defecto3
+	WHERE CONVERT(DATE, fecha) >= @PP_F_INICIAL
+	AND CONVERT(DATE, fecha) <= @PP_F_FIN
+	AND personal.turno = @PP_TURNO
+	AND insp_certi <> '' 
+	GROUP BY SELLO_PAQ, INSPECTOR_CAL, DEFECTO
+	HAVING  SUM(cant3)   > 0
+
+	-- /////////SE MUESTRAN LOS DATOS///////////////////////////////////////
+	SELECT 	CERTI_DEF.SELLO,
+			--CONCAT((SUBSTRING( CONCAT(EP_NOMBRE, ' '), 1, CHARINDEX(' ', CONCAT(EP_NOMBRE, ' ')))), ' ' + EP_APELLIDO_PATERNO) AS INSPECTOR,		
+			ISNULL((	SELECT TOP 1 CONCAT((SUBSTRING( CONCAT(EP_NOMBRE, ' '), 1, CHARINDEX(' ', CONCAT(EP_NOMBRE, ' ')))), ' ' + EP_APELLIDO_PATERNO)
+				FROM HOWE.DBO.VISTA_GAFETES (NOLOCK)
+				INNER JOIN personal (NOLOCK) ON LTRIM(RTRIM(inspector_cal)) =  LTRIM(RTRIM(INSPECTOR)) AND EN_NUM_EMP = noreloj	), 'BAJA') AS INSP_CERTI,	
+			DEFECTO,	
+			CANTIDAD	
+	FROM @VP_TBL_CERTIFICACION_DEFECTO AS CERTI_DEF
+	--INNER JOIN personal (NOLOCK) ON personal.sello =  CERTI_DEF.SELLO
+	--INNER JOIN HOWE.DBO.VISTA_GAFETES (NOLOCK) ON EN_NUM_EMP = noreloj
+	ORDER BY INSPECTOR ASC, CANTIDAD DESC
+
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
 
 
 
