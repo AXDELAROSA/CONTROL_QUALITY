@@ -1390,7 +1390,18 @@ AS
 		BEGIN
 			BEGIN TRANSACTION 
 			BEGIN TRY
-				IF @PP_K_USUARIO_ACCION NOT IN (139,87)
+				--	AX: 139,	87: DIANAN,	174:	CARLAC,		77:	GENAROH
+				--IF @PP_K_USUARIO_ACCION NOT IN (139,87, 174,77)
+				--BEGIN
+				--	RAISERROR ('Usuario no válido para realizar la acción.', 16, 1 )
+				--END
+				----================================================================
+				IF	(	SELECT  COUNT(K_USUARIO_PEARL)
+						FROM	BD_GENERAL.dbo.USUARIO_PEARL AS USERS  (NOLOCK) 
+						INNER	JOIN	BD_GENERAL.dbo.GRUPO_APROBADOR (NOLOCK) ON GRUPO_APROBADOR.K_USUARIO	= USERS.K_USUARIO_PEARL
+						WHERE	GRUPO_APROBADOR.K_TIPO_GRUPO_APROBADOR			= 9705--@VP_K_TIPO_GRUPO_APROBADOR
+						AND		K_ESTATUS_GRUPO_APROBADOR						= 1
+						AND		GRUPO_APROBADOR.K_USUARIO						= @PP_K_USUARIO_ACCION	)	= 0
 				BEGIN
 					RAISERROR ('Usuario no válido para realizar la acción.', 16, 1 )
 				END

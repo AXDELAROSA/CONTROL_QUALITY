@@ -182,15 +182,15 @@ AS
 	-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
 	-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
 	-- //////SE DECLARAN VARIABLES A USARSE/////////////////////////////////////
-	DECLARE  @VP_CU_PATTERN			VARCHAR(50)		= '',	@VP_CU_ITEM_NO		VARCHAR(100)	= '',	@VP_CU_CANTIDAD		INT = 0,		
-			 @VP_CU_S_COLOR_SINF	VARCHAR(10)		= '',	@VP_CU_D_COLOR		VARCHAR(10)		= '',	@VP_CU_K_DETAILS	INT,
-			 @VP_CU_MODELO			VARCHAR(250)		,	@VP_CU_S_MODELO		VARCHAR(10)			,	@VP_CU_VERSIONNO			VARCHAR(10),
-			 @VP_GROSS				DECIMAL(16,4)	= 0,	@VP_NETO			DECIMAL(16,4)	= 0,	@VP_PATRON			INT = 0,
-			 @VP_TOTAL_GROSS		DECIMAL(16,4)	= 0,	@VP_TOTAL_NETO		DECIMAL(16,4)	= 0,	@VP_TOTAL_PATRON	INT = 0,
-			 @VP_CONSECUTIVO		INT				= 1,	@VP_NUMERO_RELOJ	INT				= 0,	
+	DECLARE  @VP_CU_PATTERN			VARCHAR(50)		= '',	@VP_CU_ITEM_NO		VARCHAR(100)	= '',	@VP_CU_CANTIDAD		INT = 0		,		
+			 @VP_CU_S_COLOR_SINF	VARCHAR(10)		= '',	@VP_CU_D_COLOR		VARCHAR(10)		= '',	@VP_CU_K_DETAILS	INT			,
+			 @VP_CU_MODELO			VARCHAR(250)		,	@VP_CU_S_MODELO		VARCHAR(10)			,	@VP_CU_VERSIONNO	VARCHAR(10) ,
+			 @VP_GROSS				DECIMAL(16,4)	= 0 ,	@VP_NETO			DECIMAL(16,4)	= 0 ,	@VP_PATRON			INT = 0		,
+			 @VP_TOTAL_GROSS		DECIMAL(16,4)	= 0 ,	@VP_TOTAL_NETO		DECIMAL(16,4)	= 0 ,	@VP_TOTAL_PATRON	INT = 0		,
+			 @VP_CONSECUTIVO		INT				= 1 ,	@VP_NUMERO_RELOJ	INT				= 0 ,	
 			 --=============================================================================================================================
-			 @VP_CU_S_COLOR_SINF_anterior	VARCHAR(10)	= '',
-			 @VP_CU_D_COLOR_anterior		VARCHAR(250)	= '',
+			 @VP_CU_S_COLOR_SINF_anterior	VARCHAR(10)	= ''	,
+			 @VP_CU_D_COLOR_anterior		VARCHAR(250)= ''	,
 			 --=============================================================================================================================
 			 @VP_EX_PATTERN			VARCHAR(50)		= '',	@VP_EX_ITEM_NO		VARCHAR(100)	= '',	@VP_EX_CANTIDAD		INT = 0,		
 			 @VP_EX_S_COLOR_SINF	VARCHAR(10)		= '',	@VP_EX_D_COLOR		VARCHAR(10)		= '',
@@ -370,9 +370,9 @@ AS
 					-- /////////////////////////INGRESO EL LOG////////////////////////////////////////////
 					SET	@VP_DETAIL =	'Creacion de Orden: ' + @VP_ORDEN
 					EXECUTE [DATA_02].[dbo].[PG_IN_PEARL_LOG]	@PP_K_SISTEMA_EXE, @VP_K_USER,--@PP_K_USUARIO_ACCION,
-													@VP_K_USER,		@VP_COMPUTER_NAME,	'RMA',
-													@VP_ORDEN,		'Crear orden',		@VP_DETAIL, 
-													''
+																@VP_K_USER,		@VP_COMPUTER_NAME,	'RMA',
+																@VP_ORDEN,		'Crear orden',		@VP_DETAIL, 
+																''
 					
 					-- /////////////////////////////////////////////////////// SE ACTUALIZA EL CAMPO DE JOBNOS EN EL ENCABEZADO DE LA RMA.
 					SET @VP_JOB = ''
