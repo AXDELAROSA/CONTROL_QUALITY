@@ -11,23 +11,6 @@ SELECT TOP 1 * FROM rechazos WHERE ORDEN = '43103'
 
 SELECT TOP 1 * FROM DEF
 
-select	orden, rechazos.noparte, rechazos.defecto, tipodef, 
-		count(rechazos.defecto)as qty, originalqty, lote, 
-		muestra, perforado, inspprod, turno, mesa, fisica, perfora,kitdesc 
-		from rechazos, numpart, DEF, 
-			(	select jobno, Item_No, sum(OriginalQty)as originalqty, KitDesc 
-				from DATA_02.dbo.ccjoblin_sql 
-				WHERE jobno='43103' group by jobno, Item_No, KitDesc
-			) a  
-		where rechazos.noparte = numpart.noparte 
-		and rechazos.defecto = clave 
-		and item_no=nopartepearl 
-		and orden= jobno 
-		and orden = '43103' 
-		group by orden, rechazos.noparte, rechazos.defecto, tipodef, lote, muestra, 
-		perforado, inspprod, turno, mesa, fisica, originalqty, perfora, kitdesc 
-		order by rechazos.noparte, turno
-
 	SELECT DISTINCT ITEM_NO FROM DATA_02.dbo.ccjoblin_sql WHERE JOBNO = '43103'
 	
 	SELECT * FROM numpart 
@@ -51,6 +34,8 @@ select	orden, rechazos.noparte, rechazos.defecto, tipodef,
 	AND VERSIONNO = '0036'
 
 	SELECT * FROM DATA_02.DBO.PEARL_LOG WHERE SCREEN_OPT = 'Modificar SELLOS' ORDER BY CKEY DESC
+
+	FR 01-SEP-2021 A 08-11-201
 
 	SELECT *
 	FROM certificacion_rpt (NOLOCK)
