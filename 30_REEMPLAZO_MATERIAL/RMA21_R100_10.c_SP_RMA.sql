@@ -1884,7 +1884,7 @@ CREATE PROCEDURE [dbo].[PG_DL_HEADER_RMA]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
 	-- ===========================
-	@PP_K_HEADER_RMA				INT
+	@PP_K_HEADER_RMA				INT	
 AS
 DECLARE @VP_MENSAJE				NVARCHAR(MAX) = ''
 BEGIN TRANSACTION 
@@ -1904,11 +1904,38 @@ BEGIN TRY
 
 		IF @VP_STATUS_K_HEADER NOT IN ( 0, 1, 3, 5)
 		BEGIN
-			SET @VP_MENSAJE='La [Orden#'+CONVERT(VARCHAR(10),@PP_K_HEADER_RMA)+'] no puede ser eliminada, verifique...'
-			RAISERROR (@VP_MENSAJE, 16, 1 ) 
+			IF ( SELECT K_TIPO_RMA FROM HEADER_RMA (NOLOCK) )	= 1
+			BEGIN
+				SET @VP_MENSAJE='La [Orden#'+CONVERT(VARCHAR(10),@PP_K_HEADER_RMA)+'] no puede ser eliminada, verifique...'
+				RAISERROR (@VP_MENSAJE, 16, 1 )
+			END
+			ELSE
+			BEGIN
+					--==============================================================
+					--==============================================================
+					DECLARE @PP_CU_JOBNO			INT
+
+					DECLARE CU_JOBNO				CURSOR STATIC LOCAL FOR
+						SELECT DISTINCT
+								JOBNO
+						FROM	DETAILS_RMA
+						WHERE	K_HEADER_RMA	= @PP_K_HEADER_RMA
+					OPEN	CU_JOBNO
+						FETCH NEXT FROM CU_JOBNO INTO @PP_CU_JOBNO
+						WHILE @@FETCH_STATUS = 0
+						BEGIN
+						--==============================================================
+							EXECUTE	[DBO].[PG_PR_PLANNING_ELIMINAR_ORDER_X_RMA]	@PP_K_SISTEMA_EXE,	@PP_K_USUARIO_ACCION,
+																				@PP_CU_JOBNO,		'PEARL-SIS'--@PP_COMPUTER_NAME		
+						--==============================================================
+						FETCH NEXT FROM CU_JOBNO INTO @PP_CU_JOBNO
+						END
+					CLOSE		CU_JOBNO
+					DEALLOCATE	CU_JOBNO
+				--==============================================================
+			END
 		END
 	--////////////////////////////////////////////////////////////
-
 		UPDATE	HEADER_RMA
 		SET		
 				[L_BORRADO]				= 1			,
