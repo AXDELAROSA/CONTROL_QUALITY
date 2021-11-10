@@ -1876,7 +1876,7 @@ GO
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> DELETE / FICHA
 -- //////////////////////////////////////////////////////////////
---	EXECUTE [dbo].[PG_DL_HEADER_RMA] 0,139,380,2,2
+--	EXECUTE [dbo].[PG_DL_HEADER_RMA] 1,98,1346
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_DL_HEADER_RMA]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_DL_HEADER_RMA]
 GO
@@ -1904,14 +1904,19 @@ BEGIN TRY
 
 		IF @VP_STATUS_K_HEADER NOT IN ( 0, 1, 3, 5)
 		BEGIN
-			IF ( SELECT K_TIPO_RMA FROM HEADER_RMA (NOLOCK) )	= 1
+			IF ( SELECT K_TIPO_RMA FROM HEADER_RMA (NOLOCK)	WHERE K_HEADER_RMA	= @PP_K_HEADER_RMA )	= 1
 			BEGIN
 				SET @VP_MENSAJE='La [Orden#'+CONVERT(VARCHAR(10),@PP_K_HEADER_RMA)+'] no puede ser eliminada, verifique...'
 				RAISERROR (@VP_MENSAJE, 16, 1 )
 			END
 			ELSE
-			BEGIN
+			BEGIN					
 					--==============================================================
+						--SELECT DISTINCT
+						--		JOBNO
+						--FROM	DETAILS_RMA
+						--WHERE	K_HEADER_RMA	= @PP_K_HEADER_RMA
+
 					--==============================================================
 					DECLARE @PP_CU_JOBNO			INT
 
@@ -1946,6 +1951,7 @@ BEGIN TRY
 		IF @@ROWCOUNT = 0
 		BEGIN
 			SET @VP_MENSAJE='la orden no puede ser borrada. [HDR#'+CONVERT(VARCHAR(10),@PP_K_HEADER_RMA)+']'
+			RAISERROR (@VP_MENSAJE, 16, 1 )
 		END
 
 -- /////////////////////////////////////////////////////////////////////
