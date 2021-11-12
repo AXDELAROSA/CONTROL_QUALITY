@@ -12,153 +12,6 @@
 USE [PPMS_PEARL]
 GO
 
-
-
--- //////////////////////////////////////////////////////////////
--- // STORED PROCEDURE ---> SELECT / LISTADO
--- //////////////////////////////////////////////////////////////
-
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_CERTIFICACION_REPORT_CONCENTRADO_X_HORA]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_LI_CERTIFICACION_REPORT_CONCENTRADO_X_HORA]
-GO
-
-/*
- EXEC	[dbo].[PG_LI_CERTIFICACION_REPORT_CONCENTRADO_X_HORA] 0,0, '2021-10-01', '2021-10-25'
-*/
-
-CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_REPORT_CONCENTRADO_X_HORA]
-	@PP_K_SISTEMA_EXE					INT,
-	@PP_K_USUARIO_ACCION				INT,
-	-- ===========================
-	@PP_F_INICIAL						DATE,
-	@PP_F_FIN							DATE
-AS
-	-- /////////SE CREA TABLA TEMPORAL PARA CONCENTRADO POR HORA//////////////
-	DECLARE @VP_TBL_CERTIFICACION_CONCENTRADO_X_HORA TABLE(
-		TITULO_1	VARCHAR(50),
-		TITULO_2	VARCHAR(50),
-		TITULO_3	VARCHAR(50),
-		TITULO_4	VARCHAR(50)
-	)
-
-	SET NOCOUNT ON
-
-	INSERT INTO @VP_TBL_CERTIFICACION_CONCENTRADO_X_HORA
-	SELECT 'Fecha', 'Total Muestra', 'Suma Defectos', 'PPMS'
-
-	-- /////////SE CREA TABLA TEMPORAL PARA LOS DATOS DE CERTIFICACION//////////////
-	DECLARE @VP_TBL_CERTIFICACION TABLE(
-		FECHA		DATE,
-		MUESTRA		INT,
-		DEFECTOS	INT
-	)
-
-	-- /////////SE INSERTAN LOS DATOS A LA TABLA//////////////
-	INSERT INTO @VP_TBL_CERTIFICACION
-	SELECT	CONVERT(DATE, fecha) AS 'FECHA', 
-			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
-			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
-	FROM certificacion_rpt (NOLOCK)
-	WHERE CONVERT(DATE, fecha) = @PP_F_FIN
-	GROUP BY CONVERT(DATE, fecha)
-
-	-- /////////SE CALCULAS LOS TOTALES//////////////
-	INSERT INTO @VP_TBL_CERTIFICACION_CONCENTRADO_X_HORA
-	SELECT	FECHA, 
-			MUESTRA AS 'TOTAL_MUESTRA', 
-			DEFECTOS AS 'TOTAL_DEFECTOS', 
-			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
-				ELSE 0 END ) AS 'TOTAL_PPMS'
-	FROM @VP_TBL_CERTIFICACION
-	WHERE DEFECTOS > 0
-	ORDER BY FECHA
-	
-	-- /////////SE INSERTAN LOS DATOS A LA TABLA//////////////
-	DELETE @VP_TBL_CERTIFICACION
-
-	INSERT INTO @VP_TBL_CERTIFICACION
-	SELECT	CONVERT(DATE, fecha) AS 'FECHA', 
-			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
-			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
-	FROM certificacion_rpt (NOLOCK)
-	INNER JOIN personal (NOLOCK) ON sello = sello_paq
-	WHERE CONVERT(DATE, fecha) = @PP_F_FIN
-	AND personal.turno = 1
-	GROUP BY CONVERT(DATE, fecha)
-
-
-	-- /////////SE CALCULAS LOS TOTALES//////////////
-	INSERT INTO @VP_TBL_CERTIFICACION_CONCENTRADO_X_HORA
-	SELECT 'Turno', 'Total Muestra', 'Suma Defectos', 'PPMS'
-
-	INSERT INTO @VP_TBL_CERTIFICACION_CONCENTRADO_X_HORA
-	SELECT	'1', 
-			MUESTRA AS 'TOTAL_MUESTRA', 
-			DEFECTOS AS 'TOTAL_DEFECTOS', 
-			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
-				ELSE 0 END ) AS 'TOTAL_PPMS'
-	FROM @VP_TBL_CERTIFICACION
-	WHERE DEFECTOS > 0
-	ORDER BY FECHA
-
-	-- /////////SE INSERTAN LOS DATOS A LA TABLA//////////////
-	DELETE @VP_TBL_CERTIFICACION
-
-	INSERT INTO @VP_TBL_CERTIFICACION
-	SELECT	CONVERT(DATE, fecha) AS 'FECHA', 
-			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
-			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
-	FROM certificacion_rpt (NOLOCK)
-	INNER JOIN personal (NOLOCK) ON sello = sello_paq
-	WHERE CONVERT(DATE, fecha) = @PP_F_FIN
-	AND personal.turno = 2
-	GROUP BY CONVERT(DATE, fecha)
-
-
-	-- /////////SE CALCULAS LOS TOTALES//////////////
-	INSERT INTO @VP_TBL_CERTIFICACION_CONCENTRADO_X_HORA
-	SELECT	'2', 
-			MUESTRA AS 'TOTAL_MUESTRA', 
-			DEFECTOS AS 'TOTAL_DEFECTOS', 
-			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
-				ELSE 0 END ) AS 'TOTAL_PPMS'
-	FROM @VP_TBL_CERTIFICACION
-	WHERE DEFECTOS > 0
-	ORDER BY FECHA
-
-	-- /////////SE INSERTAN LOS DATOS A LA TABLA//////////////
-	DELETE @VP_TBL_CERTIFICACION
-
-	INSERT INTO @VP_TBL_CERTIFICACION
-	SELECT	CONVERT(DATE, fecha) AS 'FECHA', 
-			SUM(TOTAL) AS 'TOTAL_MUESTRA', 
-			(SUM(cant1)+ SUM(cant2)+ SUM(cant3)) AS 'TOTAL_DEFECTOS'
-	FROM certificacion_rpt (NOLOCK)
-	INNER JOIN personal (NOLOCK) ON sello = sello_paq
-	WHERE CONVERT(DATE, fecha) = @PP_F_FIN
-	AND personal.turno = 3
-	GROUP BY CONVERT(DATE, fecha)
-
-
-	-- /////////SE CALCULAS LOS TOTALES//////////////
-	INSERT INTO @VP_TBL_CERTIFICACION_CONCENTRADO_X_HORA
-	SELECT	'3', 
-			MUESTRA AS 'TOTAL_MUESTRA', 
-			DEFECTOS AS 'TOTAL_DEFECTOS', 
-			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
-				ELSE 0 END ) AS 'TOTAL_PPMS'
-	FROM @VP_TBL_CERTIFICACION
-	WHERE DEFECTOS > 0
-	ORDER BY FECHA
-
-	SET NOCOUNT OFF
-	SELECT * FROM @VP_TBL_CERTIFICACION_CONCENTRADO_X_HORA
-	-- ////////////////////////////////////////////////
-	-- ////////////////////////////////////////////////
-GO
-
-
-
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> SELECT / LISTADO
 -- //////////////////////////////////////////////////////////////
@@ -436,7 +289,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_
 GO
 
 /*
- EXEC	[dbo].[PG_LI_CERTIFICACION_DEFECTO_X_DIA] 0,0, '2021-09-13'
+ EXEC	[dbo].[PG_LI_CERTIFICACION_DEFECTO_X_DIA] 0,0, '2021-11-10'
 */
 
 CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_DEFECTO_X_DIA]
@@ -490,6 +343,77 @@ GO
 
 
 
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_CERTIFICACION_DEFECTO_CRITICO_X_DIA]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_CERTIFICACION_DEFECTO_CRITICO_X_DIA]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_CERTIFICACION_DEFECTO_CRITICO_X_DIA] 0,0, '2021-11-10'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_DEFECTO_CRITICO_X_DIA]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_FIN							DATE
+AS
+	
+	-- /////////SE CREA TABLA TEMPORAL PARA GUARDAR LOS DATOS///////////////////////////////////////
+	DECLARE @VP_TBL_CERTIFICACION_DEFECTO TABLE(
+		DEFECTO		VARCHAR(50),
+		CANTIDAD	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO
+	SELECT defecto1, SUM(cant1)
+	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN DEF (NOLOCK) ON DEF.clave = defecto1
+	WHERE CRITICO = 1 
+	AND CONVERT(DATE, fecha) = @PP_F_FIN
+	AND defecto1 <> ''
+	GROUP BY defecto1
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO
+	SELECT defecto2, SUM(cant2)
+	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN DEF (NOLOCK) ON DEF.clave = defecto2
+	WHERE CRITICO = 1 
+	AND CONVERT(DATE, fecha) = @PP_F_FIN
+	AND defecto2 <> ''
+	GROUP BY defecto2
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO
+	SELECT defecto3, SUM(cant3)
+	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN DEF (NOLOCK) ON DEF.clave = defecto3
+	WHERE CRITICO = 1 
+	AND CONVERT(DATE, fecha) = @PP_F_FIN
+	AND defecto3 <> ''
+	GROUP BY defecto3
+
+	-- /////////SE MUESTRAN LOS DATOS///////////////////////////////////////
+	SELECT 	--TOP 5 
+			DEF.DEFECTO, SUM(CANTIDAD) AS CANTIDAD
+	FROM @VP_TBL_CERTIFICACION_DEFECTO AS CERTI_DEF
+	INNER JOIN def (NOLOCK) ON DEF.CLAVE = CERTI_DEF.DEFECTO
+	GROUP BY DEF.DEFECTO
+	ORDER BY SUM(CANTIDAD) DESC
+
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> SELECT / LISTADO
 -- //////////////////////////////////////////////////////////////
@@ -499,7 +423,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_
 GO
 
 /*
- EXEC	[dbo].[PG_LI_CERTIFICACION_DEFECTO_ACUMULADO_X_DIA_TURNO] 0,0, '2021-10-25', 3
+ EXEC	[dbo].[PG_LI_CERTIFICACION_DEFECTO_ACUMULADO_X_DIA_TURNO] 0,0, '2021-11-05', 3
 */
 
 CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_DEFECTO_ACUMULADO_X_DIA_TURNO]
@@ -564,21 +488,22 @@ AS
 	HAVING  SUM(cant3)   > 0
 
 	-- /////////SE MUESTRAN LOS DATOS///////////////////////////////////////
-	SELECT 	CERTI_DEF.SELLO,
-			--CONCAT((SUBSTRING( CONCAT(EP_NOMBRE, ' '), 1, CHARINDEX(' ', CONCAT(EP_NOMBRE, ' ')))), ' ' + EP_APELLIDO_PATERNO) AS INSPECTOR,		
+	SELECT 	CERTI_DEF.SELLO,		
 			(	SELECT TOP 1 CONCAT((SUBSTRING( CONCAT(EP_NOMBRE, ' '), 1, CHARINDEX(' ', CONCAT(EP_NOMBRE, ' ')))), ' ' + EP_APELLIDO_PATERNO)
 				FROM HOWE.DBO.VISTA_GAFETES (NOLOCK)
 				INNER JOIN personal (NOLOCK) ON LTRIM(RTRIM(inspector_cal)) =  LTRIM(RTRIM(INSPECTOR)) AND EN_NUM_EMP = noreloj	) AS INSPECTOR,	
 			DEFECTO,	
-			CANTIDAD	
+			SUM(CANTIDAD) AS 	CANTIDAD,
+			ISNULL(( SELECT COUNT(clave) FROM DEF WHERE DEFECTO = CERTI_DEF.defecto AND  CRITICO = 1), 0) AS CRITICO
 	FROM @VP_TBL_CERTIFICACION_DEFECTO AS CERTI_DEF
-	--INNER JOIN personal (NOLOCK) ON personal.sello =  CERTI_DEF.SELLO
-	--INNER JOIN HOWE.DBO.VISTA_GAFETES (NOLOCK) ON EN_NUM_EMP = noreloj
+	GROUP BY SELLO, INSPECTOR, DEFECTO		
 	ORDER BY INSPECTOR
 
 	-- ////////////////////////////////////////////////
 	-- ////////////////////////////////////////////////
 GO
+
+
 
 
 
@@ -591,7 +516,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_
 GO
 
 /*
- EXEC	[dbo].[PG_LI_CERTIFICACION_DEFECTO_ACUMULADO_X_MES_TURNO] 0,0, '2021-10-01', '2021-10-25', 1
+ EXEC	[dbo].[PG_LI_CERTIFICACION_DEFECTO_ACUMULADO_X_MES_TURNO] 0,0, '2021-11-01', '2021-11-09', 1
 */
 
 CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_DEFECTO_ACUMULADO_X_MES_TURNO]
@@ -660,16 +585,15 @@ AS
 	HAVING  SUM(cant3)   > 0
 
 	-- /////////SE MUESTRAN LOS DATOS///////////////////////////////////////
-	SELECT 	CERTI_DEF.SELLO,
-			--CONCAT((SUBSTRING( CONCAT(EP_NOMBRE, ' '), 1, CHARINDEX(' ', CONCAT(EP_NOMBRE, ' ')))), ' ' + EP_APELLIDO_PATERNO) AS INSPECTOR,		
+	SELECT 	CERTI_DEF.SELLO,	
 			ISNULL((	SELECT TOP 1 CONCAT((SUBSTRING( CONCAT(EP_NOMBRE, ' '), 1, CHARINDEX(' ', CONCAT(EP_NOMBRE, ' ')))), ' ' + EP_APELLIDO_PATERNO)
 				FROM HOWE.DBO.VISTA_GAFETES (NOLOCK)
 				INNER JOIN personal (NOLOCK) ON LTRIM(RTRIM(inspector_cal)) =  LTRIM(RTRIM(INSPECTOR)) AND EN_NUM_EMP = noreloj	), 'BAJA') AS INSP_CERTI,	
 			DEFECTO,	
-			CANTIDAD	
+			SUM(CANTIDAD) AS 	CANTIDAD,
+			ISNULL(( SELECT COUNT(clave) FROM DEF WHERE DEFECTO = CERTI_DEF.defecto AND  CRITICO = 1), 0) AS CRITICO
 	FROM @VP_TBL_CERTIFICACION_DEFECTO AS CERTI_DEF
-	--INNER JOIN personal (NOLOCK) ON personal.sello =  CERTI_DEF.SELLO
-	--INNER JOIN HOWE.DBO.VISTA_GAFETES (NOLOCK) ON EN_NUM_EMP = noreloj
+	GROUP BY SELLO, INSPECTOR, DEFECTO	
 	ORDER BY INSPECTOR ASC, CANTIDAD DESC
 
 	-- ////////////////////////////////////////////////
@@ -689,7 +613,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_
 GO
 
 /*
- EXEC	[dbo].[PG_LI_CERTIFICACION_DEFECTO_X_MES] 0,0, '2021-09-13'
+	EXEC	[dbo].[PG_LI_CERTIFICACION_DEFECTO_X_MES] 0,0, '2021-11-10'
 */
 
 CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_DEFECTO_X_MES]
@@ -748,6 +672,81 @@ AS
 	-- ////////////////////////////////////////////////
 GO
 
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_CERTIFICACION_DEFECTO_CRITICO_X_MES]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_CERTIFICACION_DEFECTO_CRITICO_X_MES]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_CERTIFICACION_DEFECTO_CRITICO_X_MES] 0,0, '2021-09-10'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_CERTIFICACION_DEFECTO_CRITICO_X_MES]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_FIN							DATE
+AS
+	
+	-- /////////SE BNTIENE EL AÑO DE LA FECHA INICIAL///////////////////////////////////////
+	DECLARE @VP_YEAR INT = YEAR(@PP_F_FIN)
+	DECLARE @VP_MES INT = MONTH(@PP_F_FIN)
+	
+	-- /////////SE CREA TABLA TEMPORAL PARA GUARDAR LOS DATOS///////////////////////////////////////
+	DECLARE @VP_TBL_CERTIFICACION_DEFECTO_X_MES TABLE(
+		DEFECTO		VARCHAR(50),
+		CANTIDAD	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO_X_MES
+	SELECT defecto1, SUM(cant1)
+	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN DEF (NOLOCK) ON DEF.clave = defecto1
+	WHERE CRITICO = 1 
+	AND YEAR(CONVERT(DATE, fecha)) = @VP_YEAR
+	AND MONTH(CONVERT(DATE, fecha)) = @VP_MES
+	AND defecto1 <> ''
+	GROUP BY defecto1
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO_X_MES
+	SELECT defecto2, SUM(cant2)
+	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN DEF (NOLOCK) ON DEF.clave = defecto2
+	WHERE CRITICO = 1 
+	AND YEAR(CONVERT(DATE, fecha)) = @VP_YEAR
+	AND MONTH(CONVERT(DATE, fecha)) = @VP_MES
+	AND defecto2 <> ''
+	GROUP BY defecto2
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA///////////////////////////////////////
+	INSERT INTO @VP_TBL_CERTIFICACION_DEFECTO_X_MES
+	SELECT defecto3, SUM(cant3)
+	FROM certificacion_rpt (NOLOCK)
+	INNER JOIN DEF (NOLOCK) ON DEF.clave = defecto3
+	WHERE CRITICO = 1 
+	AND YEAR(CONVERT(DATE, fecha)) = @VP_YEAR
+	AND MONTH(CONVERT(DATE, fecha)) = @VP_MES
+	AND defecto3 <> ''
+	GROUP BY defecto3
+
+	-- /////////SE MUESTRAN LOS DATOS///////////////////////////////////////
+	SELECT --TOP 5 
+			DEF.DEFECTO, SUM(CANTIDAD) AS CANTIDAD
+	FROM @VP_TBL_CERTIFICACION_DEFECTO_X_MES AS CERTI_DEF
+	INNER JOIN def (NOLOCK) ON DEF.CLAVE = CERTI_DEF.DEFECTO
+	GROUP BY DEF.DEFECTO
+	ORDER BY SUM(CANTIDAD) DESC
+
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
 
 
 
@@ -1382,6 +1381,69 @@ AS
 	FROM @TBL_MATERIAL_REVISADO
 	--INNER JOIN personal (NOLOCK) ON LTRIM(RTRIM(inspector_cal)) =  INSP_CERTI
 	--INNER JOIN HOWE.DBO.VISTA_GAFETES (NOLOCK) ON EN_NUM_EMP = noreloj
+	ORDER BY TOTAL DESC
+	-- //////////////////////////////////////////////////////////////
+	-- //////////////////////////////////////////////////////////////
+GO
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> DELETE / FICHA
+-- //////////////////////////////////////////////////////////////
+--	USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_REPORT_X_FECHA_TURNO_X_MES]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_REPORT_X_FECHA_TURNO_X_MES]
+GO
+
+/*
+		EXEC	[dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_REPORT_X_FECHA_TURNO_X_MES] 0, 144, '2021-11-09', 1
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_MATERIAL_REVISADO_CERTIFICACION_REPORT_X_FECHA_TURNO_X_MES]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO_ACCION		INT,
+	-- ===========================
+	@PP_F_FIN					DATE,
+	@PP_TURNO					INT
+AS
+	
+	-- /////////SE OBTIENE EL AÑO DE LA FECHA INICIAL///////////////////////////////////////
+	DECLARE @VP_YEAR INT = YEAR(@PP_F_FIN)
+	DECLARE @VP_MES INT = MONTH(@PP_F_FIN)
+
+	-- //////SE CREA TABLA TEMPORAL//////////////////////////////////////
+	DECLARE @TBL_MATERIAL_REVISADO TABLE(
+	INSP_CERTI		VARCHAR(100),
+	T_NORMAL		INT,
+	T_EXTRA			INT,
+	TOTAL			INT
+	)
+
+	-- //////SE AGREGAN LOS DATOS A LA TABLA TEMPORAL////////////////////
+	INSERT INTO @TBL_MATERIAL_REVISADO
+	SELECT	LTRIM(RTRIM(insp_certi)) AS INSP_CERTI,
+			(SUM((CASE WHEN extra = 0 THEN total ELSE 0 END))) AS T_NORMAL, 
+			(SUM((CASE WHEN extra = 1 THEN total ELSE 0 END))) AS T_EXTRA, 
+			(SUM((CASE WHEN extra = 0 THEN total ELSE 0 END))) + 
+			(SUM((CASE WHEN extra = 1 THEN total ELSE 0 END))) AS TOTAL
+	FROM certificacion_rpt (NOLOCK)
+	WHERE YEAR(CONVERT(DATE, fecha)) = @VP_YEAR
+	AND MONTH(CONVERT(DATE, fecha)) = @VP_MES
+	AND certificacion_rpt.turno = @PP_TURNO  
+	GROUP BY insp_certi
+	HAVING	SUM(total) > 0
+	ORDER BY	SUM(total) DESC
+
+	-- ////SE HACE LA UNION PARA OBTENER NOMBRE Y APELLIDO///////////////////
+	SELECT (	SELECT TOP 1 CONCAT((SUBSTRING( CONCAT(EP_NOMBRE, ' '), 1, CHARINDEX(' ', CONCAT(EP_NOMBRE, ' ')))), ' ' + EP_APELLIDO_PATERNO)
+				FROM HOWE.DBO.VISTA_GAFETES (NOLOCK)
+				INNER JOIN personal (NOLOCK) ON LTRIM(RTRIM(inspector_cal)) =  LTRIM(RTRIM(INSP_CERTI)) AND EN_NUM_EMP = noreloj	) AS INSP_CERTI,
+		   T_NORMAL,
+		   T_EXTRA,	
+		   TOTAL
+	FROM @TBL_MATERIAL_REVISADO
 	ORDER BY TOTAL DESC
 	-- //////////////////////////////////////////////////////////////
 	-- //////////////////////////////////////////////////////////////

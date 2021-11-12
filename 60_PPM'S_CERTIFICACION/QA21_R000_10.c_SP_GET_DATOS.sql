@@ -349,6 +349,42 @@ GO
 
 
 
+-- EXECUTE [PG_CB_CLASIFICACION_DEFECTO_CALIDAD] 001,144, 0
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_CB_CLASIFICACION_DEFECTO_CALIDAD]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_CB_CLASIFICACION_DEFECTO_CALIDAD]
+GO
+
+CREATE PROCEDURE [dbo].[PG_CB_CLASIFICACION_DEFECTO_CALIDAD]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO				INT,
+	--============================
+	@PP_L_CON_TODOS				INT
+AS
+	DECLARE @VP_TA_CATALOGO	AS TABLE
+				(	TA_K_CATALOGO		INT,
+					TA_D_CATALOGO		VARCHAR(50))
+	
+	INSERT INTO @VP_TA_CATALOGO 
+	SELECT DISTINCT 1,
+			LTRIM(RTRIM(ISNULL(DESCRIPCION, '( S/C )')))
+	FROM PPMS_PEARL.DBO.def (NOLOCK)
+	
+	--IF @PP_L_CON_TODOS=1
+		--INSERT INTO @VP_TA_CATALOGO
+		--		( TA_K_CATALOGO,	TA_D_CATALOGO	)
+		--	VALUES
+		--		( -1,				'(S/C)'	)
+
+	SELECT	TA_K_CATALOGO	AS K_COMBOBOX,
+				TA_D_CATALOGO	AS D_COMBOBOX 
+		FROM	@VP_TA_CATALOGO
+		ORDER BY  TA_D_CATALOGO 
+
+	-- ==========================================
+		
+	-- ////////////////////////////////////////////////////
+GO
+
 -- //////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////
