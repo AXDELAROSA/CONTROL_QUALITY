@@ -1600,7 +1600,7 @@ BEGIN TRY
 			@PP_LOTE_01					= ser_lot_no1			,
 			@PP_LOTE_02					= ser_lot_no2			,
 			-- =========================				  
-			@VP_BOOLEAN_COMPATIBLE			= comp				,
+			@VP_BOOLEAN_COMPATIBLE		= comp					,
 			@PP_COMENTARIO				= Comments				,
 			-- =========================						
 			@PP_D_USUARIO_01			= Aut1					,
@@ -1608,7 +1608,7 @@ BEGIN TRY
 			@PP_K_USUARIO_01			= K_USUARIO_PEARL_01	,
 			@PP_K_USUARIO_02			= K_USUARIO_PEARL_02
 	FROM	SER_LOT_COMP_SQL			(NOLOCK)
-	WHERE	ID=			@PP_ID_LOTE
+	WHERE	ID							= @PP_ID_LOTE
 
 	DECLARE @PP_L_COMPATIBLE	INT	= 1
 

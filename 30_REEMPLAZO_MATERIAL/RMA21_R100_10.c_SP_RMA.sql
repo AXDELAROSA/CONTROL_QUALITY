@@ -1061,6 +1061,16 @@ BEGIN TRY
 		SET @VP_STATUS_RMA = 1		-- SE LE ASIGNA EL ESTATUS INICIAL.
 		--SET @VP_FECHA	= GETDATE()	-- SE REASIGNA
 	END
+	ELSE IF @VP_STATUS_RMA IN ( 35 )	-- EMBARCADO, SÓLO EN ESTE ESTATUS PERMITIRÁ ACTUALIZAR EL PRECIO MANUAL.
+	BEGIN		
+		EXECUTE	[PG_INUP_DETAILS_RMA_PRECIO_MANUAL]	@PP_K_SISTEMA_EXE,	@PP_K_USUARIO_ACCION,
+													-- ============================
+													@PP_ARRAY_K_DETAI,
+													-- ============================
+													@PP_ARRAY_PRECIOM
+		GOTO BRANCH_AJUSTE_PRECIO_MANUAL
+
+	END
 	ELSE
 	BEGIN
 		SET @VP_MENSAJE =  'El estatus no lo permite.[HDR] Verifique...' 
@@ -1122,6 +1132,8 @@ BEGIN TRY
 									@PP_ARRAY_QTY_ORD	,	@PP_ARRAY_K_DETAI	,
 									@PP_K_TIPO_RMA		,	@PP_ARRAY_GRUPO_O	,
 									@PP_ARRAY_PRECIOM
+
+BRANCH_AJUSTE_PRECIO_MANUAL:
 
 -- /////////////////////////////////////////////////////////////////////
 COMMIT TRANSACTION 
@@ -1417,6 +1429,73 @@ AS
 		DELETE	FROM DETAILS_RMA
 		WHERE	K_HEADER_RMA	= @PP_K_HEADER_RMA
 		AND		K_DETAILS_RMA NOT IN ( SELECT TA_K_DETAILS FROM @VP_TA_DETAILS )
+	-- ////////////////////////////////////////////////////////////////
+	-- ///////////////////////////////////////////////////////////////
+GO
+
+
+-- //////////////////////////////////////////////////////////////
+-- // PARA INSERTAR LOS DETALLES DE LA ORDEN
+-- // STORED PROCEDURE ---> INSERT / FICHA
+-- //////////////////////////////////////////////////////////////
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_INUP_DETAILS_RMA_PRECIO_MANUAL]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_INUP_DETAILS_RMA_PRECIO_MANUAL]
+GO
+CREATE PROCEDURE [dbo].[PG_INUP_DETAILS_RMA_PRECIO_MANUAL]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO_ACCION		INT,
+	-- ============================
+	@PP_ARRAY_K_DETAI			NVARCHAR(MAX),
+	-- ============================
+	@PP_ARRAY_PRECIOM			NVARCHAR(MAX)
+AS
+	DECLARE @VP_MENSAJE				VARCHAR(300) = ''
+		-- ============================
+			,@VP_K_DETAIL_PO	INT = 1
+		-- ============================	
+			,@VP_POSICION_K_DETAI	INT	
+		--------------------------------
+			,@VP_POSICION_PRECIOM	INT	
+		-- ============================	
+			,@VP_VALOR_K_DETAI		VARCHAR(500)
+		--------------------------------
+			,@VP_VALOR_PRECIOM		VARCHAR(500)
+
+	--Colocamos un separador al final de los parametros para que funcione bien nuestro codigo
+	SET	@PP_ARRAY_K_DETAI		= @PP_ARRAY_K_DETAI	+ '/'
+	----------------------------------------------------------------
+	SET	@PP_ARRAY_PRECIOM		= @PP_ARRAY_PRECIOM	+ '/'
+	
+	--Hacemos un bucle que se repite mientras haya separadores, patindex busca un patron en una cadena y nos devuelve su posicion
+	WHILE patindex('%/%' , @PP_ARRAY_K_DETAI) <> 0
+		BEGIN
+			SELECT @VP_POSICION_K_DETAI	=	patindex('%/%' , @PP_ARRAY_K_DETAI		)
+			------------------------------------------------------------------------------------------------
+			SELECT @VP_POSICION_PRECIOM	=	patindex('%/%' , @PP_ARRAY_PRECIOM		)
+
+			--Buscamos la posicion de la primera y obtenemos los caracteres hasta esa posicion			
+			SELECT @VP_VALOR_K_DETAI	= LEFT(@PP_ARRAY_K_DETAI	, @VP_POSICION_K_DETAI	- 1)
+			------------------------------------------------------------------------------------------------
+			SELECT @VP_VALOR_PRECIOM	= LEFT(@PP_ARRAY_PRECIOM	, @VP_POSICION_PRECIOM	- 1)
+											
+				IF	@VP_VALOR_K_DETAI	>  0
+				BEGIN
+					UPDATE	DETAILS_RMA
+					SET		[PRECIO_MANUAL]			= @VP_VALOR_PRECIOM
+					WHERE	K_DETAILS_RMA			= @VP_VALOR_K_DETAI
+
+					IF @@ROWCOUNT = 0
+					BEGIN
+						SET @VP_MENSAJE='El detalle de la Orden no fue actualizado. [DET#'+CONVERT(VARCHAR(10),@VP_VALOR_K_DETAI)+']'
+						RAISERROR (@VP_MENSAJE, 16, 1 ) 
+					END
+				END
+
+			--Reemplazamos lo procesado con nada con la funcion stuff
+			SELECT @PP_ARRAY_K_DETAI	= STUFF(@PP_ARRAY_K_DETAI	, 1, @VP_POSICION_K_DETAI , '')
+			------------------------------------------------------------------------------------------------				
+			SELECT @PP_ARRAY_PRECIOM	= STUFF(@PP_ARRAY_PRECIOM	, 1, @VP_POSICION_PRECIOM , '')
+		END
 	-- ////////////////////////////////////////////////////////////////
 	-- ///////////////////////////////////////////////////////////////
 GO
