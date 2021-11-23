@@ -15,7 +15,9 @@ GO
 --	[PG_LI_HEADER_RMA]
 --	[PG_LI_DETAILS_RMA]
 --	[PG_LI_COLOR_RMA]
+--	[PG_LI_COLOR_RMA_OBSOLETO]
 --	[PG_LI_COLOR_KIT_RMA]
+--	[PG_LI_COLOR_KIT_RMA_OBSOLETO]
 --	[PG_LI_COLOR_KIT_PATTERN_RMA]
 --	[PG_LI_DEFECTO_RMA]
 --	[PG_SK_HEADER_RMA]
@@ -401,7 +403,6 @@ AS
 GO
 
 
-
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> MUESTRA LOS COLORES ACTIVOS POR MODELO
 --						 	DE LA VERSIÓN QUE ESTÁ LIVE.
@@ -436,6 +437,38 @@ AS
 		AND		CCVERPRC_SQL.modelno		=	@PP_MODELNO	--'wkz'		-- 
 		AND		imitmidx_sql.item_no		=	CCVERPRC_SQL.colour
 		ORDER BY ccverhdr_sql.cus_no
+GO
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> MUESTRA LOS COLORES POR MODELO	INCLUSO AQUELLOS OBSOLETOS O QUE YA NO SE PROGRAMAN.
+-- //////////////////////////////////////////////////////////////
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_COLOR_RMA_OBSOLETO]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_COLOR_RMA_OBSOLETO]
+GO
+--		 EXECUTE [dbo].[PG_LI_COLOR_RMA_OBSOLETO] 0,139,'MAGN03','RUA'
+CREATE PROCEDURE [dbo].[PG_LI_COLOR_RMA_OBSOLETO]
+	@PP_K_SISTEMA_EXE				INT,
+	@PP_K_USUARIO_ACCION			INT,
+	-- ===========================
+	@PP_CUS_NO					VARCHAR(10),
+	@PP_MODELNO					VARCHAR(10)
+AS
+	SET @PP_MODELNO = LTRIM(RTRIM(LEFT(@PP_MODELNO,3)))
+
+	SELECT	DISTINCT COLOUR,
+			(SELECT TOP (1) VERSIONNO FROM CCVERPRC_SQL (NOLOCK) AS CCVER WHERE	CCVER.COLOUR	= CCVERPRC_SQL.COLOUR ORDER BY VERSIONNO DESC) AS VERSIONNO,
+			IMITMIDX_SQL.A4GLIDENTITY				AS K_COLOR,
+			LTRIM(RTRIM(IMITMIDX_SQL.ITEM_DESC_1))	AS D_COLOR,
+			CCVERPRC_SQL.CUS_NO,	
+			CCVERPRC_SQL.MODELNO	
+	FROM	CCVERPRC_SQL	(NOLOCK),
+			imitmidx_sql	(NOLOCK)
+	WHERE	CUS_NO			= @PP_CUS_NO	-- 'MAGN03'
+	AND		MODELNO			= @PP_MODELNO	-- 'RUA'
+	AND		imitmidx_sql.item_no		=	CCVERPRC_SQL.colour
+	-- ///////////////////////////////////////////
+	ORDER BY COLOUR, VERSIONNO	DESC
 GO
 
 
@@ -488,6 +521,33 @@ AS
 	BEGIN
 		SELECT 'Registro no encontrado, versión del [KIT]. VerBD[' + @VP_VERSIONNO_BD + ']  //   VerSIS[' + @PP_VERSIONNO + '], verifique...'	AS MENSAJE
 	END
+
+GO
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> MUESTRA LOS KIT DE LOS COLORES ACTIVOS POR MODELO.
+-- //////////////////////////////////////////////////////////////
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_COLOR_KIT_RMA_OBSOLETO]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_COLOR_KIT_RMA_OBSOLETO]
+GO
+--		 EXECUTE [dbo].[PG_LI_COLOR_KIT_RMA_OBSOLETO] 0,139,'MAGN03','RUA','0041', 'FCNPVEV'
+CREATE PROCEDURE [dbo].[PG_LI_COLOR_KIT_RMA_OBSOLETO]
+	@PP_K_SISTEMA_EXE				INT,
+	@PP_K_USUARIO_ACCION			INT,
+	-- ===========================
+	@PP_CUS_NO					VARCHAR(15),
+	@PP_MODELNO					VARCHAR(15),
+	@PP_VERSIONNO				VARCHAR(6),
+	@PP_S_COLOR					VARCHAR(15)
+AS
+
+	SELECT	DISTINCT	(item_no),
+			(SELECT TOP (1)	versionno	FROM CCCUSITM_SQL	(NOLOCK) AS CCCU	WHERE CCCU.item_no	= CCCUSITM_SQL.item_no ORDER BY versionno	DESC )
+	FROM	CCCUSITM_SQL			(NOLOCK)	---WHERE MODELNO ='RUA'
+	WHERE	CCCUSITM_SQL.ITEM_NO		LIKE 'P%' + RIGHT(LTRIM(RTRIM('FCNPVEV')),6)--@PP_S_COLOR
+	AND		CUS_NO						=	@PP_CUS_NO	-- 'MAGN03'	--
+	AND		MODELNO						=	@PP_MODELNO	-- 'RUA'		--
 
 GO
 
@@ -1323,8 +1383,7 @@ AS
 							RAISERROR (@VP_MENSAJE, 16, 1 ) 
 						END
 					END
-
-								
+																	
 				IF	@VP_VALOR_K_DETAI	>  0
 				BEGIN
 					UPDATE	DETAILS_RMA
@@ -1405,6 +1464,18 @@ AS
 					END
 				END
 				
+				IF ( (	SELECT	COUNT(K_DETAILS_RMA)
+						FROM	DETAILS_RMA					(NOLOCK)
+						WHERE	K_HEADER_RMA				= @PP_K_HEADER_RMA
+						AND		MODELNO						= @VP_VALOR_MODELNO
+						AND		VERSIONNO					= @VP_VALOR_VERSION
+						AND		LTRIM(RTRIM(CUS_ITEM_NO))	= @VP_VALOR_CUSITEM
+						AND		GRUPO_ORDEN					= @VP_VALOR_GRUPO_O	)	) > 1
+				BEGIN
+					SET @VP_MENSAJE='Los registros con el mismo número de parte de cliente no pueden existir en el mismo grupo, verifique... [DET#'+CONVERT(VARCHAR(10),@VP_VALOR_CUSITEM)+']'
+					RAISERROR (@VP_MENSAJE, 16, 1 )
+				END								
+								
 				INSERT INTO @VP_TA_DETAILS
 				VALUES	( @VP_VALOR_K_DETAI )
 
