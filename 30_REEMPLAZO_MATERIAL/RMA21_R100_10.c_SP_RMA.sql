@@ -448,27 +448,99 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_
 GO
 --		 EXECUTE [dbo].[PG_LI_COLOR_RMA_OBSOLETO] 0,139,'MAGN03','RUA'
 CREATE PROCEDURE [dbo].[PG_LI_COLOR_RMA_OBSOLETO]
-	@PP_K_SISTEMA_EXE				INT,
-	@PP_K_USUARIO_ACCION			INT,
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO_ACCION		INT,
 	-- ===========================
 	@PP_CUS_NO					VARCHAR(10),
 	@PP_MODELNO					VARCHAR(10)
 AS
 	SET @PP_MODELNO = LTRIM(RTRIM(LEFT(@PP_MODELNO,3)))
 
-	SELECT	DISTINCT COLOUR,
-			(SELECT TOP (1) VERSIONNO FROM CCVERPRC_SQL (NOLOCK) AS CCVER WHERE	CCVER.COLOUR	= CCVERPRC_SQL.COLOUR ORDER BY VERSIONNO DESC) AS VERSIONNO,
-			IMITMIDX_SQL.A4GLIDENTITY				AS K_COLOR,
-			LTRIM(RTRIM(IMITMIDX_SQL.ITEM_DESC_1))	AS D_COLOR,
-			CCVERPRC_SQL.CUS_NO,	
-			CCVERPRC_SQL.MODELNO	
-	FROM	CCVERPRC_SQL	(NOLOCK),
-			imitmidx_sql	(NOLOCK)
-	WHERE	CUS_NO			= @PP_CUS_NO	-- 'MAGN03'
-	AND		MODELNO			= @PP_MODELNO	-- 'RUA'
-	AND		imitmidx_sql.item_no		=	CCVERPRC_SQL.colour
+	--DECLARE @PP_TABLE	AS TABLE
+	--(	S_COLOR			VARCHAR(10),
+	--	K_COLOR			INT,
+	--	VERSIONNO		VARCHAR(4),
+	--	D_COLOR			VARCHAR(250),
+	--	L_LIVE			INT,
+	--	CUS_NO			VARCHAR(10),
+	--	MODELNO			VARCHAR(10)
+	--)
+
+
+	--INSERT INTO @PP_TABLE
+	SELECT	LTRIM(RTRIM(ccverprc_sql.colour))	AS S_COLOR
+											,0	AS K_COLOR
+	-- =======================================================================================================================================
+			,(	SELECT TOP (1) versionno
+				FROM	ccverprc_sql (NOLOCK)	AS CCVER
+				WHERE	CCVER.colour			= ccverprc_sql.colour
+				AND		CCVER.cus_no			= ccverprc_sql.cus_no
+				AND		CCVER.modelno			= ccverprc_sql.modelno
+				ORDER	BY versionno DESC	)	AS VERSIONNO
+	-- =======================================================================================================================================
+			,(	SELECT  LTRIM(RTRIM(imitmidx_sql.item_desc_1)) 
+				FROM	imitmidx_sql (NOLOCK) 
+				WHERE	item_no		=	colour	) AS D_COLOR
+	-- =======================================================================================================================================
+			,1				AS L_LIVE
+			,@PP_CUS_NO		AS CUS_NO
+			,@PP_MODELNO	AS MODELNO
+	FROM	ccverhdr_sql		(NOLOCK),
+			ccverprc_sql		(NOLOCK)
+			--imitmidx_sql		(NOLOCK)
+	WHERE	ccverhdr_sql.status			= 'L' -- IN ('A', 'I', 'L' )--( @VP_ccverhdr_sql_status	 )		--= 'L' 
+	AND		ccverhdr_sql.specstatus		= 'U' -- IN ('A', 'C', 'U' )--( @VP_ccverhdr_sql_specstatus )	--= 'U' 
+	AND		CONCAT(ccverhdr_sql.modelno, ccverhdr_sql.versionno ) = CONCAT(ccverprc_sql.modelno, ccverprc_sql.versionno )
+	AND		ccverprc_sql.cus_no			=	@PP_CUS_NO	--'magn03'	-- 
+	AND		ccverprc_sql.modelno		=	@PP_MODELNO	--'wkz'		-- 
+	-----AND		imitmidx_sql.item_no	=	CCVER.colour
+	UNION
+	--INSERT INTO @PP_TABLE
+	SELECT	DISTINCT COLOUR				AS S_COLOR
+									,0	AS K_COLOR
+	-- =======================================================================================================================================
+			,(	SELECT TOP (1) versionno 
+				FROM	ccverprc_sql (NOLOCK) AS CCVER 
+				WHERE	CCVER.colour		= ccverprc_sql.colour
+				AND		CCVER.cus_no		= ccverprc_sql.cus_no
+				AND		CCVER.modelno		= ccverprc_sql.modelno
+				ORDER	BY versionno DESC	) AS VERSIONNO
+	-- =======================================================================================================================================
+			,(	SELECT  LTRIM(RTRIM(imitmidx_sql.item_desc_1)) 
+				FROM	imitmidx_sql	(nolock) 
+				WHERE	item_no			= COLOUR	) AS D_COLOR
+	-- =======================================================================================================================================
+			,0							AS L_LIVE
+			,@PP_CUS_NO					AS CUS_NO
+			,@PP_MODELNO				AS MODELNO
+	--		--IMITMIDX_SQL.A4GLIDENTITY				AS K_COLOR,
+	--		--LTRIM(RTRIM(IMITMIDX_SQL.ITEM_DESC_1))	AS D_COLOR,
+	--		CCVERPRC_SQL.CUS_NO,	
+	--		CCVERPRC_SQL.MODELNO,
+	--		--0 as l_live
+	FROM	ccverprc_sql	(NOLOCK)
+			--,imitmidx_sql	(NOLOCK)
+	WHERE	cus_no					= @PP_CUS_NO	-- 'MAGN03'
+	AND		modelno					= @PP_MODELNO	-- 'RUA'
+	--AND		imitmidx_sql.item_no	=CCVERPRC_SQL.colour
+	AND		ccverprc_sql.colour	NOT IN (
+											SELECT	LTRIM(RTRIM(CCV.colour))
+											FROM	ccverhdr_sql		(NOLOCK),
+													ccverprc_sql		(NOLOCK) AS CCV
+													--imitmidx_sql		(NOLOCK)
+											WHERE	ccverhdr_sql.status			= 'L' -- IN ('A', 'I', 'L' )--( @VP_ccverhdr_sql_status	 )		--= 'L' 
+											AND		ccverhdr_sql.specstatus		= 'U' -- IN ('A', 'C', 'U' )--( @VP_ccverhdr_sql_specstatus )	--= 'U' 
+											AND		CONCAT(ccverhdr_sql.modelno, ccverhdr_sql.versionno ) = CONCAT(CCV.modelno, CCV.versionno )
+											AND		CCV.cus_no			=	@PP_CUS_NO	--'magn03'	-- 
+											AND		CCV.modelno			=	@PP_MODELNO	--'wkz'		-- 
+											--AND		imitmidx_sql.item_no	=	CCVER.colour
+										)
 	-- ///////////////////////////////////////////
-	ORDER BY COLOUR, VERSIONNO	DESC
+	ORDER BY L_LIVE DESC, S_COLOR, VERSIONNO	DESC
+
+	--SELECT	*
+	--FROM	@PP_TABLE
+	--ORDER	BY L_LIVE DESC, S_COLOR
 GO
 
 
@@ -526,12 +598,17 @@ GO
 
 
 -- //////////////////////////////////////////////////////////////
--- // STORED PROCEDURE ---> MUESTRA LOS KIT DE LOS COLORES ACTIVOS POR MODELO.
+-- // STORED PROCEDURE ---> MUESTRA LOS KIT DE LOS COLORES INCLUSO AQUELLOS OBSOLETOS O QUE YA NO SE PROGRAMAN.
 -- //////////////////////////////////////////////////////////////
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_COLOR_KIT_RMA_OBSOLETO]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_LI_COLOR_KIT_RMA_OBSOLETO]
 GO
---		 EXECUTE [dbo].[PG_LI_COLOR_KIT_RMA_OBSOLETO] 0,139,'MAGN03','RUA','0041', 'FCNPVEV'
+--		 EXECUTE [dbo].[PG_LI_COLOR_KIT_RMA_OBSOLETO] 0,139,'MAGN03' , 'RUA' , '0028' , 'FCNPVEV'
+--		 EXECUTE [dbo].[PG_LI_COLOR_KIT_RMA_OBSOLETO] 0,139,'MAGN03' , 'RUA' , '0042' , 'FNRUDX9'
+--		 EXECUTE [dbo].[PG_LI_COLOR_KIT_RMA_OBSOLETO] 0,139,'MAGN03' , 'WDM' , '0002' , 'FCNPLV5'  
+--		 EXECUTE [dbo].[PG_LI_COLOR_KIT_RMA_OBSOLETO] 0,139,'MAGN03' , 'WJY' , '0001' , 'FCNPDX9'  
+--		 EXECUTE [dbo].[PG_LI_COLOR_KIT_RMA_OBSOLETO] 0,139,'DAIM05' , 'WDK' , '0005' , 'FDNPHL1'  
+--		 EXECUTE [dbo].[PG_LI_COLOR_KIT_RMA_OBSOLETO] 0,139,'MAGN03' , 'XYZ' , '0021' , 'FYPAWT5'  
 CREATE PROCEDURE [dbo].[PG_LI_COLOR_KIT_RMA_OBSOLETO]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -541,14 +618,107 @@ CREATE PROCEDURE [dbo].[PG_LI_COLOR_KIT_RMA_OBSOLETO]
 	@PP_VERSIONNO				VARCHAR(6),
 	@PP_S_COLOR					VARCHAR(15)
 AS
+	DECLARE @VP_VERSIONNO_LIVE AS INTEGER	= 0
 
-	SELECT	DISTINCT	(item_no),
-			(SELECT TOP (1)	versionno	FROM CCCUSITM_SQL	(NOLOCK) AS CCCU	WHERE CCCU.item_no	= CCCUSITM_SQL.item_no ORDER BY versionno	DESC )
-	FROM	CCCUSITM_SQL			(NOLOCK)	---WHERE MODELNO ='RUA'
-	WHERE	CCCUSITM_SQL.ITEM_NO		LIKE 'P%' + RIGHT(LTRIM(RTRIM('FCNPVEV')),6)--@PP_S_COLOR
-	AND		CUS_NO						=	@PP_CUS_NO	-- 'MAGN03'	--
-	AND		MODELNO						=	@PP_MODELNO	-- 'RUA'		--
+	SELECT	@VP_VERSIONNO_LIVE	= versionno
+	FROM	ccverhdr_sql		(NOLOCK)
+	WHERE	ccverhdr_sql.status			= 'L'
+	AND		ccverhdr_sql.specstatus		= 'U'
+	AND		ccverhdr_sql.cus_no			= @PP_CUS_NO	
+	AND		ccverhdr_sql.modelno		= @PP_MODELNO	
 
+	SELECT	CCCUSITM_SQL.item_no					AS S_KIT
+			,LTRIM(RTRIM(CUS_ITEM_NO))				AS CUS_ITEM_NO
+			,LTRIM(RTRIM(ITEM_DESC_1))				AS D_KIT
+			,@PP_CUS_NO								AS CUS_NO
+			,@PP_MODELNO							AS MODELNO
+	-- ================================================================================================
+			,(	SELECT TOP (1)	versionno
+				FROM	CCCUSITM_SQL	(NOLOCK) AS CCCU	
+				WHERE	CCCU.item_no	= CCCUSITM_SQL.item_no 
+				AND		CCCU.cus_no		= CCCUSITM_SQL.cus_no
+				AND		CCCU.modelno	= CCCUSITM_SQL.modelno
+				ORDER	BY versionno	DESC ) AS VERSIONNO
+	-- ================================================================================================
+			,(	CASE
+					WHEN	@VP_VERSIONNO_LIVE	<>  (	SELECT TOP (1)	versionno
+														FROM	CCCUSITM_SQL	(NOLOCK) AS CCCU	
+														WHERE	CCCU.item_no	= CCCUSITM_SQL.item_no
+														AND		CCCU.cus_no		= CCCUSITM_SQL.cus_no
+														AND		CCCU.modelno	= CCCUSITM_SQL.modelno
+														ORDER	BY versionno	DESC
+													)
+															THEN	0
+					ELSE	1
+			END	) AS L_LIVE
+			--,1	AS L_LIVE
+	-- ================================================================================================
+			,''										AS MENSAJE
+	FROM	CCCUSITM_SQL			(NOLOCK),	---WHERE MODELNO ='RUA'
+			ccitmidx_sql			(NOLOCK)
+	WHERE	CCITMIDX_SQL.item_no	=	CCCUSITM_SQL.ITEM_NO
+	AND		CCCUSITM_SQL.CUS_NO		=	@PP_CUS_NO	-- 'MAGN03'	--
+	AND		CCCUSITM_SQL.MODELNO	=	@PP_MODELNO	-- 'RUA'		--
+	AND		CCITMIDX_SQL.CUS_NO				=	@PP_CUS_NO			--	'MAGN03'	--
+	AND		CCITMIDX_SQL.MODELNO			=	@PP_MODELNO			--	'WKZ'		--
+	AND		CCCUSITM_SQL.ITEM_NO	IN (	SELECT	DISTINCT	(item_no)
+											FROM	CCCUSITM_SQL			(NOLOCK)	---WHERE MODELNO ='RUA'
+											WHERE	CCCUSITM_SQL.ITEM_NO	LIKE 'P%' + RIGHT(LTRIM(RTRIM(@PP_S_COLOR)),6)--@PP_S_COLOR
+											AND		CUS_NO					=	@PP_CUS_NO	-- 'MAGN03'	--
+											AND		MODELNO					=	@PP_MODELNO	-- 'RUA'		--
+											AND		VERSIONNO				=	@PP_VERSIONNO		
+										)
+	AND		CCCUSITM_SQL.VERSIONNO			=	@PP_VERSIONNO
+	AND		CCITMIDX_SQL.VERSIONNO			=	@PP_VERSIONNO
+	--AND		CCCUSITM_SQL.ITEM_NO	LIKE 'P%' + RIGHT(LTRIM(RTRIM(@PP_S_COLOR)),6)--@PP_S_COLOR
+	--ORDER BY CUS_ITEM_NO
+	UNION
+	SELECT	CCCUSITM_SQL.item_no					AS S_KIT
+			,LTRIM(RTRIM(CUS_ITEM_NO))				AS CUS_ITEM_NO
+			,LTRIM(RTRIM(ITEM_DESC_1))				AS D_KIT
+			,@PP_CUS_NO								AS CUS_NO
+			,@PP_MODELNO							AS MODELNO
+	-- ================================================================================================
+			,(	SELECT TOP (1)	versionno
+				FROM	CCCUSITM_SQL	(NOLOCK) AS CCCU	
+				WHERE	CCCU.item_no	= CCCUSITM_SQL.item_no 
+				AND		CCCU.cus_no		= CCCUSITM_SQL.cus_no
+				AND		CCCU.modelno	= CCCUSITM_SQL.modelno
+				ORDER	BY versionno	DESC ) AS VERSIONNO
+	-- ================================================================================================
+			,(	CASE
+					WHEN	@VP_VERSIONNO_LIVE	<>  (	SELECT TOP (1)	versionno
+														FROM	CCCUSITM_SQL	(NOLOCK) AS CCCU	
+														WHERE	CCCU.item_no	= CCCUSITM_SQL.item_no
+														AND		CCCU.cus_no		= CCCUSITM_SQL.cus_no
+														AND		CCCU.modelno	= CCCUSITM_SQL.modelno
+														ORDER	BY versionno	DESC
+													)
+															THEN	0
+					ELSE	1
+			END	) AS L_LIVE
+			--,0	AS L_LIVE
+	-- ================================================================================================
+			,''										AS MENSAJE
+	FROM	CCCUSITM_SQL			(NOLOCK),	---WHERE MODELNO ='RUA'
+			ccitmidx_sql			(NOLOCK)
+	WHERE	CCITMIDX_SQL.item_no	=	CCCUSITM_SQL.ITEM_NO
+	AND		CCCUSITM_SQL.CUS_NO		=	@PP_CUS_NO	-- 'MAGN03'	--
+	AND		CCCUSITM_SQL.MODELNO	=	@PP_MODELNO	-- 'RUA'		--
+	AND		CCITMIDX_SQL.CUS_NO		=	@PP_CUS_NO			--	'MAGN03'	--
+	AND		CCITMIDX_SQL.MODELNO	=	@PP_MODELNO			--	'WKZ'		--
+	AND		CCCUSITM_SQL.ITEM_NO	NOT IN (	SELECT	DISTINCT	(item_no)
+												FROM	CCCUSITM_SQL			(NOLOCK)	---WHERE MODELNO ='RUA'
+												WHERE	CCCUSITM_SQL.ITEM_NO	LIKE 'P%' + RIGHT(LTRIM(RTRIM(@PP_S_COLOR)),6)--@PP_S_COLOR
+												AND		CUS_NO					=	@PP_CUS_NO	-- 'MAGN03'	--
+												AND		MODELNO					=	@PP_MODELNO	-- 'RUA'		--
+												AND		VERSIONNO				=	@PP_VERSIONNO		
+											)
+	AND		CCCUSITM_SQL.ITEM_NO	LIKE 'P%' + RIGHT(LTRIM(RTRIM(@PP_S_COLOR)),6)--@PP_S_COLOR
+	--AND		CCCUSITM_SQL.VERSIONNO			=	@PP_VERSIONNO
+	--AND		CCITMIDX_SQL.VERSIONNO			=	@PP_VERSIONNO
+	--AND		CCCUSITM_SQL.ITEM_NO	LIKE 'P%' + RIGHT(LTRIM(RTRIM(@PP_S_COLOR)),6)--@PP_S_COLOR
+	ORDER BY L_LIVE DESC, VERSIONNO DESC, CUS_ITEM_NO
 GO
 
 
@@ -620,6 +790,81 @@ AS
 	BEGIN
 		SELECT 'Se ha publicado una nueva versión del [MODELO] seleccionado, cierre y vuelva a abrir la ficha para actualizar.' AS MENSAJE
 	END
+GO
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> MUESTRA LOS PATTERN DE LOS KIT INCLUSO AQUELLOS OBSOLETOS O QUE YA NO SE PROGRAMAN.
+-- //////////////////////////////////////////////////////////////
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_COLOR_KIT_PATTERN_RMA_OBSOLETO]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_COLOR_KIT_PATTERN_RMA_OBSOLETO]
+GO
+--		 EXECUTE [dbo].[PG_LI_COLOR_KIT_PATTERN_RMA_OBSOLETO] 0,139,'MAGN03','RUA','0028', 'PMRAFBDCNPVEV','189290A'
+CREATE PROCEDURE [dbo].[PG_LI_COLOR_KIT_PATTERN_RMA_OBSOLETO]
+	@PP_K_SISTEMA_EXE				INT,
+	@PP_K_USUARIO_ACCION			INT,
+	-- ===========================
+	@PP_CUS_NO					VARCHAR(15),
+	@PP_MODELNO					VARCHAR(15),
+	@PP_VERSIONNO				VARCHAR(6),
+	--@PP_S_COLOR					VARCHAR(15),
+	@PP_S_KIT					VARCHAR(15),
+	@PP_CUS_ITEM_NO				VARCHAR(25)
+AS
+
+			SELECT	--* 
+					 CCITMIDX_SQL.ITEM_NO				AS S_PATTERN
+					,LTRIM(RTRIM(CUS_ITEM_NO))			AS CUS_ITEM_NO
+					,LTRIM(RTRIM(ITEM_DESC_1))			AS D_PATTERN
+					,@PP_CUS_NO							AS CUS_NO
+					,@PP_MODELNO						AS MODELNO
+					,@PP_VERSIONNO						AS VERSIONNO
+					,''									AS MENSAJE
+					,cube_width							AS NET_AREA
+					,cube_length						AS GROSS_AREA
+			FROM	CCCUSITM_SQL				(NOLOCK),
+					CCITMIDX_SQL				(NOLOCK)					
+			WHERE	CCITMIDX_SQL.item_no					=	CCCUSITM_SQL.ITEM_NO
+			AND		CCITMIDX_SQL.ITEM_NO	IN
+															(
+																SELECT	COMP_ITEM_NO
+																FROM	[DATA_02].[DBO].ccprdstr_sql	(NOLOCK)
+																where	item_no				=	@PP_S_KIT
+																AND		CUS_NO				=	@PP_CUS_NO			--	'MAGN03'	--
+																AND		MODELNO				=	@PP_MODELNO			--	'WKZ'		--
+																AND		VERSIONNO			=	@PP_VERSIONNO		--	'0018'		--
+															)
+			AND		CCITMIDX_SQL.CUS_NO				=	@PP_CUS_NO			--	'MAGN03'	--
+			AND		CCITMIDX_SQL.MODELNO			=	@PP_MODELNO			--	'WKZ'		--
+			AND		CCITMIDX_SQL.VERSIONNO			=	@PP_VERSIONNO		--	'0018'		--
+			AND		CCCUSITM_SQL.CUS_NO				=	@PP_CUS_NO			
+			AND		CCCUSITM_SQL.MODELNO			=	@PP_MODELNO			
+			AND		CCCUSITM_SQL.VERSIONNO			=	@PP_VERSIONNO		
+			ORDER BY CUS_ITEM_NO ASC
+			--SELECT	 LTRIM(RTRIM(CCCUSITM_SQL.ITEM_NO))		AS S_PATTERN
+			--		,LTRIM(RTRIM(CUS_ITEM_NO))				AS CUS_ITEM_NO
+			--		,LTRIM(RTRIM(ITEM_DESC_1))				AS D_PATTERN
+			--		,@PP_CUS_NO								AS CUS_NO
+			--		,@PP_MODELNO							AS MODELNO
+			--		,@PP_VERSIONNO							AS VERSIONNO
+			--		,''										AS MENSAJE
+			--		,cube_width								AS NET_AREA
+			--		,cube_length							AS GROSS_AREA
+			--FROM	CCCUSITM_SQL				(NOLOCK),
+			--		IMITMIDX_SQL				(NOLOCK)
+			--WHERE	IMITMIDX_SQL.item_no					=	CCCUSITM_SQL.ITEM_NO
+			----WHERE	CCCUSITM_SQL.CUS_ITEM_NO				=	@PP_CUS_ITEM_NO
+			--AND		CUS_NO									=	@PP_CUS_NO			--	'MAGN03'	--
+			--AND		MODELNO									=	@PP_MODELNO			--	'WKZ'		--
+			--AND		VERSIONNO								=	@PP_VERSIONNO		--	'0018'		--
+			--AND		LTRIM(RTRIM(CCCUSITM_SQL.ITEM_NO))	IN	(
+			--												SELECT	COMP_ITEM_NO
+			--												FROM	[DATA_02].[DBO].ccprdstr_sql	(NOLOCK)
+			--												where	item_no				=	@PP_S_KIT
+			--												AND		CUS_NO				=	@PP_CUS_NO			--	'MAGN03'	--
+			--												AND		MODELNO				=	@PP_MODELNO			--	'WKZ'		--
+			--												AND		VERSIONNO			=	@PP_VERSIONNO		--	'0018'		--
+			--												)		
 GO
 
 
@@ -1342,12 +1587,14 @@ AS
 				
 				--========================================================================================================================================
 				--========================================================================================================================================
+				SET	@VP_VALOR_ITEM_NO	= LTRIM(RTRIM(@VP_VALOR_ITEM_NO))
+				
 				-- SACAR CANTIDAD DE REGISTROS POR COLOR/GRUPO DE DETAILS_RMA
 				DECLARE	@VP_CANTIDAD_REGISTROS_X_GPO	AS INT
 				SELECT  @VP_CANTIDAD_REGISTROS_X_GPO	= COUNT(GRUPO_ORDEN)
 				FROM	DETAILS_RMA		(NOLOCK)
 				WHERE	K_HEADER_RMA	= @PP_K_HEADER_RMA
-				AND		CONCAT('F',LTRIM(RTRIM(RIGHT(item_no,6)))) = CONCAT('F',LTRIM(RTRIM(RIGHT(@VP_VALOR_ITEM_NO,6))))			--@VP_VALOR_ITEM_NO
+				AND		CONCAT('F',RIGHT(LTRIM(RTRIM(item_no)),6)) = CONCAT('F',RIGHT(@VP_VALOR_ITEM_NO,6))			--@VP_VALOR_ITEM_NO
 				AND		GRUPO_ORDEN	= @VP_VALOR_GRUPO_O
 				--GROUP BY  LOT, HIDE
 				--HAVING COUNT(*)>4
@@ -1438,7 +1685,7 @@ AS
 							@VP_VALOR_QTY_ORD			,	@VP_PRECIO_PATTERN			,
 							-- =========================
 							0							,	@VP_VALOR_GRUPO_O			,
-							@VP_VALOR_PRECIOM			,	CONCAT('F',RIGHT(LTRIM(RTRIM(@VP_VALOR_ITEM_NO)),6)),
+							@VP_VALOR_PRECIOM			,	CONCAT('F',RIGHT(@VP_VALOR_ITEM_NO,6)),
 							(	SELECT	TOP (1) ITEM_NO
 								FROM	CCPRDSTR_SQL				(NOLOCK)
 								WHERE	ccprdstr_sql.CUS_NO			= @PP_CUS_NO
@@ -1968,16 +2215,16 @@ BEGIN TRY
 	END			
 	
 	-- /////////////////////////////////////////////////////////////////////		
-	IF	@VP_STATUS_ETIQUETA	<>	80
+	IF	@VP_STATUS_ETIQUETA	<>	80 AND @PP_K_USUARIO_ACCION <> 88
 	BEGIN
-		SET @VP_MENSAJE='La etiqueta ya fue impresa [Orden#'+CONVERT(VARCHAR(10),@PP_JOBNO)+']...'
+		SET @VP_MENSAJE	= 'La etiqueta ya fue impresa [Orden#'+CONVERT(VARCHAR(10),@PP_JOBNO)+']...'
 		RAISERROR (@VP_MENSAJE, 16, 1 )
 	END
 
 		UPDATE	DETAILS_RMA
 		SET		K_STATUS_ETIQUETA	= 85
 		WHERE	JOBNO				= @PP_JOBNO
-		AND		GRUPO_ORDEN					= @PP_GRUPO_ORDEN
+		AND		GRUPO_ORDEN			= @PP_GRUPO_ORDEN
 		IF @@ROWCOUNT = 0
 		BEGIN
 			SET @VP_MENSAJE='No se encontró el estatus de la [Orden#'+CONVERT(VARCHAR(10),@PP_JOBNO)+']...'

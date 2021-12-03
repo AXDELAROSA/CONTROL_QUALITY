@@ -24,201 +24,120 @@ GO
 
 
 
----- //////////////////////////////////////////////////////////////
----- // STORED PROCEDURE ---> SELECT / LISTADO
----- //////////////////////////////////////////////////////////////
---IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_HEADER_HOJA_EMPAQUE]') AND type in (N'P', N'PC'))
---	DROP PROCEDURE [dbo].[PG_LI_HEADER_HOJA_EMPAQUE]
---GO
-----		 EXECUTE [dbo].[PG_LI_HEADER_HOJA_EMPAQUE] 0,87,'',-1,'( TODOS )',null,null
-----		 EXECUTE [dbo].[PG_LI_HEADER_HOJA_EMPAQUE] 0,165,'',-1,'( TODOS )',null,null
---CREATE PROCEDURE [dbo].[PG_LI_HEADER_HOJA_EMPAQUE]
---	@PP_K_SISTEMA_EXE				INT,
---	@PP_K_USUARIO_ACCION			INT,
---	-- ===========================
---	@PP_BUSCAR						VARCHAR(25),
---	--@PP_K_STATUS_HOJA_EMPAQUE				INT,
---	@PP_CUS_NO						VARCHAR(20),
---	@PP_MODELNO						VARCHAR(25)
---	--@PP_F_INIT						DATE,
---	--@PP_F_FINISH					DATE
---AS
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_HEADER_HOJA_EMPAQUE]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_HEADER_HOJA_EMPAQUE]
+GO
+--		 EXECUTE [dbo].[PG_LI_HEADER_HOJA_EMPAQUE] 0,139,'( TODOS )','( TODOS )'
+--		 EXECUTE [dbo].[PG_LI_HEADER_HOJA_EMPAQUE] 0,139,'IRVI02','JTM'
+CREATE PROCEDURE [dbo].[PG_LI_HEADER_HOJA_EMPAQUE]
+	@PP_K_SISTEMA_EXE				INT,
+	@PP_K_USUARIO_ACCION			INT,
+	-- ===========================
+	--@PP_BUSCAR						VARCHAR(25),
+	--@PP_K_STATUS_HOJA_EMPAQUE				INT,
+	@PP_CUS_NO						VARCHAR(20),
+	@PP_MODELNO						VARCHAR(25)
+	--@PP_F_INIT						DATE,
+	--@PP_F_FINISH					DATE
+AS
+	SET @PP_MODELNO = LTRIM(RTRIM(LEFT(@PP_MODELNO,3)))
 
---SELECT	 LTRIM(RTRIM(CCCUSITM_SQL.ITEM_NO))		AS S_KIT
---				,LTRIM(RTRIM(CUS_ITEM_NO))				AS CUS_ITEM_NO
---				,LTRIM(RTRIM(ITEM_DESC_1))				AS D_KIT
---				,@PP_CUS_NO				AS CUS_NO
---				,@PP_MODELNO			AS MODELNO
---				,@PP_VERSIONNO			AS VERSIONNO
---				,''						AS MENSAJE
---		FROM	CCCUSITM_SQL			(NOLOCK)
---				,IMITMIDX_SQL			(NOLOCK)
---		WHERE	IMITMIDX_SQL.item_no		= CCCUSITM_SQL.ITEM_NO
---		AND		CUS_NO						=	@PP_CUS_NO			--	'MAGN03'	--
---		AND		MODELNO						=	@PP_MODELNO			--	'WKZ'		--
---		AND		VERSIONNO					=	@PP_VERSIONNO		--	'0018'		--
---		AND		CCCUSITM_SQL.ITEM_NO		LIKE 'P%' + RIGHT(LTRIM(RTRIM(@PP_S_COLOR)),6)
-
+	SELECT	*
+	FROM	HEADER_HOJA_EMPAQUE	(NOLOCK)
+	WHERE	( @PP_CUS_NO		= '( TODOS )'	OR	CUS_NO		= @PP_CUS_NO  )
+	AND		( @PP_MODELNO		= '( T'	OR	MODELNO		= @PP_MODELNO )
+	ORDER	BY	CUS_NO, MODELNO, VERSIONNO, ITEM_NO, CUSTOMER_ITEM_NO, COLOR
+	--WHERE	CUS_NO		= @PP_CUS_NO
+	--AND		MODELNO		= @PP_MODELNO
 --	-- /////////////////////////////////////////////////////////////////////
---	IF @PP_K_USUARIO_ACCION	= 43 OR @PP_K_USUARIO_ACCION	= 139
---	BEGIN
---		--================================================================================================================================================================================
---		--================================================================================================================================================================================
---		--================================================================================================================================================================================
---				SELECT		TOP (1000)
---							 --=============================	 
---							F_CREACION_HOJA_EMPAQUE,	--F_ENTREGA_HOJA_EMPAQUE,	--MODELNO,	--VERSIONNO,
---							 --=============================
---							(SELECT COUNT(K_DETAILS_HOJA_EMPAQUE)	FROM DETAILS_HOJA_EMPAQUE (NOLOCK) WHERE	DETAILS_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE	= HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE) AS PATTERNS,
---							(SELECT SUM(CANTIDAD_ORDENADA)	FROM DETAILS_HOJA_EMPAQUE (NOLOCK) WHERE	DETAILS_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE	= HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE) AS CANTIDAD,
---							(SELECT SUM(PRECIO_UNITARIO	* CANTIDAD_ORDENADA) FROM DETAILS_HOJA_EMPAQUE (NOLOCK) WHERE	DETAILS_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE	= HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE)	AS PRECIO_SISTEMA,
---							(SELECT SUM(PRECIO_MANUAL	* CANTIDAD_ORDENADA) FROM DETAILS_HOJA_EMPAQUE (NOLOCK) WHERE	DETAILS_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE	= HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE)	AS PRECIO_MANUAL,
---							 --=============================
---							(SELECT SUM(NET_AREA		* CANTIDAD_ORDENADA) FROM DETAILS_HOJA_EMPAQUE (NOLOCK) WHERE	DETAILS_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE	= HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE) AS SQFT,
---							 --=============================
---							HEADER_HOJA_EMPAQUE.JOBNO	AS JOBNOS_ARRAY,
---							( CASE
---								WHEN	L_APLICA_COBRO = 1 THEN 'SÍ'
---								ELSE	'NO'
---							END	)	AS APLICA_COBRO,
---							 --=============================
---							S_STATUS_HOJA_EMPAQUE	, D_STATUS_HOJA_EMPAQUE,
---							S_TIPO_HOJA_EMPAQUE		, D_TIPO_HOJA_EMPAQUE,
---							HEADER_HOJA_EMPAQUE.CUS_NO,
---							 --=============================
---							(CASE
---								WHEN	K_HOJA_EMPAQUE IS NULL THEN	'NO'
---								ELSE	'SÍ'
---							END	)	AS [8DS],
---							 --=============================
---							HEADER_HOJA_EMPAQUE.*
---							 --=============================	
---				FROM		HEADER_HOJA_EMPAQUE		(NOLOCK) 
---				INNER JOIN 	STATUS_HOJA_EMPAQUE		(NOLOCK) ON STATUS_HOJA_EMPAQUE.K_STATUS_HOJA_EMPAQUE		= HEADER_HOJA_EMPAQUE.K_STATUS_HOJA_EMPAQUE
---				INNER JOIN 	TIPO_HOJA_EMPAQUE		(NOLOCK) ON TIPO_HOJA_EMPAQUE.K_TIPO_HOJA_EMPAQUE			= HEADER_HOJA_EMPAQUE.K_TIPO_HOJA_EMPAQUE
---				INNER JOIN	BD_GENERAL.DBO.USUARIO_PEARL		(NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL	= HEADER_HOJA_EMPAQUE.K_USUARIO_ALTA
---				INNER JOIN	DETAILS_HOJA_EMPAQUE		(NOLOCK) ON DETAILS_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE	= HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE
---				LEFT JOIN	[8D]			(NOLOCK) ON [8D].K_HOJA_EMPAQUE					= HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE
---							 --=============================
---				WHERE		(	HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE				= @PP_BUSCAR
---							OR	C_HOJA_EMPAQUE								LIKE '%'+@PP_BUSCAR+'%'	
---							OR	DETAILS_HOJA_EMPAQUE.CUS_ITEM_NO				in (@PP_BUSCAR)	 )
---							 --=============================
---				AND			( @PP_F_INIT IS NULL		OR	@PP_F_INIT<=F_CREACION_HOJA_EMPAQUE)
---				AND			( @PP_F_FINISH IS NULL		OR	@PP_F_FINISH>=F_CREACION_HOJA_EMPAQUE)
---							 --=============================
---				AND			( @PP_CUS_NO		= '( TODOS )'		OR	HEADER_HOJA_EMPAQUE.CUS_NO		= @PP_CUS_NO )
---				AND			( @PP_K_STATUS_HOJA_EMPAQUE	= -1				OR	HEADER_HOJA_EMPAQUE.K_STATUS_HOJA_EMPAQUE	= @PP_K_STATUS_HOJA_EMPAQUE )
---							 --=============================
---				AND			HEADER_HOJA_EMPAQUE.L_BORRADO	<> 1
---				ORDER BY	K_STATUS_HOJA_EMPAQUE	DESC,	HEADER_HOJA_EMPAQUE.F_CREACION_HOJA_EMPAQUE	DESC
---		END
---		--================================================================================================================================================================================
---		--================================================================================================================================================================================
---		--================================================================================================================================================================================
---			SET @PP_MODELNO = LTRIM(RTRIM(LEFT(@PP_MODELNO,3)))
---	-- ///////////////////////////////////////////
---		SELECT	IMITMIDX_SQL.A4GLIDENTITY				AS K_COLOR,
---				LTRIM(RTRIM(IMITMIDX_SQL.ITEM_DESC_1))	AS D_COLOR,
---				LTRIM(RTRIM(colour))					AS S_COLOR,
---				@PP_CUS_NO								AS CUS_NO,
---				@PP_MODELNO								AS MODELNO,
---				LTRIM(RTRIM(ccverhdr_sql.versionno))	AS VERSIONNO
---		FROM	ccverhdr_sql		(NOLOCK),
---				CCVERPRC_SQL		(NOLOCK),
---				imitmidx_sql		(NOLOCK)
---		WHERE	ccverhdr_sql.status			= 'L' -- IN ('A', 'I', 'L' )--( @VP_ccverhdr_sql_status	 )		--= 'L' 
---		AND		ccverhdr_sql.specstatus		= 'U' -- IN ('A', 'C', 'U' )--( @VP_ccverhdr_sql_specstatus )	--= 'U' 
---		AND		CONCAT(ccverhdr_sql.modelno, ccverhdr_sql.versionno ) = CONCAT(CCVERPRC_SQL.modelno, CCVERPRC_SQL.versionno )
---		AND		CCVERPRC_SQL.cus_no			=	@PP_CUS_NO	--'magn03'	-- 
---		AND		CCVERPRC_SQL.modelno		=	@PP_MODELNO	--'wkz'		-- 
---		AND		imitmidx_sql.item_no		=	CCVERPRC_SQL.colour
---		ORDER BY ccverhdr_sql.cus_no
---	-- /////////////////////////////////////////////////////////////////////
---GO
+GO
 
 
----- //////////////////////////////////////////////////////////////
----- // STORED PROCEDURE ---> MUESTRA LOS PATTERN DE LOS KIT DE LOS COLORES ACTIVOS POR MODELO.
----- //////////////////////////////////////////////////////////////
---IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_DETAILS_HOJA_EMPAQUE]') AND type in (N'P', N'PC'))
---	DROP PROCEDURE [dbo].[PG_LI_DETAILS_HOJA_EMPAQUE]
---GO
-----		 EXECUTE [dbo].[PG_LI_DETAILS_HOJA_EMPAQUE] 0,139, 17
---CREATE PROCEDURE [dbo].[PG_LI_DETAILS_HOJA_EMPAQUE]
---	@PP_K_SISTEMA_EXE				INT,
---	@PP_K_USUARIO_ACCION			INT,
---	-- ===========================
---	@PP_K_HEADER_HOJA_EMPAQUE				INT
---AS
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> MUESTRA EL DETALLE DE LOS SPECIAL_PROCESS POR KIT
+-- //////////////////////////////////////////////////////////////
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_DETAILS_HOJA_EMPAQUE]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_DETAILS_HOJA_EMPAQUE]
+GO
+--		 EXECUTE [dbo].[PG_LI_DETAILS_HOJA_EMPAQUE] 0,139, 1042
+--		 EXECUTE [dbo].[PG_LI_DETAILS_HOJA_EMPAQUE] 0,139, 2483
+CREATE PROCEDURE [dbo].[PG_LI_DETAILS_HOJA_EMPAQUE]
+	@PP_K_SISTEMA_EXE				INT,
+	@PP_K_USUARIO_ACCION			INT,
+	-- ===========================
+	@PP_K_HEADER_HOJA_EMPAQUE				INT
+AS
+	SELECT	'C:\Users\alejandrod\Desktop\1.JPEG' AS RUTA_AV_HOJA_EMPAQUE,
+			[DETAILS_HOJA_EMPAQUE].* 
+	FROM	[DETAILS_HOJA_EMPAQUE]		(NOLOCK)
+	WHERE	K_HEADER_HOJA_EMPAQUE	=	@PP_K_HEADER_HOJA_EMPAQUE
 
---	SELECT	DETAILS_HOJA_EMPAQUE.ITEM_NO				AS S_PATTERN,
---			LTRIM(RTRIM(SEARCH_DESC))		AS D_PATTERN,
---			S_KIT	AS	KIT,
---			[DETAILS_HOJA_EMPAQUE].* 
---	FROM	[DETAILS_HOJA_EMPAQUE]		(NOLOCK)
---	INNER JOIN	IMITMIDX_SQL	(NOLOCK)	ON IMITMIDX_SQL.ITEM_NO	= DETAILS_HOJA_EMPAQUE.ITEM_NO
---	WHERE	DETAILS_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE	=	@PP_K_HEADER_HOJA_EMPAQUE
-
---GO
+GO
 
 
----- //////////////////////////////////////////////////////////////
----- // STORED PROCEDURE ---> SELECT / FICHA
----- //////////////////////////////////////////////////////////////
---IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_HEADER_HOJA_EMPAQUE]') AND type in (N'P', N'PC'))
---	DROP PROCEDURE [dbo].[PG_SK_HEADER_HOJA_EMPAQUE]
---GO
-----		 EXECUTE [dbo].[PG_SK_HEADER_HOJA_EMPAQUE] 0,139,7
---CREATE PROCEDURE [dbo].[PG_SK_HEADER_HOJA_EMPAQUE]
---	@PP_K_SISTEMA_EXE				INT,
---	@PP_K_USUARIO_ACCION			INT,
---	-- ===========================
---	@PP_K_HEADER_HOJA_EMPAQUE				INT
---AS
---	-- ///////////////////////////////////////////			
---	DECLARE @K_ARCUSFIL				INT
---			,@K_ARCUSFIL_PROGRAM	INT
---			,@CB_ARCUSFIL_PROGRAM	VARCHAR(250)
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / FICHA
+-- //////////////////////////////////////////////////////////////
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_HEADER_HOJA_EMPAQUE]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_SK_HEADER_HOJA_EMPAQUE]
+GO
+--		 EXECUTE [dbo].[PG_SK_HEADER_HOJA_EMPAQUE] 0,139,1
+CREATE PROCEDURE [dbo].[PG_SK_HEADER_HOJA_EMPAQUE]
+	@PP_K_SISTEMA_EXE				INT,
+	@PP_K_USUARIO_ACCION			INT,
+	-- ===========================
+	@PP_K_HEADER_HOJA_EMPAQUE		INT
+AS
+	-- ///////////////////////////////////////////			
+	DECLARE @K_ARCUSFIL				INT
+			,@K_ARCUSFIL_PROGRAM	INT
+			,@CB_ARCUSFIL_PROGRAM	VARCHAR(250)
 
---	--SELECT	@K_ARCUSFIL	= K_ARCUSFIL
---	--FROM	ARCUSFIL_SQL
---	--WHERE	ARCUSFIL_SQL.CUS_NO	= HEADER_HOJA_EMPAQUE.CUS_NO
+	----SELECT	@K_ARCUSFIL	= K_ARCUSFIL
+	----FROM	ARCUSFIL_SQL
+	----WHERE	ARCUSFIL_SQL.CUS_NO	= HEADER_HOJA_EMPAQUE.CUS_NO
 
---	--SELECT	@K_ARCUSFIL_PROGRAM	= K_ARCUSFIL_PROGRAM 
---	--FROM	ARCUSFIL_PROGRAM		(NOLOCK)
---	--INNER JOIN	HEADER_HOJA_EMPAQUE			(NOLOCK) ON HEADER_HOJA_EMPAQUE.PROGRAM	= S_ARCUSFIL_PROGRAM 
---	--AND		HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE			= @PP_K_HEADER_HOJA_EMPAQUE
+	----SELECT	@K_ARCUSFIL_PROGRAM	= K_ARCUSFIL_PROGRAM 
+	----FROM	ARCUSFIL_PROGRAM		(NOLOCK)
+	----INNER JOIN	HEADER_HOJA_EMPAQUE			(NOLOCK) ON HEADER_HOJA_EMPAQUE.PROGRAM	= S_ARCUSFIL_PROGRAM 
+	----AND		HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE			= @PP_K_HEADER_HOJA_EMPAQUE
 
---	SELECT	@CB_ARCUSFIL_PROGRAM		= RTRIM(LTRIM(S_ARCUSFIL_PROGRAM_MODEL)) + ' // ' + RTRIM(LTRIM(D_ARCUSFIL_PROGRAM_MODEL))
---	FROM	ARCUSFIL_PROGRAM_MODEL		(NOLOCK)
---	INNER JOIN	HEADER_HOJA_EMPAQUE				(NOLOCK) ON HEADER_HOJA_EMPAQUE.MODELNO	= S_ARCUSFIL_PROGRAM_MODEL
---	AND		HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE		= @PP_K_HEADER_HOJA_EMPAQUE
+	----SELECT	@CB_ARCUSFIL_PROGRAM		= RTRIM(LTRIM(S_ARCUSFIL_PROGRAM_MODEL)) + ' // ' + RTRIM(LTRIM(D_ARCUSFIL_PROGRAM_MODEL))
+	----FROM	ARCUSFIL_PROGRAM_MODEL		(NOLOCK)
+	----INNER JOIN	HEADER_HOJA_EMPAQUE				(NOLOCK) ON HEADER_HOJA_EMPAQUE.MODELNO	= S_ARCUSFIL_PROGRAM_MODEL
+	----AND		HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE		= @PP_K_HEADER_HOJA_EMPAQUE
 
---	SELECT	@CB_ARCUSFIL_PROGRAM		= RTRIM(LTRIM(S_ARCUSFIL_PROGRAM_MODEL)) + ' // ' + RTRIM(LTRIM(D_ARCUSFIL_PROGRAM_MODEL))
---	FROM	ARCUSFIL_PROGRAM_MODEL		(NOLOCK)
---	INNER JOIN	HEADER_HOJA_EMPAQUE				(NOLOCK) ON HEADER_HOJA_EMPAQUE.MODELNO	= S_ARCUSFIL_PROGRAM_MODEL
---	AND		HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE		= @PP_K_HEADER_HOJA_EMPAQUE
+	--SELECT	@CB_ARCUSFIL_PROGRAM		= RTRIM(LTRIM(S_ARCUSFIL_PROGRAM_MODEL)) + ' // ' + RTRIM(LTRIM(D_ARCUSFIL_PROGRAM_MODEL))
+	--SELECT	@CB_ARCUSFIL_PROGRAM		= RTRIM(LTRIM(S_ARCUSFIL_PROGRAM)) + ' // ' + RTRIM(LTRIM(D_ARCUSFIL_PROGRAM_MODEL))
+	SELECT	@CB_ARCUSFIL_PROGRAM		= RTRIM(LTRIM(PROD_CAT_DESC))
+	FROM	ARCUSFIL_PROGRAM_MODEL		(NOLOCK)	
+	INNER JOIN	HEADER_HOJA_EMPAQUE		(NOLOCK) ON HEADER_HOJA_EMPAQUE.MODELNO	= S_ARCUSFIL_PROGRAM_MODEL
+	AND		HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE		= @PP_K_HEADER_HOJA_EMPAQUE
 
---	SELECT		TOP (1)
---				-- =============================	 
---				S_STATUS_HOJA_EMPAQUE	, D_STATUS_HOJA_EMPAQUE	,
---				S_TIPO_HOJA_EMPAQUE		, D_TIPO_HOJA_EMPAQUE	,
---				@CB_ARCUSFIL_PROGRAM	AS MODELNO_CB,
---				--CUS_NO			, PROGRAMA		,
---				--MODELNO,
---				--VERSIONNO,
---				-- =============================
---				HEADER_HOJA_EMPAQUE.*
---				-- =============================	
---	FROM		HEADER_HOJA_EMPAQUE		(NOLOCK) 
---	INNER JOIN 	STATUS_HOJA_EMPAQUE		(NOLOCK) ON STATUS_HOJA_EMPAQUE.K_STATUS_HOJA_EMPAQUE	= HEADER_HOJA_EMPAQUE.K_STATUS_HOJA_EMPAQUE
---	INNER JOIN 	TIPO_HOJA_EMPAQUE		(NOLOCK) ON TIPO_HOJA_EMPAQUE.K_TIPO_HOJA_EMPAQUE		= HEADER_HOJA_EMPAQUE.K_TIPO_HOJA_EMPAQUE
---				-- =============================
---	WHERE		HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE	= @PP_K_HEADER_HOJA_EMPAQUE
---	AND			HEADER_HOJA_EMPAQUE.L_BORRADO	<> 1
---	-- ////////////////////////////////////////////////////////////////////
---GO
+	SELECT		TOP (1)
+				-- =============================	 
+				S_STATUS_HOJA_EMPAQUE	, D_STATUS_HOJA_EMPAQUE	,
+				--S_TIPO_HOJA_EMPAQUE		, D_TIPO_HOJA_EMPAQUE	,
+				@CB_ARCUSFIL_PROGRAM	AS PROGRAMA,
+				--CUS_NO			, PROGRAMA		,
+				--MODELNO,
+				--VERSIONNO,
+				-- =============================
+				--ISNULL(REVISION_HOJA_EMPAQUE,'') AS CAJA_HOJA_EMPAQUE,
+				ISNULL(REVISION_HOJA_EMPAQUE,0) AS REVISION_HOJA_EMPAQUE,
+				HEADER_HOJA_EMPAQUE.*
+				-- =============================	
+	FROM		HEADER_HOJA_EMPAQUE		(NOLOCK) 
+	INNER JOIN 	STATUS_HOJA_EMPAQUE		(NOLOCK) ON STATUS_HOJA_EMPAQUE.K_STATUS_HOJA_EMPAQUE	= HEADER_HOJA_EMPAQUE.K_STATUS_HOJA_EMPAQUE
+	--INNER JOIN 	TIPO_HOJA_EMPAQUE		(NOLOCK) ON TIPO_HOJA_EMPAQUE.K_TIPO_HOJA_EMPAQUE		= HEADER_HOJA_EMPAQUE.K_TIPO_HOJA_EMPAQUE
+				-- =============================
+	WHERE		HEADER_HOJA_EMPAQUE.K_HEADER_HOJA_EMPAQUE	= @PP_K_HEADER_HOJA_EMPAQUE
+	AND			HEADER_HOJA_EMPAQUE.L_BORRADO	<> 1
+	-- ////////////////////////////////////////////////////////////////////
+GO
 
 
 ---- //////////////////////////////////////////////////////////////
