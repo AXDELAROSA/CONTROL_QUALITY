@@ -76,7 +76,7 @@ GO
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> INSERT / UPDATE
 -- //////////////////////////////////////////////////////////////
-
+-- USE [PPMS_PEARL]
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_UP_CERTIFICACION_REPORT]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_IN_UP_CERTIFICACION_REPORT]
 GO
@@ -109,20 +109,41 @@ CREATE PROCEDURE [dbo].[PG_IN_UP_CERTIFICACION_REPORT]
 	@PP_ESTACION						VARCHAR(50)	
 AS
 
-	IF @PP_DEFECTO_1 = '( S/D )'
-		SET @PP_DEFECTO_1 = ''
-
-	IF @PP_DEFECTO_2 = '( S/D )'
-		SET @PP_DEFECTO_2 = ''
-
-	IF @PP_DEFECTO_3 = '( S/D )'
-		SET @PP_DEFECTO_3 = ''
-
 	DECLARE @VP_MENSAJE		VARCHAR(300) = ''
+
+	-- ////////RN VALIDACIONES///////////////////////////////////////////////////////
+	DECLARE @VP_N_SELLO INT = 0
+	SELECT	@VP_N_SELLO = COUNT(noreloj)
+	FROM [PPMS_PEARL].[dbo].[personal] (NOLOCK)
+	WHERE sello = @PP_SELLO_INSP_MESA
+			
+	IF @VP_N_SELLO IS NULL OR @VP_N_SELLO = 0
+		 SET @VP_MENSAJE = 'El sello del inspector de mesa no existe' 
+
+	IF  @VP_MENSAJE=''
+		BEGIN
+			SET @VP_N_SELLO = 0
+			SELECT	@VP_N_SELLO = COUNT(noreloj)
+			FROM [PPMS_PEARL].[dbo].[personal] (NOLOCK)
+			WHERE INSPECTOR_CAL = @PP_NOMBRE_INSP_CERTI
+
+			IF @VP_N_SELLO IS NULL OR @VP_N_SELLO = 0
+				SET @VP_MENSAJE = 'El Inspector de certificación no tiene sello asignado'
+		END	
+		
 	IF @VP_MENSAJE=''
 		BEGIN
 			BEGIN TRANSACTION 
 			BEGIN TRY
+				IF @PP_DEFECTO_1 = '( S/D )'
+					SET @PP_DEFECTO_1 = ''
+
+				IF @PP_DEFECTO_2 = '( S/D )'
+					SET @PP_DEFECTO_2 = ''
+
+				IF @PP_DEFECTO_3 = '( S/D )'
+					SET @PP_DEFECTO_3 = ''
+
 				-- ////////SE DECLARAN VARIABLES A USARSE///////////////////////////////////////////////////////
 				DECLARE @VP_EXTRA INT = 0, @VP_VALIDAR_TURNO INT = 2;
 				DECLARE @VP_TOTAL INT = (@PP_N_PAQUETE * @PP_N_PIEZA);
