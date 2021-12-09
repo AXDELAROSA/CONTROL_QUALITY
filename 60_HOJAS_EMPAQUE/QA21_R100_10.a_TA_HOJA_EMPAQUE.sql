@@ -14,20 +14,20 @@ GO
 -- //////////////////////////////////////////////////////////////
 -- // DROPs
 -- //////////////////////////////////////////////////////////////
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[DETAILS_HOJA_EMPAQUE]') AND type in (N'U'))
-	DROP TABLE [dbo].[DETAILS_HOJA_EMPAQUE]
-GO
-
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[HEADER_HOJA_EMPAQUE]') AND type in (N'U'))
 	DROP TABLE [dbo].[HEADER_HOJA_EMPAQUE]
 GO
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[STATUS_HOJA_EMPAQUE]') AND type in (N'U'))
-	DROP TABLE [dbo].[STATUS_HOJA_EMPAQUE]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[DETAILS_HOJA_EMPAQUE]') AND type in (N'U'))
+	DROP TABLE [dbo].[DETAILS_HOJA_EMPAQUE]
 GO
 
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[AV_HOJA_EMPAQUE]') AND type in (N'U'))
 	DROP TABLE [dbo].[AV_HOJA_EMPAQUE]
+GO
+
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[STATUS_HOJA_EMPAQUE]') AND type in (N'U'))
+	DROP TABLE [dbo].[STATUS_HOJA_EMPAQUE]
 GO
 
 -- ////////////////////////////////////////////////////////////////
