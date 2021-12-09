@@ -1,0 +1,863 @@
+-- //////////////////////////////////////////////////////////////
+-- // ARCHIVO:			
+-- //////////////////////////////////////////////////////////////
+-- // BASE DE DATOS:	[PPMS_PEARL]
+-- // MODULO:			PPMS PRODUCCION
+-- // OPERACION:		LIBERACION / STORED PROCEDURE
+-- //////////////////////////////////////////////////////////////
+-- // Autor:			FEG
+-- // Fecha creación:	16/NOV/2021
+-- //////////////////////////////////////////////////////////////  
+
+USE [PPMS_PEARL]
+GO
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_PRD_HEADER]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_PRD_HEADER]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_PPMS_PRD_HEADER] 0,0, '2021-11-01', '2021-11-16', 1
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_PRD_HEADER]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT, 
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE,
+	@PP_SECCION_DIA						INT
+AS
+
+	-- /////////SE MUESTRA EL RESULTADO//////////////
+	SELECT	@PP_F_INICIAL	AS FECHA_INICIO,
+			@PP_F_FIN		AS FECHA_FINAL,
+			@PP_SECCION_DIA	AS SECCION_DIA
+	
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_ACUMULADO_ANUAL_HEADER]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_ACUMULADO_ANUAL_HEADER]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_PPMS_ACUMULADO_ANUAL_HEADER] 0,0, '2021-11-01', '2021-11-16', 1
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_ACUMULADO_ANUAL_HEADER]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT, 
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE,
+	@PP_SECCION_DIA						INT
+AS
+
+	-- /////////SE MUESTRA EL RESULTADO//////////////
+	SELECT	@PP_F_INICIAL	AS FECHA_INICIO,
+			@PP_F_FIN		AS FECHA_FINAL,
+			YEAR(@PP_F_INICIAL)	AS YEAR_FECHA_INICIO,
+			YEAR(@PP_F_FIN)	AS YEAR_FECHA_FINAL,
+			@PP_SECCION_DIA	AS SECCION_DIA
+	
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_TURNO]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_TURNO]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_TURNO] 0,0, '2021-11-01', '2021-11-16', 1
+ EXEC	[dbo].[PG_LI_PPMS_REPORT_X_FECHA] 0, 144, '2021-11-01', '2021-11-16'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_TURNO]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT, 
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE,
+	@PP_TURNO							INT
+AS
+
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD TABLE(
+		FECHA		DATE,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD
+	SELECT	CONVERT(DATE, Date) AS FECHA, 
+			SAMPLE_SIZE, 
+			ISNULL((SELECT SUM([DEFECTOS].Cant)  FROM [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK) WHERE [DEFECTOS].ID = [QC].ID), 0)
+	FROM [PPMS_PEARL].[dbo].[QC] (NOLOCK)
+	WHERE [Date] >= @PP_F_INICIAL
+	AND [Date] <= @PP_F_FIN
+	AND [Shift] = @PP_TURNO
+	ORDER BY CONVERT(DATE, [Date])
+	
+	-- /////////SE CALCULAN LOS TOTALES//////////////
+	SELECT	FECHA, 
+			SUM(MUESTRA) AS 'TOTAL_MUESTRA', 
+			SUM(DEFECTOS) AS 'TOTAL_DEFECTOS', 
+			( CASE WHEN (SUM(MUESTRA)) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), SUM(DEFECTOS)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA)) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS'
+	FROM @VP_TBL_PPMS_PRD
+	GROUP BY FECHA
+	HAVING SUM(DEFECTOS) > 0
+	ORDER BY FECHA
+	
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_TURNO_GRAF]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_TURNO_GRAF]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_TURNO_GRAF] 0,0, '2021-11-01', '2021-11-16'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_TURNO_GRAF]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT, 
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE
+AS
+
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD TABLE(
+		FECHA		DATE,
+		TURNO		INT,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD
+	SELECT	CONVERT(DATE, Date) AS FECHA, 
+			[Shift],
+			SAMPLE_SIZE, 
+			ISNULL((SELECT SUM([DEFECTOS].Cant)  FROM [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK) WHERE [DEFECTOS].ID = [QC].ID), 0)
+	FROM [PPMS_PEARL].[dbo].[QC] (NOLOCK)
+	WHERE [Date] >= @PP_F_INICIAL
+	AND [Date] <= @PP_F_FIN
+	ORDER BY CONVERT(DATE, [Date])
+	
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_TOTAL TABLE(
+		FECHA		DATE,
+		TURNO		INT,
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
+
+	-- /////////SE CALCULAN LOS TOTALES//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_TOTAL
+	SELECT	FECHA, 
+			TURNO,
+			SUM(MUESTRA) AS 'TOTAL_MUESTRA', 
+			SUM(DEFECTOS) AS 'TOTAL_DEFECTOS'
+	FROM @VP_TBL_PPMS_PRD
+	GROUP BY FECHA, TURNO
+	
+
+	-- /////////SE CREA TABLA TEMPORAL PARA LOS DATOS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_ACUMULADO TABLE(
+		FECHA			DATE,
+		PPMS_1ER_TURNO	INT,
+		PPMS_2DO_TURNO	INT,
+		PPMS_3ER_TURNO	INT
+	)
+
+	-- /////////SE CALCULAS LOS TOTALES Y SE INGRESA A LA TABLA TEMPORAL DE TOTALES POR TURNO//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_ACUMULADO
+	SELECT	FECHA, 
+			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
+				ELSE 0 END ) AS 'PPMS 1ER TURNO',
+			0,
+			0
+	FROM @VP_TBL_PPMS_PRD_TOTAL
+	WHERE TURNO = 1
+	ORDER BY FECHA
+
+	INSERT INTO @VP_TBL_PPMS_PRD_ACUMULADO
+	SELECT	FECHA, 
+			0,
+			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
+				ELSE 0 END ) AS 'PPMS 2DO TURNO',
+			0
+	FROM @VP_TBL_PPMS_PRD_TOTAL
+	WHERE TURNO = 2
+	ORDER BY FECHA
+
+	INSERT INTO @VP_TBL_PPMS_PRD_ACUMULADO
+	SELECT	FECHA, 
+			0,
+			0,
+			( CASE WHEN (MUESTRA) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), DEFECTOS) / CONVERT(DECIMAL(13,2), MUESTRA) * 1000000) )
+				ELSE 0 END ) AS 'PPMS 3ER TURNO'
+	FROM @VP_TBL_PPMS_PRD_TOTAL
+	WHERE TURNO = 3
+	ORDER BY FECHA
+
+	-- /////////SE MUESTRA EL RESULTADO//////////////
+	SELECT	FECHA, 
+			SUM(PPMS_1ER_TURNO) AS 'PPMS 1ER TURNO',
+			SUM(PPMS_2DO_TURNO) AS 'PPMS 2DO TURNO',
+			SUM(PPMS_3ER_TURNO) AS 'PPMS 3ER TURNO'
+	FROM @VP_TBL_PPMS_PRD_ACUMULADO
+	GROUP BY FECHA
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_X_MESA]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_X_MESA]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_X_MESA] 0,0, '2021-11-01', '2021-11-16'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_X_MESA]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE
+AS
+
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_X_MESA_T1 TABLE(
+		MESA		VARCHAR(50),
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_X_MESA_T1
+	SELECT	CONCAT ('T', RIGHT('00' + CONVERT(VARCHAR(10), LTRIM(RTRIM(MACHINE))), 2)) AS MACHINE, 
+			ISNULL((SELECT SUM([DEFECTOS].Cant)  FROM [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK) WHERE [DEFECTOS].ID = [QC].ID), 0)
+	FROM [PPMS_PEARL].[dbo].[QC] (NOLOCK)
+	WHERE [Date] >= @PP_F_INICIAL
+	AND [Date] <= @PP_F_FIN
+	AND [SHIFT] = 1
+
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_X_MESA_T2 TABLE(
+		MESA		VARCHAR(50),
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_X_MESA_T2
+	SELECT	CONCAT ('T', RIGHT('00' + CONVERT(VARCHAR(10), LTRIM(RTRIM(MACHINE))), 2)) AS MACHINE,
+			ISNULL((SELECT SUM([DEFECTOS].Cant)  FROM [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK) WHERE [DEFECTOS].ID = [QC].ID), 0)
+	FROM [PPMS_PEARL].[dbo].[QC] (NOLOCK)
+	WHERE [Date] >= @PP_F_INICIAL
+	AND [Date] <= @PP_F_FIN
+	AND [SHIFT] = 2
+
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_X_MESA_T3 TABLE(
+		MESA		VARCHAR(50),
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_X_MESA_T3
+	SELECT	CONCAT ('T', RIGHT('00' + CONVERT(VARCHAR(10), LTRIM(RTRIM(MACHINE))), 2)) AS MACHINE, 
+			ISNULL((SELECT SUM([DEFECTOS].Cant)  FROM [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK) WHERE [DEFECTOS].ID = [QC].ID), 0)
+	FROM [PPMS_PEARL].[dbo].[QC] (NOLOCK)
+	WHERE [Date] >= @PP_F_INICIAL
+	AND [Date] <= @PP_F_FIN
+	AND [SHIFT] = 3
+	
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_X_MESA_ACUMULADO_T1 TABLE(
+		MESA		VARCHAR(50),
+		DEFECTOS	INT
+	)
+
+	INSERT INTO @VP_TBL_PPMS_PRD_X_MESA_ACUMULADO_T1
+	SELECT	MESA, 
+			SUM(DEFECTOS)
+	FROM @VP_TBL_PPMS_PRD_X_MESA_T1
+	GROUP BY MESA
+
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_X_MESA_ACUMULADO_T2 TABLE(
+		MESA		VARCHAR(50),
+		DEFECTOS	INT
+	)
+
+	INSERT INTO @VP_TBL_PPMS_PRD_X_MESA_ACUMULADO_T2
+	SELECT	MESA, 
+			SUM(DEFECTOS)
+	FROM @VP_TBL_PPMS_PRD_X_MESA_T2
+	GROUP BY MESA
+
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_X_MESA_ACUMULADO_T3 TABLE(
+		MESA		VARCHAR(50),
+		DEFECTOS	INT
+	)
+
+	INSERT INTO @VP_TBL_PPMS_PRD_X_MESA_ACUMULADO_T3
+	SELECT	MESA, 
+			SUM(DEFECTOS)
+	FROM @VP_TBL_PPMS_PRD_X_MESA_T3
+	GROUP BY MESA
+
+	SELECT	LTRIM(RTRIM(loc)) AS D_MESA,
+			ISNULL(T1.DEFECTOS, 0) AS DETECTO_T1,
+			ISNULL(T2.DEFECTOS, 0) AS DETECTO_T2,
+			ISNULL(T3.DEFECTOS, 0) AS DETECTO_T3,
+			SUM(ISNULL(T1.DEFECTOS, 0) + ISNULL(T2.DEFECTOS, 0) + ISNULL(T3.DEFECTOS, 0)) AS TOTAL_DEFECTO
+	FROM [DATA_02].dbo.imlocfil_sql 
+	LEFT JOIN @VP_TBL_PPMS_PRD_X_MESA_ACUMULADO_T1 T1 ON T1.MESA = loc
+	LEFT JOIN @VP_TBL_PPMS_PRD_X_MESA_ACUMULADO_T2 T2 ON T2.MESA = loc
+	LEFT JOIN @VP_TBL_PPMS_PRD_X_MESA_ACUMULADO_T3 T3 ON T3.MESA = loc
+	WHERE LOC_DESC LIKE 'Table%' 
+	GROUP BY loc, T1.DEFECTOS, T2.DEFECTOS, T3.DEFECTOS 
+	HAVING SUM(ISNULL(T1.DEFECTOS, 0) + ISNULL(T2.DEFECTOS, 0) + ISNULL(T3.DEFECTOS, 0)) > 0
+	ORDER BY loc
+
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_X_MESA_TURNO]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_X_MESA_TURNO]
+GO
+
+/* 
+	EXEC	[dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_X_MESA_TURNO] 0,0, '2021-11-16', '2021-11-16', 1
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_X_MESA_TURNO]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE,
+	@PP_TURNO							INT
+AS
+
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_X_MESA TABLE(
+		MESA		VARCHAR(50),
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_X_MESA
+	SELECT	MACHINE, 
+			SAMPLE_SIZE, 
+			ISNULL((SELECT SUM([DEFECTOS].Cant)  FROM [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK) WHERE [DEFECTOS].ID = [QC].ID), 0)
+	FROM [PPMS_PEARL].[dbo].[QC] (NOLOCK)
+	WHERE [Date] >= @PP_F_INICIAL
+	AND [Date] <= @PP_F_FIN
+	AND [Shift] = @PP_TURNO
+	
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_X_MESA_FINAL TABLE(
+		MESA		VARCHAR(50),
+		MUESTRA		INT,
+		DEFECTOS	INT,
+		PPMS		INT
+	)
+	-- /////////SE CALCULAN LOS TOTALES//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_X_MESA_FINAL
+	SELECT	MESA, 
+			SUM(MUESTRA) AS 'TOTAL_MUESTRA', 
+			SUM(DEFECTOS) AS 'TOTAL_DEFECTOS', 
+			( CASE WHEN (SUM(MUESTRA)) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), SUM(DEFECTOS)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA)) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS'
+	FROM @VP_TBL_PPMS_PRD_X_MESA
+	GROUP BY MESA
+
+
+	SELECT	--TOP 5
+			--CONCAT('T', RIGHT('00' + CONVERT(VARCHAR(5), MESA), 2)) AS MESA,
+			( CASE  WHEN MESA = 90 THEN 'PERF'
+					WHEN MESA = 91 THEN 'QUIL'
+					ELSE CONCAT ('T', RIGHT('00' + CONVERT(VARCHAR(10), LTRIM(RTRIM(MESA))), 2)) END ) AS MESA,
+			MUESTRA,	
+			DEFECTOS,
+			PPMS
+	FROM @VP_TBL_PPMS_PRD_X_MESA_FINAL
+	WHERE DEFECTOS > 0
+	ORDER BY MESA 
+	--ORDER BY PPMS DESC
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_X_MESA_TOP_5]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_X_MESA_TOP_5]
+GO
+
+/* 
+ EXEC	[dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_X_MESA_TOP_5] 0,0, '2021-11-01', '2021-11-16'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_PRD_X_RANGO_FECHA_X_MESA_TOP_5]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE
+AS
+
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_X_MESA TABLE(
+		MESA		VARCHAR(50),
+		MUESTRA		INT,
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_X_MESA
+	SELECT	MACHINE, 
+			SAMPLE_SIZE, 
+			ISNULL((SELECT SUM([DEFECTOS].Cant)  FROM [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK) WHERE [DEFECTOS].ID = [QC].ID), 0)
+	FROM [PPMS_PEARL].[dbo].[QC] (NOLOCK)
+	WHERE [Date] >= @PP_F_INICIAL
+	AND [Date] <= @PP_F_FIN
+	
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_X_MESA_FINAL TABLE(
+		MESA		VARCHAR(50),
+		MUESTRA		INT,
+		DEFECTOS	INT,
+		PPMS		INT
+	)
+	-- /////////SE CALCULAN LOS TOTALES//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_X_MESA_FINAL
+	SELECT	MESA, 
+			SUM(MUESTRA) AS 'TOTAL_MUESTRA', 
+			SUM(DEFECTOS) AS 'TOTAL_DEFECTOS', 
+			( CASE WHEN (SUM(MUESTRA)) > 0 THEN CONVERT(INT, (CONVERT(DECIMAL(13,2), SUM(DEFECTOS)) / CONVERT(DECIMAL(13,2), SUM(MUESTRA)) * 1000000) )
+				ELSE 0 END ) AS 'TOTAL_PPMS'
+	FROM @VP_TBL_PPMS_PRD_X_MESA
+	GROUP BY MESA
+
+
+	SELECT	--TOP 5
+			--CONCAT('T', RIGHT('00' + CONVERT(VARCHAR(5), MESA), 2)) AS MESA,
+			( CASE  WHEN MESA = 90 THEN 'PERF'
+					WHEN MESA = 91 THEN 'QUIL'
+					ELSE CONCAT ('T', RIGHT('00' + CONVERT(VARCHAR(10), LTRIM(RTRIM(MESA))), 2)) END ) AS MESA,
+			MUESTRA,	
+			DEFECTOS,
+			PPMS
+	FROM @VP_TBL_PPMS_PRD_X_MESA_FINAL
+	WHERE DEFECTOS > 0
+	ORDER BY MESA 
+	--ORDER BY PPMS DESC
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_PRD_DEFECTO_X_TURNO_MESA_TOP_5]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_PRD_DEFECTO_X_TURNO_MESA_TOP_5]
+GO
+
+/* SRPT_PPMS_PRD_DEFECTO_X_MESA_T1
+ EXEC	[dbo].[PG_LI_PPMS_PRD_DEFECTO_X_TURNO_MESA_TOP_5] 0,0, '2021-11-01', '2021-11-16', 1
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_PRD_DEFECTO_X_TURNO_MESA_TOP_5]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE,	
+	@PP_TURNO							INT
+AS
+
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_X_MESA_T1 TABLE(
+		MESA		VARCHAR(50),
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_X_MESA_T1
+	SELECT	--CONCAT ('T', RIGHT('00' + CONVERT(VARCHAR(10), LTRIM(RTRIM(MACHINE))), 2)) AS MACHINE, 
+			( CASE  WHEN MACHINE = 90 THEN 'PERF'
+					WHEN MACHINE = 91 THEN 'QUIL'
+					ELSE CONCAT ('T', RIGHT('00' + CONVERT(VARCHAR(10), LTRIM(RTRIM(MACHINE))), 2)) END ) AS MACHINE,
+			ISNULL((SELECT SUM([DEFECTOS].Cant)  FROM [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK) WHERE [DEFECTOS].ID = [QC].ID), 0)
+	FROM [PPMS_PEARL].[dbo].[QC] (NOLOCK)
+	WHERE [Date] >= @PP_F_INICIAL
+	AND [Date] <= @PP_F_FIN
+	AND [SHIFT] = @PP_TURNO
+	
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_X_MESA_ACUMULADO_T1 TABLE(
+		MESA		VARCHAR(50),
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_X_MESA_ACUMULADO_T1
+	SELECT	MESA, 
+			SUM(DEFECTOS)
+	FROM @VP_TBL_PPMS_PRD_X_MESA_T1
+	GROUP BY MESA
+
+	-- /////////SE MUESTRA EL RESULTADO//////////////
+	SELECT	TOP 5 
+			MESA AS D_MESA,
+			DEFECTOS AS DETECTO_T1	
+	FROM @VP_TBL_PPMS_PRD_X_MESA_ACUMULADO_T1
+	ORDER BY DETECTO_T1 DESC
+
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+ 
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_PRD_DEFECTO_X_MESA_TOP_5]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_PRD_DEFECTO_X_MESA_TOP_5]
+GO
+
+/* SRPT_PPMS_PRD_X_DIA_MESA_GRAF
+ EXEC	[dbo].[PG_LI_PPMS_PRD_DEFECTO_X_MESA_TOP_5] 0,0, '2021-11-01', '2021-11-16'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_PRD_DEFECTO_X_MESA_TOP_5]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE
+AS
+
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_X_MESA_T1 TABLE(
+		MESA		VARCHAR(50),
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_X_MESA_T1
+	SELECT	--CONCAT ('T', RIGHT('00' + CONVERT(VARCHAR(10), LTRIM(RTRIM(MACHINE))), 2)) AS MACHINE, 
+			( CASE  WHEN MACHINE = 90 THEN 'PERF'
+					WHEN MACHINE = 91 THEN 'QUIL'
+					ELSE CONCAT ('T', RIGHT('00' + CONVERT(VARCHAR(10), LTRIM(RTRIM(MACHINE))), 2)) END ) AS MACHINE,
+			ISNULL((SELECT SUM([DEFECTOS].Cant)  FROM [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK) WHERE [DEFECTOS].ID = [QC].ID), 0)
+	FROM [PPMS_PEARL].[dbo].[QC] (NOLOCK)
+	WHERE [Date] >= @PP_F_INICIAL
+	AND [Date] <= @PP_F_FIN
+	
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_X_MESA_ACUMULADO_T1 TABLE(
+		MESA		VARCHAR(50),
+		DEFECTOS	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_X_MESA_ACUMULADO_T1
+	SELECT	MESA, 
+			SUM(DEFECTOS)
+	FROM @VP_TBL_PPMS_PRD_X_MESA_T1
+	GROUP BY MESA
+
+	-- /////////SE MUESTRA EL RESULTADO//////////////
+	SELECT	TOP 5 
+			MESA AS D_MESA,
+			DEFECTOS AS DETECTO_T1	
+	FROM @VP_TBL_PPMS_PRD_X_MESA_ACUMULADO_T1
+	ORDER BY DETECTO_T1 DESC
+
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA] 0,0, '2021-11-16', '2021-11-16'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE
+AS
+
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_DEFECTO_T1 TABLE(
+		DEFECTO		VARCHAR(150),
+		CANTIDAD	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_DEFECTO_T1
+	SELECT	DEFECTO, 
+			SUM(Cant)
+	 FROM [PPMS_PEARL].[dbo].[DEFECTOS] 
+	 WHERE ID IN (	SELECT ID  
+					FROM [PPMS_PEARL].[dbo].[QC] 
+					WHERE [Date] >= @PP_F_INICIAL
+					AND [Date] <= @PP_F_FIN
+					AND [SHIFT] = 1	)
+	 GROUP BY Defecto 
+	
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_DEFECTO_T2 TABLE(
+		DEFECTO		VARCHAR(150),
+		CANTIDAD	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_DEFECTO_T2
+	SELECT	DEFECTO, 
+			SUM(Cant)
+	 FROM [PPMS_PEARL].[dbo].[DEFECTOS] 
+	 WHERE ID IN (	SELECT ID  
+					FROM [PPMS_PEARL].[dbo].[QC] 
+					WHERE [Date] >= @PP_F_INICIAL
+					AND [Date] <= @PP_F_FIN
+					AND [SHIFT] = 2	)
+	 GROUP BY Defecto 
+
+	-- /////////SE CREA LA TABLA PARA LOS PPMS//////////////
+	DECLARE @VP_TBL_PPMS_PRD_DEFECTO_T3 TABLE(
+		DEFECTO		VARCHAR(150),
+		CANTIDAD	INT
+	)
+
+	-- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	INSERT INTO @VP_TBL_PPMS_PRD_DEFECTO_T3
+	SELECT	DEFECTO, 
+			SUM(Cant)
+	 FROM [PPMS_PEARL].[dbo].[DEFECTOS] 
+	 WHERE ID IN (	SELECT ID  
+					FROM [PPMS_PEARL].[dbo].[QC] 
+					WHERE [Date] >= @PP_F_INICIAL
+					AND [Date] <= @PP_F_FIN
+					AND [SHIFT] = 3	)
+	 GROUP BY Defecto 
+
+	-- /////////SE MUESTRA EL RESULTADO FINAL//////////////
+	SELECT	LTRIM(RTRIM(DEF.defecto)) AS D_DEFECTO,
+			ISNULL(T1.CANTIDAD, 0) AS CANTIDAD_T1,
+			ISNULL(T2.CANTIDAD, 0) AS CANTIDAD_T2,
+			ISNULL(T3.CANTIDAD, 0) AS CANTIDAD_T3,
+			SUM(ISNULL(T1.CANTIDAD, 0) + ISNULL(T2.CANTIDAD, 0) + ISNULL(T3.CANTIDAD, 0)) AS TOTAL_DEFECTO
+	FROM [PPMS_PEARL].[dbo].DEF 
+	LEFT JOIN @VP_TBL_PPMS_PRD_DEFECTO_T1 T1 ON T1.DEFECTO = DEF.defecto
+	LEFT JOIN @VP_TBL_PPMS_PRD_DEFECTO_T2 T2 ON T2.DEFECTO = DEF.defecto
+	LEFT JOIN @VP_TBL_PPMS_PRD_DEFECTO_T3 T3 ON T3.DEFECTO = DEF.defecto
+	GROUP BY DEF.defecto, T1.CANTIDAD, T2.CANTIDAD, T3.CANTIDAD
+	HAVING SUM(ISNULL(T1.CANTIDAD, 0) + ISNULL(T2.CANTIDAD, 0) + ISNULL(T3.CANTIDAD, 0)) > 0
+	ORDER BY DEF.DEFECTO
+
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA_TURNO]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA_TURNO]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA_TURNO] 0,0, '2021-11-01', '2021-11-16', 1
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA_TURNO]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE,
+	@PP_TURNO							INT
+AS
+
+	---- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	SELECT	LTRIM(RTRIM(DEFECTO)) AS DEFECTO, 
+			SUM(Cant) AS TOTAL_DEFECTO
+	 FROM [PPMS_PEARL].[dbo].[DEFECTOS] 
+	 WHERE ID IN (	SELECT ID  
+					FROM [PPMS_PEARL].[dbo].[QC] 
+					WHERE [Date] >= @PP_F_INICIAL
+					AND [Date] <= @PP_F_FIN
+					AND [SHIFT] = @PP_TURNO	)
+	 GROUP BY Defecto
+	 ORDER BY SUM(Cant) DESC
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA_TOTAL]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA_TOTAL]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA_TOTAL] 0,0, '2021-11-01', '2021-11-30'
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA_TOTAL]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE
+AS
+
+	---- /////////SE INGRESAN LOS DATOS A LA TABLA PPMS//////////////
+	SELECT	LTRIM(RTRIM(DEFECTO)) AS DEFECTO, 
+			SUM(Cant) AS TOTAL_DEFECTO
+	 FROM [PPMS_PEARL].[dbo].[DEFECTOS] 
+	 WHERE ID IN (	SELECT ID  
+					FROM [PPMS_PEARL].[dbo].[QC] 
+					WHERE [Date] >= @PP_F_INICIAL
+					AND [Date] <= @PP_F_FIN )
+	 GROUP BY Defecto
+	 ORDER BY SUM(Cant) DESC
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA_TURNO_MESA]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA_TURNO_MESA]
+GO
+
+/*
+ EXEC	[dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA_TURNO_MESA] 0,0, '2021-11-01', '2021-11-16', 1
+*/
+
+CREATE PROCEDURE [dbo].[PG_LI_PPMS_PRD_DEFECTO_X_RANGO_FECHA_TURNO_MESA]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_F_INICIAL						DATE,
+	@PP_F_FIN							DATE,
+	@PP_TURNO							INT
+AS
+
+	
+	SELECT	--CONCAT('T', RIGHT('00' + CONVERT(VARCHAR(5), Machine), 2)) AS MESA,
+	( CASE  WHEN MACHINE = 90 THEN 'PERF'
+			WHEN MACHINE = 91 THEN 'QUIL'
+			ELSE CONCAT ('T', RIGHT('00' + CONVERT(VARCHAR(10), LTRIM(RTRIM(MACHINE))), 2)) END ) AS MESA,
+			Defecto AS DEFECTO,
+			SUM(Cant) AS CANTIDAD
+	FROM [PPMS_PEARL].[dbo].[QC] 
+	INNER JOIN [PPMS_PEARL].[dbo].[DEFECTOS] (NOLOCK) ON [DEFECTOS].ID = [QC].ID
+	WHERE [Date] >= @PP_F_INICIAL
+	AND [Date] <= @PP_F_FIN
+	AND [SHIFT] = @PP_TURNO
+	GROUP BY Machine, Defecto
+	ORDER BY Machine, Defecto
+
+	-- ////////////////////////////////////////////////
+	-- ////////////////////////////////////////////////
+GO
+
+-- //////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////

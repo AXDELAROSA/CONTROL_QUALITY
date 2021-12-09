@@ -212,7 +212,7 @@ AS
 		BEGIN
 			BEGIN TRANSACTION 
 			BEGIN TRY			
-				-- ////////SE ACTUALIZA/GUARDA LA INFORMACION EN CERTIFICACION_RPT///////////////////////////////////////////////////////				
+				-- ////////SE ELIMINA EL SELLO DE [personal]///////////////////////////////////////////////////////				
 				DELETE [personal]
 				WHERE SELLO = @PP_SELLO
 
