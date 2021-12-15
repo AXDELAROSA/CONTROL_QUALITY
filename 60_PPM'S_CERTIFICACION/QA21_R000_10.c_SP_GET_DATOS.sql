@@ -17,7 +17,7 @@ GO
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> SELECT / LISTADO
 -- //////////////////////////////////////////////////////////////
-
+-- USE [PPMS_PEARL]
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_GET_DATOS_PERSONAL_X_SELLO]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_GET_DATOS_PERSONAL_X_SELLO]
 GO
@@ -51,7 +51,7 @@ GO
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> SELECT / LISTADO
 -- //////////////////////////////////////////////////////////////
-
+-- USE [PPMS_PEARL]
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_GET_DATOS_PERSONAL_X_N_RELOJ]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_GET_DATOS_PERSONAL_X_N_RELOJ]
 GO
@@ -81,14 +81,14 @@ GO
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> SELECT / LISTADO
 -- //////////////////////////////////////////////////////////////
-
+-- USE [PPMS_PEARL]
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_GET_DATOS_ORDEN_KIT_X_SERIAL]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_GET_DATOS_ORDEN_KIT_X_SERIAL]
 GO
 
 /*
- EXEC	[dbo].[PG_GET_DATOS_ORDEN_KIT_X_SERIAL] 0,0,  '42583004'	
- EXEC	[dbo].[PG_GET_DATOS_ORDEN_KIT_X_SERIAL] 0,0,  '42581004'	
+ EXEC	[dbo].[PG_GET_DATOS_ORDEN_KIT_X_SERIAL] 0,0,  '49582003'	
+ EXEC	[dbo].[PG_GET_DATOS_ORDEN_KIT_X_SERIAL] 0,0,  '43929001'	
 */
 
 CREATE PROCEDURE [dbo].[PG_GET_DATOS_ORDEN_KIT_X_SERIAL]
@@ -102,7 +102,7 @@ AS
 	SELECT TOP 1 @VP_ORDEN_LIGADA = LTRIM(RTRIM(LOTNO))
 	FROM DATA_02.DBO.ccjoblin_sql  (NOLOCK)
 	INNER JOIN DATA_02.DBO.ccjobhdr_sql (NOLOCK) ON ccjoblin_sql.jobno = ccjobhdr_sql.jobno 
-	AND ccjobhdr_sql.JOBNO < 50000
+	--AND ccjobhdr_sql.JOBNO < 50000
 	WHERE LTRIM(RTRIM(ccjoblin_sql.jobno)) + RIGHT('000'+ CONVERT(VARCHAR(10),ser_no), 3) = @PP_SERIAL 
 
 	IF @VP_ORDEN_LIGADA IS NULL
@@ -135,7 +135,7 @@ AS
 					-- ===========================
 			FROM DATA_02.DBO.ccjoblin_sql  (NOLOCK)
 			INNER JOIN DATA_02.DBO.ccjobhdr_sql (NOLOCK) ON ccjoblin_sql.jobno = ccjobhdr_sql.jobno 
-				AND ccjobhdr_sql.JOBNO < 50000
+				--AND ccjobhdr_sql.JOBNO < 50000
 			-- ===========================
 			LEFT JOIN DATA_02.DBO.imkitfil_sql (NOLOCK) ON ccjoblin_sql.ITEM_NO = imkitfil_sql.comp_item_no
 			-- ===========================
@@ -172,7 +172,7 @@ AS
 					-- ===========================
 			FROM DATA_02.DBO.ccjoblin_sql  (NOLOCK)
 			INNER JOIN DATA_02.DBO.ccjobhdr_sql (NOLOCK) ON ccjoblin_sql.jobno = ccjobhdr_sql.jobno 
-				AND ccjobhdr_sql.JOBNO < 50000
+				--AND ccjobhdr_sql.JOBNO < 50000
 			-- ===========================
 			INNER JOIN	DATA_02.DBO.cccusitm_sql (NOLOCK) ON ccjoblin_sql.Item_No = cccusitm_sql.item_no 
 			AND		ccjoblin_sql.customer = cccusitm_sql.cus_no
@@ -188,13 +188,17 @@ AS
 GO
 
 
-
--- EXECUTE [PG_CB_PATRON_X_KIT] 001,144, 0, 'PMRFVSLNRUDX9', 'MAGN03', 'RUA', '0036'
--- EXECUTE [PG_CB_PATRON_X_KIT] 001,144, 0, 'UWLDFBRWLCPX7', 'MAGN02', 'WDL', '0019'
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_CB_PATRON_X_KIT]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_CB_PATRON_X_KIT]
 GO
-
+/*
+ EXECUTE [PG_CB_PATRON_X_KIT] 001,144, 0, 'PWSBRB6VCCAD4', 'FAUR01', 'C3A', '0007'
+ EXECUTE [PG_CB_PATRON_X_KIT] 001,144, 0, 'PWLKL2FWLROX7', 'MAGN02', 'WLK', '0012'
+*/
 CREATE PROCEDURE [dbo].[PG_CB_PATRON_X_KIT]
 	@PP_K_SISTEMA_EXE			INT,
 	@PP_K_USUARIO				INT,
@@ -265,11 +269,108 @@ GO
 
 
 
--- EXECUTE [PG_CB_DEFECTO_CERTIFICACION_REPORT] 001,144, 0
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_CB_PATRON_X_KIT_V2]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_CB_PATRON_X_KIT_V2]
+GO
+/*
+ EXECUTE [PG_CB_PATRON_X_KIT_V2] 001,144, 0, 'PWSBRB6VCCAD4', 'FAUR01', 'C3A', '0007'
+ EXECUTE [PG_CB_PATRON_X_KIT_V2] 001,144, 0, 'PWLKL2FWLROX7', 'MAGN02', 'WLK', '0012'
+*/
+CREATE PROCEDURE [dbo].[PG_CB_PATRON_X_KIT_V2]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO				INT,
+	--============================
+	@PP_L_CON_TODOS				INT,
+	@PP_KIT						VARCHAR(50),
+	@PP_CLIENTE					VARCHAR(50),
+	@PP_MODELO					VARCHAR(50),
+	@PP_VERSION					VARCHAR(10)
+AS
+	DECLARE @VP_TA_CATALOGO	AS TABLE
+				(	TA_K_CATALOGO		VARCHAR(50),
+					TA_D_CATALOGO		VARCHAR(50)
+				)
+
+	IF SUBSTRING(@PP_KIT, 1, 1) = 'P'
+		BEGIN
+			INSERT INTO @VP_TA_CATALOGO 
+			SELECT	
+					(	SELECT TOP 1 LTRIM(RTRIM(CUS.ITEM_NO)) 
+								FROM DATA_02.DBO.cccusitm_sql (NOLOCK) AS CUS 
+								WHERE CUS.ITEM_NO = COMP_ITEM_NO 
+								AND CUS.CUS_NO = cccusitm_sql.CUS_NO  
+								AND CUS.MODELNO = cccusitm_sql.MODELNO AND CUS.VERSIONNO = cccusitm_sql.VERSIONNO),
+					(	SELECT TOP 1 LTRIM(RTRIM(CUS.CUS_ITEM_NO)) 
+						FROM DATA_02.DBO.cccusitm_sql (NOLOCK) AS CUS 
+						WHERE CUS.ITEM_NO = COMP_ITEM_NO 
+						AND CUS.CUS_NO = cccusitm_sql.CUS_NO  
+						AND CUS.MODELNO = cccusitm_sql.MODELNO AND CUS.VERSIONNO = cccusitm_sql.VERSIONNO) AS CUS_PART_NO
+			FROM	DATA_02.DBO.ccprdstr_sql (NOLOCK)
+			INNER JOIN DATA_02.DBO.cccusitm_sql (NOLOCK) ON  ccprdstr_sql.CUS_NO = cccusitm_sql.CUS_NO 
+				AND ccprdstr_sql.MODELNO = cccusitm_sql.MODELNO
+				AND ccprdstr_sql.VERSIONNO = cccusitm_sql.VERSIONNO
+				AND ccprdstr_sql.item_no = cccusitm_sql.item_no
+			WHERE LTRIM(RTRIM(ccprdstr_sql.item_no))= @PP_KIT
+			AND ccprdstr_sql.CUS_NO = @PP_CLIENTE
+			AND ccprdstr_sql.MODELNO = @PP_MODELO 
+			AND ccprdstr_sql.VERSIONNO = @PP_VERSION
+		END
+	
+	IF ( SUBSTRING(@PP_KIT, 1, 1) = 'U' )  
+		BEGIN
+			INSERT INTO @VP_TA_CATALOGO 
+			SELECT	(	SELECT TOP 1 LTRIM(RTRIM(CUS.ITEM_NO)) 
+								FROM DATA_02.DBO.cccusitm_sql (NOLOCK) AS CUS 
+								WHERE CUS.ITEM_NO = COMP_ITEM_NO 
+								AND CUS.CUS_NO = cccusitm_sql.CUS_NO  
+								AND CUS.MODELNO = cccusitm_sql.MODELNO AND CUS.VERSIONNO = cccusitm_sql.VERSIONNO),
+					(	SELECT TOP 1 LTRIM(RTRIM(CUS.CUS_ITEM_NO)) 
+						FROM DATA_02.DBO.cccusitm_sql (NOLOCK) AS CUS 
+						WHERE CUS.ITEM_NO = COMP_ITEM_NO 
+						AND CUS.CUS_NO = cccusitm_sql.CUS_NO  
+						AND CUS.MODELNO = cccusitm_sql.MODELNO AND CUS.VERSIONNO = cccusitm_sql.VERSIONNO) AS CUS_PART_NO
+			FROM	DATA_02.DBO.ccprdstr_sql (NOLOCK)
+			INNER JOIN DATA_02.DBO.cccusitm_sql (NOLOCK) ON  ccprdstr_sql.CUS_NO = cccusitm_sql.CUS_NO 
+				AND ccprdstr_sql.MODELNO = cccusitm_sql.MODELNO
+				AND ccprdstr_sql.VERSIONNO = cccusitm_sql.VERSIONNO
+				AND ccprdstr_sql.item_no = cccusitm_sql.item_no
+			WHERE LTRIM(RTRIM(ccprdstr_sql.item_no)) IN (  SELECT LTRIM(RTRIM(comp_item_no)) FROM DATA_02.DBO.imkitfil_sql (NOLOCK) WHERE item_no = @PP_KIT )
+			AND ccprdstr_sql.CUS_NO = @PP_CLIENTE
+			AND ccprdstr_sql.MODELNO = @PP_MODELO 
+			AND ccprdstr_sql.VERSIONNO = @PP_VERSION
+		END 
+
+	IF @PP_L_CON_TODOS=1
+		INSERT INTO @VP_TA_CATALOGO
+				( TA_K_CATALOGO,	TA_D_CATALOGO	)
+			VALUES
+				( -1,				'( TODOS )'	)
+
+	SELECT	TA_K_CATALOGO	AS K_COMBOBOX,
+				TA_D_CATALOGO	AS D_COMBOBOX 
+		FROM	@VP_TA_CATALOGO
+		ORDER BY  TA_D_CATALOGO 
+
+	-- ==========================================
+		
+	-- ////////////////////////////////////////////////////
+GO
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_CB_DEFECTO_CERTIFICACION_REPORT]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_CB_DEFECTO_CERTIFICACION_REPORT]
 GO
-
+/*
+ EXECUTE [PG_CB_DEFECTO_CERTIFICACION_REPORT] 001,144, 0
+*/
 CREATE PROCEDURE [dbo].[PG_CB_DEFECTO_CERTIFICACION_REPORT]
 	@PP_K_SISTEMA_EXE			INT,
 	@PP_K_USUARIO				INT,
@@ -310,11 +411,14 @@ GO
 
 
 
-
--- EXECUTE [PG_CB_TIPO_DEFECTO_CALIDAD] 001,144, 0
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_CB_TIPO_DEFECTO_CALIDAD]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_CB_TIPO_DEFECTO_CALIDAD]
 GO
+-- EXECUTE [PG_CB_TIPO_DEFECTO_CALIDAD] 001,144, 0
 
 CREATE PROCEDURE [dbo].[PG_CB_TIPO_DEFECTO_CALIDAD]
 	@PP_K_SISTEMA_EXE			INT,
@@ -348,11 +452,14 @@ AS
 GO
 
 
-
--- EXECUTE [PG_CB_CLASIFICACION_DEFECTO_CALIDAD] 001,144, 0
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_CB_CLASIFICACION_DEFECTO_CALIDAD]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_CB_CLASIFICACION_DEFECTO_CALIDAD]
 GO
+-- EXECUTE [PG_CB_CLASIFICACION_DEFECTO_CALIDAD] 001,144, 0
 
 CREATE PROCEDURE [dbo].[PG_CB_CLASIFICACION_DEFECTO_CALIDAD]
 	@PP_K_SISTEMA_EXE			INT,

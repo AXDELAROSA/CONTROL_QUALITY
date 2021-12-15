@@ -1,0 +1,58 @@
+-- //////////////////////////////////////////////////////////////
+-- // ARCHIVO:			
+-- //////////////////////////////////////////////////////////////
+-- // BASE DE DATOS:	[PPMS_PEARL]
+-- // MODULO:			
+-- // OPERACION:		DEFECTOS
+-- //////////////////////////////////////////////////////////////
+-- // Autor:			FEG
+-- // Fecha creación:	09/NOV/2021
+-- ////////////////////////////////////////////////////////////// 
+
+USE [PPMS_PEARL]
+GO
+
+-- //////SE AGREGAGAN CAMPOS PARA PODER OBTENER EL COSTO DE PRODUCCION DE LOS PATRONES CON DEFECTOS////////////////////////////////////////////////////////
+	--ALTER TABLE certificacion_rpt ADD COLOR VARCHAR(100) DEFAULT '' 
+	--GO
+
+	--ALTER TABLE certificacion_rpt ADD CLIENTE VARCHAR(100) DEFAULT '' 
+	--GO
+
+	--ALTER TABLE certificacion_rpt ADD MODELO VARCHAR(50) DEFAULT '' 
+	--GO
+
+	--ALTER TABLE certificacion_rpt ADD [VERSION] VARCHAR(50) DEFAULT '' 
+	--GO
+
+	--ALTER TABLE certificacion_rpt ADD ITEM_NO VARCHAR(100) DEFAULT '' 
+	--GO
+
+	--ALTER TABLE certificacion_rpt ADD ITEM_NO_PATRON VARCHAR(100) DEFAULT '' 
+	--GO
+
+	--ALTER TABLE certificacion_rpt ADD PRECIO_PATRON DECIMAL(13,4) DEFAULT 0 
+	--GO
+
+	--ALTER TABLE certificacion_rpt ADD COSTO DECIMAL(13,4) DEFAULT 0 
+	--GO
+GO
+
+-- ///////SE AGREGO CAMPO TRRADCCION Y CRITICO A LA TABLA DEF (DEFECTOS)///////////////////////////////////////////////////////
+	
+	--ALTER TABLE DEF ADD TRADUCCION VARCHAR(255) DEFAULT '' 
+	--GO
+	--ALTER TABLE DEF ADD CRITICO INT DEFAULT 0 
+--GO
+
+
+-- //////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////

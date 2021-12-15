@@ -41,7 +41,8 @@ AS
 			ISNULL(noserie, 0) AS SERIAL,
 			LTRIM(RTRIM(noparte)) AS CUS_PART_NO,
 			ISNULL(PATRON, '') AS PATRON,
-			LTRIM(RTRIM(DEFECTO)) AS DEFECTO,
+			LTRIM(RTRIM(Rechazos.DEFECTO)) AS DEFECTO,
+			ISNULL(LTRIM(RTRIM(TIPODEF)), 'N/E') AS TIPO_DEFECTO,
 			( CASE WHEN	Rechazos.TURNO = 1 THEN 'Turno 1'
 					WHEN	Rechazos.TURNO = 2 THEN 'Turno 2'
 					ELSE	'Turno 3' END ) AS TURNO,
@@ -59,6 +60,7 @@ AS
 	FROM [PPMS_PEARL].[dbo].Rechazos  (NOLOCK)
 	LEFT JOIN [PPMS_PEARL].[dbo].personal (NOLOCK) ON SELLO = INSPQC
 	LEFT JOIN [BD_GENERAL].[dbo].USUARIO_PEARL (NOLOCK) ON K_USUARIO_PEARL = aceptado_por
+	LEFT JOIN [PPMS_PEARL].[dbo].DEF ON Rechazos.DEFECTO = clave
 	WHERE ORDEN = @PP_ORDEN
 	ORDER BY noparte, DEFECTO
 	
@@ -105,7 +107,7 @@ AS
 		BEGIN
 			DECLARE @VP_LIBERADO INT = 0
 			SELECT @VP_LIBERADO = COUNT(ID)
-			FROM [PPMS_PEARL].[dbo].rechazos 
+			FROM [PPMS_PEARL].[dbo].rechazos (NOLOCK)
 			WHERE id = @PP_ID
 			AND [Status] = 'L'
 
@@ -274,7 +276,7 @@ AS
 	-- ////////RN VALIDACIONES///////////////////////////////////////////////////////
 	DECLARE @VP_LIBERADO INT = 0
 	SELECT @VP_LIBERADO = COUNT(ID)
-	FROM [PPMS_PEARL].[dbo].rechazos 
+	FROM [PPMS_PEARL].[dbo].rechazos (NOLOCK)
 	WHERE id = @PP_ID
 	AND [Status] = 'L'
 
