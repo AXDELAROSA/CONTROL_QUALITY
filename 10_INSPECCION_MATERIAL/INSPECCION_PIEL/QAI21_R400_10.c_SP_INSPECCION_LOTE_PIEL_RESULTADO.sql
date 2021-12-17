@@ -242,31 +242,7 @@ AS
 	AND	ZONA = @PP_PIEL_ZONA
 
 	IF @VP_N_INSPECCION_LOTE_PIEL_GROSS_SUAVIDAD IS NULL OR @VP_N_INSPECCION_LOTE_PIEL_GROSS_SUAVIDAD = 0
-		BEGIN
-			-- // SECCION#1 /////////////////////////////////////////////////////////// VALIDACIONES + REGLAS DE NEGOCIO 
-			DECLARE @VP_CANTIDAD_MUESTRA INT = 0
-			SELECT @VP_CANTIDAD_MUESTRA = sample_size 
-			FROM	IncInsp_sql
-			WHERE ID = @PP_K_LOTE_IMPORTACION
-			AND LTRIM(RTRIM(LOT)) = @PP_LOTE
-
-			IF @VP_CANTIDAD_MUESTRA IS NULL OR @VP_CANTIDAD_MUESTRA = 0
-				RAISERROR ('ERROR: No fue posible obtener la cantidad de muestra en [IncInsp_sql] ', 16, 1 ) --MENSAJE - Severity -State.
-							
-			DECLARE @VP_N_PIEL_INSPECCIONADA INT = 0
-			SELECT	@VP_N_PIEL_INSPECCIONADA = COUNT(DISTINCT(PIEL)) 
-			FROM	INSPECCION_LOTE_PIEL_GROSS_SUAVIDAD
-			WHERE [K_IMPORTACION_LOTE_PIEL]	= @PP_K_LOTE_IMPORTACION
-			AND [K_ITEM] = @PP_K_ITEM						
-			AND	[LOTE] = @PP_LOTE							
-			AND	[K_INSPECCION_MATERIAL] = @PP_K_INSPECCION_MATERIAL
-
-			IF @VP_N_PIEL_INSPECCIONADA IS NULL
-				SET @VP_N_PIEL_INSPECCIONADA = 0
-
-			IF @VP_N_PIEL_INSPECCIONADA >= @VP_CANTIDAD_MUESTRA
-				RAISERROR ('ERROR: Ya se ha inspeccionado el numero de muestras requeridas. ', 16, 1 ) --MENSAJE - Severity -State.				
-
+		BEGIN			
 			INSERT INTO [INSPECCION_LOTE_PIEL_GROSS_SUAVIDAD]	(	[K_IMPORTACION_LOTE_PIEL],		
 																	[K_ITEM],						
 																	[LOTE],	
@@ -302,7 +278,7 @@ AS
 
 			IF @@ROWCOUNT = 0
 				RAISERROR ('ERROR: No fue posible actualizar la inspección en [INSPECCION_LOTE_PIEL_GROSS_SUAVIDAD] ', 16, 1 ) --MENSAJE - Severity -State.
-		END
+		END		
 
 	-- ///////////////////////////////////////////////////////////////
 	-- //////////////////////////////////////////////////////////////
@@ -383,6 +359,30 @@ AS
 					EXECUTE [PG_IN_UP_INSPECCION_LOTE_PIEL_GROSS_SUAVIDAD]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
 																			@PP_K_LOTE_IMPORTACION, @PP_K_ITEM, @PP_LOTE, @PP_POSICION_PIEL,
 																			@PP_PIEL, @PP_K_INSPECCION_MATERIAL, 'H', @PP_PIEL_DATO_ZONA_H
+					
+					-- // SECCION#1 /////////////////////////////////////////////////////////// VALIDACIONES + REGLAS DE NEGOCIO 
+					DECLARE @VP_CANTIDAD_MUESTRA INT = 0
+					SELECT @VP_CANTIDAD_MUESTRA = sample_size 
+					FROM	IncInsp_sql (NOLOCK)
+					WHERE ID = @PP_K_LOTE_IMPORTACION
+					AND LTRIM(RTRIM(LOT)) = @PP_LOTE
+
+					IF @VP_CANTIDAD_MUESTRA IS NULL OR @VP_CANTIDAD_MUESTRA = 0
+						RAISERROR ('ERROR: No fue posible obtener la cantidad de muestra en [IncInsp_sql] ', 16, 1 ) --MENSAJE - Severity -State.
+									
+					DECLARE @VP_N_PIEL_INSPECCIONADA INT = 0
+					SELECT	@VP_N_PIEL_INSPECCIONADA = COUNT(DISTINCT(PIEL)) 
+					FROM	INSPECCION_LOTE_PIEL_GROSS_SUAVIDAD
+					WHERE [K_IMPORTACION_LOTE_PIEL]	= @PP_K_LOTE_IMPORTACION
+					AND [K_ITEM] = @PP_K_ITEM						
+					AND	[LOTE] = @PP_LOTE							
+					AND	[K_INSPECCION_MATERIAL] = @PP_K_INSPECCION_MATERIAL
+
+					IF @VP_N_PIEL_INSPECCIONADA IS NULL
+						SET @VP_N_PIEL_INSPECCIONADA = 0
+
+					IF @VP_N_PIEL_INSPECCIONADA > @VP_CANTIDAD_MUESTRA
+						RAISERROR ('ERROR: Ya se ha inspeccionado el numero de muestras requeridas. ', 16, 1 ) --MENSAJE - Severity -State.		
 
 					-- ///////OBTIENE EL VALOR DEL GORSS - SUAVIDAD QUE MAS SE REPITE//////////////////
 					SELECT TOP 1 @VP_VALOR_REPETIDO = [VALOR], 
