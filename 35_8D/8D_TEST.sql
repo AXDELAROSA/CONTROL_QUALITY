@@ -8,6 +8,12 @@ SELECT * FROM [8D] WHERE K_8D = 1
 --	COMMENT = 'Gracias equipo!'
 --WHERE K_8D = 1
 
+
+--UPDATE [8D] 
+--SET DATE_CLOSED = NULL,
+--	COMMENT = ''
+--WHERE K_8D = 1
+
 select  CONVERT(VARCHAR(10),GETDATE(), 105) 
 
 SELECT * FROM [EXTERNAL_8D]
