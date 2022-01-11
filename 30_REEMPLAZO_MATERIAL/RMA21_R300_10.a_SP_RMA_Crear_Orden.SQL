@@ -78,6 +78,7 @@ AS
 	
 		SET @VP_ORDEN = @VP_ORDEN + 1
 		SET @VP_ORDEN = RIGHT('00000' + @VP_ORDEN, 5)
+		--SET @VP_ORDEN = RIGHT('000000' + @VP_ORDEN, 6)	--(1)	20220110: PARA DESCOMENTAR CUANDO ESTÉ LISTO EL CAMBIO, EXISTEN DOS LINEAS CON ESTE MISMO CODIGO
 	
 		-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		-- ///////SE ACTUALIZA LA LOCACION MFP CON LA ORDEN CREADA//////////////////////////////////////////////			
@@ -426,6 +427,7 @@ AS
 	
 					SET @VP_ORDEN = @VP_ORDEN + 1
 					SET @VP_ORDEN = RIGHT('00000' + @VP_ORDEN, 5)
+					--SET @VP_ORDEN = RIGHT('000000' + @VP_ORDEN, 6)	--(2)	20220110: PARA DESCOMENTAR CUANDO ESTÉ LISTO EL CAMBIO, EXISTEN DOS LINEAS CON ESTE MISMO CODIGO
 	
 					-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 					-- ///////SE ACTUALIZA LA LOCACION MFP CON LA ORDEN CREADA//////////////////////////////////////////////			
