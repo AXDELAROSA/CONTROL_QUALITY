@@ -95,16 +95,29 @@ CREATE PROCEDURE [dbo].[PG_IN_PROCESO_SIMBOLO]
 	@PP_RUTA_NUEVA					NVARCHAR(MAX)
 	-- ============================
 AS			
-DECLARE  @VP_MENSAJE						NVARCHAR(MAX)
-		,@VP_K_PROCESO_SIMBOLO			INT = 0
+DECLARE  @VP_MENSAJE				NVARCHAR(MAX)
+		,@VP_K_PROCESO_SIMBOLO		INT = 0
 -- /////////////////////////////////////////////////////////////////////
 BEGIN TRANSACTION 
-BEGIN TRY
+BEGIN TRY		  
+	SET	@VP_K_PROCESO_SIMBOLO	= ISNULL(	(	SELECT	TOP (1)
+														K_PROCESO_SIMBOLO	+ 1
+												FROM	DATA_02.DBO.PROCESO_SIMBOLO (NOLOCK)
+												ORDER BY K_PROCESO_SIMBOLO DESC	) , 0	)
+	--SET @VP_MENSAJE='No se generó el consecutivo.[KPS]'
+	--RAISERROR (@VP_MENSAJE, 16, 1 ) 
+
+	IF	( @VP_K_PROCESO_SIMBOLO	= 0 OR @VP_K_PROCESO_SIMBOLO IS NULL )
+	BEGIN
+		SET @VP_MENSAJE='No se generó el consecutivo.[KPS]'
+		RAISERROR (@VP_MENSAJE, 16, 1 ) 
+	END
 	--============================================================================
 	--======================================INSERTAR EL PROCESO_SIMBOLO
 	--============================================================================
 		INSERT INTO PROCESO_SIMBOLO
-			(	-- ============================
+			(	[K_PROCESO_SIMBOLO]				,
+				-- ============================
 				[K_TIPO_PROCESO_SIMBOLO]		,
 				-- ============================
 				[D_PROCESO_SIMBOLO]				,
@@ -116,7 +129,8 @@ BEGIN TRY
 				[K_USUARIO_ALTA]	, [F_ALTA], 
 				[K_USUARIO_CAMBIO]	, [F_CAMBIO]	)
 		VALUES	
-			(	-- ============================
+			(	@VP_K_PROCESO_SIMBOLO		,
+				-- ============================
 				@PP_K_TIPO_PROCESO_SIMBOLO	,
 				-- ============================
 				@PP_D_PROCESO_SIMBOLO		,
@@ -132,15 +146,15 @@ BEGIN TRY
 			SET @VP_MENSAJE='No se generó. [PS#'+CONVERT(VARCHAR(10),@VP_K_PROCESO_SIMBOLO)+']'
 			RAISERROR (@VP_MENSAJE, 16, 1 ) 
 		END
-		ELSE
-		BEGIN
-			SELECT @VP_K_PROCESO_SIMBOLO	= SCOPE_IDENTITY()
+		--ELSE
+		--BEGIN
+		--	SELECT @VP_K_PROCESO_SIMBOLO	= SCOPE_IDENTITY()
 
-			IF	( @VP_K_PROCESO_SIMBOLO	= 0 OR @VP_K_PROCESO_SIMBOLO IS NULL )
-			BEGIN
-				RAISERROR ('Error en la asignación de identidad.[HDR]', 16, 1 ) 
-			END
-		END
+		--	IF	( @VP_K_PROCESO_SIMBOLO	= 0 OR @VP_K_PROCESO_SIMBOLO IS NULL )
+		--	BEGIN
+		--		RAISERROR ('Error en la asignación de identidad.[HDR]', 16, 1 ) 
+		--	END
+		--END
 
 		DECLARE	@VP_COUNT_K_PROCESO	INT	= 0
 		
@@ -155,7 +169,7 @@ BEGIN TRY
 
 		
 		DECLARE	@VP_RUTA_SERVIDOR	VARCHAR(500) =	'\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE_PROCESO\'--	'\\10.1.1.5\documents\IT\001_DEVELOPER_FILES\APQP\AV_HE_PROCESO\'
-		DECLARE	@VP_RUTA_IMAGEN		VARCHAR(500) = @PP_K_TIPO_PROCESO_SIMBOLO + '_' + @VP_COUNT_K_PROCESO
+		DECLARE	@VP_RUTA_IMAGEN		VARCHAR(500) = CONVERT(VARCHAR(10),@PP_K_TIPO_PROCESO_SIMBOLO) + '_' + CONVERT(VARCHAR(10),@VP_COUNT_K_PROCESO)
 		DECLARE	@VP_RUTA_EXTENSION	VARCHAR(500) = '.PNG'
 
 
@@ -190,7 +204,7 @@ END CATCH
 	SELECT	@VP_MENSAJE AS MENSAJE, @VP_K_PROCESO_SIMBOLO AS CLAVE, @VP_RUTA_DESTINO AS RUTA_DESTINO, @PP_RUTA_NUEVA AS RUTA_ORIGEN_NUEVA
 	-- //////////////////////////////////////////////////////////////
 GO
-
+							 
 
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> INSERT / FICHA

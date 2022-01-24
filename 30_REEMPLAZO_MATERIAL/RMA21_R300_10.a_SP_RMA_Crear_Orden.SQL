@@ -8,6 +8,7 @@
 -- //////////////////////////////////////////////////////////////  
 
 USE [DATA_02] 
+--USE [DATA_02Pruebas] 
 GO
 
 -- //////////////////////////////////////////////////////////////
@@ -74,11 +75,25 @@ AS
 		IF @VP_ORDEN IS NULL
 		BEGIN
 			RAISERROR ('No fue posible obtener el numero de orden en [CCJOBHDR]', 16, 1 ) 
-		END
-	
+		END	
+		
+		--------------------------------------------------------------------------------------------------------------
+		----	CAMBIO AGREGADO SOLAMENTE PARA LA ETAPA DE PRUEBAS, PENDIENTE PONER EN PRODUCTIVO. AX: 20220111
+		IF @VP_ORDEN = '999999'
+			SET @VP_ORDEN = 0
+
+		--SET @VP_ORDEN = @VP_ORDEN + 1
+		---- =====================
+		----// FEG: COMENTADO POR CAMBIO DE TAMAÑO DE LA ORDEN
+		----SET @VP_ORDEN = RIGHT('00000' + @VP_ORDEN, 5)
+		----// FEG: ADD POR CAMBIO DE TAMAÑO DE LA ORDEN
+		----SET @VP_ORDEN = RIGHT('000000' + @VP_ORDEN, 6)		
+		--------------------------------------------------------------------------------------------------------------
+		--------------------------------------------------------------------------------------------------------------
 		SET @VP_ORDEN = @VP_ORDEN + 1
-		SET @VP_ORDEN = RIGHT('00000' + @VP_ORDEN, 5)
+		--SET @VP_ORDEN = RIGHT('00000' + @VP_ORDEN, 5)
 		--SET @VP_ORDEN = RIGHT('000000' + @VP_ORDEN, 6)	--(1)	20220110: PARA DESCOMENTAR CUANDO ESTÉ LISTO EL CAMBIO, EXISTEN DOS LINEAS CON ESTE MISMO CODIGO
+		--------------------------------------------------------------------------------------------------------------
 	
 		-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		-- ///////SE ACTUALIZA LA LOCACION MFP CON LA ORDEN CREADA//////////////////////////////////////////////			
@@ -425,9 +440,23 @@ AS
 						RAISERROR ('No fue posible obtener el numero de orden(2) en [CCJOBHDR]', 16, 1 ) 
 					END
 	
+					--------------------------------------------------------------------------------------------------------------
+					----	CAMBIO AGREGADO SOLAMENTE PARA LA ETAPA DE PRUEBAS, PENDIENTE PONER EN PRODUCTIVO. AX: 20220111
+					IF @VP_ORDEN = '999999'
+						SET @VP_ORDEN = 0
+			
+					--SET @VP_ORDEN = @VP_ORDEN + 1
+					---- =====================
+					----// FEG: COMENTADO POR CAMBIO DE TAMAÑO DE LA ORDEN
+					----SET @VP_ORDEN = RIGHT('00000' + @VP_ORDEN, 5)
+					----// FEG: ADD POR CAMBIO DE TAMAÑO DE LA ORDEN
+					----SET @VP_ORDEN = RIGHT('000000' + @VP_ORDEN, 6)		
+					--------------------------------------------------------------------------------------------------------------
+					--------------------------------------------------------------------------------------------------------------
 					SET @VP_ORDEN = @VP_ORDEN + 1
-					SET @VP_ORDEN = RIGHT('00000' + @VP_ORDEN, 5)
-					--SET @VP_ORDEN = RIGHT('000000' + @VP_ORDEN, 6)	--(2)	20220110: PARA DESCOMENTAR CUANDO ESTÉ LISTO EL CAMBIO, EXISTEN DOS LINEAS CON ESTE MISMO CODIGO
+					--SET @VP_ORDEN = RIGHT('00000' + @VP_ORDEN, 5)
+					----SET @VP_ORDEN = RIGHT('000000' + @VP_ORDEN, 6)	--(1)	20220110: PARA DESCOMENTAR CUANDO ESTÉ LISTO EL CAMBIO, EXISTEN DOS LINEAS CON ESTE MISMO CODIGO
+					--------------------------------------------------------------------------------------------------------------
 	
 					-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 					-- ///////SE ACTUALIZA LA LOCACION MFP CON LA ORDEN CREADA//////////////////////////////////////////////			

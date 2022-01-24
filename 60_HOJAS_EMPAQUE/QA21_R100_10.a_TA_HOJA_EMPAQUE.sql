@@ -42,6 +42,24 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[HOJA_E
 	DROP TABLE [dbo].[HOJA_EMPAQUE_STATUS]
 GO
 
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[HOJA_EMPAQUE_RUTAS_IMAGEN]') AND type in (N'U'))
+	DROP TABLE [dbo].[HOJA_EMPAQUE_RUTAS_IMAGEN]
+GO
+
+-- ////////////////////////////////////////////////////////////////
+-- //					HOJA_EMPAQUE_RUTAS_IMAGEN
+-- ////////////////////////////////////////////////////////////////
+CREATE TABLE [dbo].[HOJA_EMPAQUE_RUTAS_IMAGEN] (
+	[CUS_NO]			[VARCHAR](6)	NOT NULL,
+	[MODELNO]			[VARCHAR](3)	NOT NULL,
+	[VERSIONNO]			[INT]			NOT NULL,
+	-- ============================
+	[RUTA_SERVR]		NVARCHAR(MAX) NULL,
+	[RUTA_LOCAL]		NVARCHAR(MAX) NULL,
+	[CREAR_CARP]		NVARCHAR(MAX) NULL	
+) ON [PRIMARY]
+GO
+
 -- ////////////////////////////////////////////////////////////////
 -- //					HOJA_EMPAQUE_STATUS				 
 -- ////////////////////////////////////////////////////////////////
@@ -444,14 +462,18 @@ CREATE TABLE [dbo].[HOJA_EMPAQUE] (
 	-- ============================
 	[STANDAR_PACK]					[INT]			NULL,
 	[CANTIDAD_PATRONES]				[INT]			NULL,
+	[AREA_NETA]						[DECIMAL](19,6)	NOT NULL DEFAULT 0,
+	[AREA_GROSS]					[DECIMAL](19,6)	NOT NULL DEFAULT 0,
 	--[RUTA_AYUDA_VISUAL_HEADER]		[NVARCHAR](MAX)	NULL,
 	-- ============================
 	[C_HOJA_EMPAQUE]				[NVARCHAR](MAX) DEFAULT '',
 	[L_REVISION_ACTIVA]				[INT]	NOT NULL,
 	-- ============================
-	[K_HOJA_EMPAQUE_CAPA_DIVISION]	[INT]	NOT NULL DEFAULT 2,
+	[K_HOJA_EMPAQUE_CAPA_DIVISION]	[INT]	NOT NULL DEFAULT 1,
+	[N_CAPAS]						[INT]	NOT NULL DEFAULT 0,
+	[L_CAPAS_COMPLETAS]				[INT]	NOT NULL DEFAULT 0,
 	-- ============================
-	[K_TIPO_CAMBIO_KIT]				[INT]	NOT NULL	--AX:20211203	//	#0: SIN CAMBIOS,	#1: LONGITUD,	#2: AGREGADO/ELIMINADO PROCESOS ESPECIALES,	#3: CAMBIO PROCESOS ESPECIALES, #4 REVISIÓN
+	[K_TIPO_CAMBIO_KIT]				[INT]	NOT NULL	--AX:20211203	//	#0: SIN CAMBIOS,	#1: DIMENSIONES,	#2: PROCESOS_ESPECIALES,	#3: VARIOS_CAMBIOS, #4 REVISIÓN	,	#5 NUEVO KIT
 ) ON [PRIMARY]
 GO
 
@@ -470,6 +492,7 @@ ALTER TABLE [dbo].[HOJA_EMPAQUE]
 			[K_USUARIO_BAJA]			[INT] NULL,
 			[F_BAJA]					[DATETIME] NULL;
 GO
+
 -- //////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////
@@ -492,13 +515,15 @@ INSERT INTO [dbo].[HOJA_EMPAQUE] (
 	--[DIBUJO_HOJA_EMPAQUE]				,		-- CLIENTE / MODELO / VERSION / REVISION
 	[REVISION_HOJA_EMPAQUE]			,
 	-- ============================
-	[STANDAR_PACK]						,
-	[CANTIDAD_PATRONES]					,
+	[STANDAR_PACK]					,
+	[CANTIDAD_PATRONES]				,
+	[AREA_NETA]						,
+	[AREA_GROSS]					,
 	--[RUTA_AYUDA_VISUAL_HEADER]		,
 	-- ============================
 	[L_REVISION_ACTIVA]				,
 	-- ============================
-	[K_TIPO_CAMBIO_KIT]				,		--AX:20211203	//	#0: SIN CAMBIOS,	#1: LONGITUD,	#2: AGREGADO/ELIMINADO PROCESOS ESPECIALES,	#3: CAMBIO PROCESOS ESPECIALES, #4 REVISIÓN
+	[K_TIPO_CAMBIO_KIT]				,		--AX:20211203	//	#0: SIN CAMBIOS,	#1: DIMENSIONES,	#2: PROCESOS_ESPECIALES,	#3: VARIOS_CAMBIOS, #4 REVISIÓN
 	[K_USUARIO_ALTA]				,
 	[F_ALTA]						,
 	[K_USUARIO_CAMBIO]				,
@@ -506,7 +531,7 @@ INSERT INTO [dbo].[HOJA_EMPAQUE] (
 	[L_BORRADO]						)	
 SELECT	
 	DISTINCT(CCITMIDX_SQL.ITEM_NO) AS P,
-	0,
+	1,
 	-- ============================
 	CCITMIDX_SQL.CUS_NO,
 	CCITMIDX_SQL.MODELNO,
@@ -521,6 +546,8 @@ SELECT
 	-- ============================
 	CCITMIDX_SQL.user_def_fld_5,
 	CCITMIDX_SQL.CUBE_QTY_PER,
+	CUBE_WIDTH,	
+	CUBE_LENGTH,
 	-- ============================
 	1,
 	-- ============================
@@ -534,8 +561,27 @@ WHERE	CCITMIDX_SQL.ITEM_NO LIKE 'P%'
 AND		CCCUSITM_SQL.CUS_NO			= CCITMIDX_SQL.CUS_NO			
 AND		CCCUSITM_SQL.MODELNO		= CCITMIDX_SQL.MODELNO		
 AND		CCCUSITM_SQL.VERSIONNO		= CCITMIDX_SQL.VERSIONNO		
-AND		ccverhdr_sql.status			= 'L' -- IN ('A', 'I', 'L' )--( @VP_ccverhdr_sql_status	 )		--= 'L' 
-AND		ccverhdr_sql.specstatus		= 'U' -- IN ('A', 'C', 'U' )--( @VP_ccverhdr_sql_specstatus )	--= 'U' 
+--AND		ccverhdr_sql.status			= 'L' -- IN ('A', 'I', 'L' )--( @VP_ccverhdr_sql_status	 )		--= 'L' 
+--AND		ccverhdr_sql.specstatus		= 'U' -- IN ('A', 'C', 'U' )--( @VP_ccverhdr_sql_specstatus )	--= 'U'
+--AND		CCITMIDX_SQL.modelno		IN (
+--											SELECT	DISTINCT
+--													S_ARCUSFIL_PROGRAM_MODEL
+--											FROM	CCVERHDR_SQL				(NOLOCK)
+--											INNER JOIN ARCUSFIL_SQL				(NOLOCK) ON ARCUSFIL_SQL.CUS_NO								= CCVERHDR_SQL.cus_no
+--											INNER JOIN ARCUSFIL_PROGRAM			(NOLOCK) ON ARCUSFIL_PROGRAM.CUS_NO							= ARCUSFIL_SQL.CUS_NO
+--											INNER JOIN ARCUSFIL_PROGRAM_MODEL	(NOLOCK) ON ARCUSFIL_PROGRAM_MODEL.S_ARCUSFIL_PROGRAM		= ARCUSFIL_PROGRAM.S_ARCUSFIL_PROGRAM
+--											AND			ARCUSFIL_PROGRAM_MODEL.CUS_NO	= ARCUSFIL_SQL.CUS_NO
+--											WHERE	CCVERHDR_SQL.[STATUS]						= 'L'
+--											AND		CCVERHDR_SQL.SPECSTATUS						= 'U'
+--											--===================================
+--											--AND		ARCUSFIL_PROGRAM_MODEL.CUS_NO				= @PP_CUSNO
+--											--AND		ARCUSFIL_PROGRAM_MODEL.S_ARCUSFIL_PROGRAM	= @PP_S_PROGRAM
+--											AND		ARCUSFIL_PROGRAM_MODEL.L_BORRADO	= 0
+--											AND		ARCUSFIL_SQL.L_ARCUSFIL				= 1
+--										)
+AND		CCCUSITM_SQL.CUS_NO			= 'IRVI02'
+AND		CCCUSITM_SQL.MODELNO		= 'JLI'
+AND		CCCUSITM_SQL.VERSIONNO		= '0058'
 ORDER BY CCITMIDX_SQL.CUS_NO, CCITMIDX_SQL.MODELNO, CCITMIDX_SQL.VERSIONNO, P DESC
 
 
@@ -581,6 +627,8 @@ INNER JOIN HOJA_EMPAQUE	(NOLOCK)	ON HOJA_EMPAQUE.CUS_NO	= SPITMIDX_SQL.CUS_NO
 AND		HOJA_EMPAQUE.MODELNO	= SPITMIDX_SQL.MODELNO
 AND		HOJA_EMPAQUE.VERSIONNO	= SPITMIDX_SQL.VERSIONNO
 AND		HOJA_EMPAQUE.ITEM_NO	= SPITMIDX_SQL.ITEM_NO_KIT
+WHERE	SPITMIDX_SQL.MODELNO	= 'WAL'
+AND		SPITMIDX_SQL.VERSIONNO	= '0014'
 ORDER BY SPITMIDX_SQL.CUS_NO,
 		SPITMIDX_SQL.MODELNO,
 		SPITMIDX_SQL.VERSIONNO,
