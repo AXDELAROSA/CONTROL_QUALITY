@@ -30,6 +30,7 @@ GO
 --	CON ESTOS SE INSERTAN LOS REGISTROS EN LAS TABLAS Y SE ACTUALIZAN LOS ESTATUS CORRESPONDIENTES.
 --		[PG_UP_INVENTARIO_EMBARQUE_PACKING_RMA]
 --		[PG_UP_INVENTARIO_EMBARQUE_INVOICE_RMA]
+--		[PG_IN_EVENTO_EMBARCADO_FACTURADO_KIT_PROGRAMADO_RMA]
 -- //////////////////////////////////////////////////////////////
 
 -- //////////////////////////////////////////////////////////////
@@ -1370,16 +1371,17 @@ AS
 							--SET @VP_PACKING_NUEVO = CONCAT(@VP_PROGRAMA, FORMAT(GETDATE(),'MMdd'), '-', @VP_CONSECUTIVO_NUEVO )
 							SET @VP_CONSECUTIVO_ACTUAL	= SUBSTRING(@VP_INFO_UN_GUION, @VP_POSICION_GUION_SEGUNDO + 1, 5)
 							SET @VP_CONSECUTIVO_NUEVO = CONVERT(INT, @VP_CONSECUTIVO_ACTUAL) + 1
-							SET @VP_PACKING_NUEVO = CONCAT(@VP_PROGRAMA, FORMAT(GETDATE(),'MMdd'), '-', @VP_CONSECUTIVO_NUEVO )
+							--SET @VP_PACKING_NUEVO = CONCAT(@VP_PROGRAMA, FORMAT(GETDATE(),'MMdd'), '-', @VP_CONSECUTIVO_NUEVO )	-- SE AGREGA EL YYYY AL PACKING
+							SET @VP_PACKING_NUEVO = CONCAT(@VP_PROGRAMA, FORMAT(GETDATE(),'MMddyy'), '-', @VP_CONSECUTIVO_NUEVO )
 						END
 					ELSE
 						BEGIN
-							SET @VP_PACKING_NUEVO = CONCAT(@VP_PROGRAMA, FORMAT(GETDATE(),'MMdd'), '-', '1' )
+							SET @VP_PACKING_NUEVO = CONCAT(@VP_PROGRAMA, FORMAT(GETDATE(),'MMddyy'), '-', '1' )
 						END
 				END
 			ELSE
 				BEGIN
-					SET @VP_PACKING_NUEVO = CONCAT(@VP_PROGRAMA, FORMAT(GETDATE(),'MMdd'), '-', '1' )
+					SET @VP_PACKING_NUEVO = CONCAT(@VP_PROGRAMA, FORMAT(GETDATE(),'MMddyy'), '-', '1' )
 				END
 		END
 
@@ -2185,122 +2187,6 @@ AS
 	-- ////////////////////////////////////////////////////////////////////
 GO
 
-
----- //////////////////////////////////////////////////////////////
----- // STORED PROCEDURE ---> ACTUALIZAR / INFORMACIÓN PARA FACTURA.
----- //////////////////////////////////////////////////////////////
---IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_INVOICE_DETAILS_RMA]') AND type in (N'P', N'PC'))
---	DROP PROCEDURE [dbo].[PG_LI_INVOICE_DETAILS_RMA]
---GO												-- '00318798','553085', 'A-47635', 'WK1208-1', 'MAGN03'
-----		 EXECUTE [DBO].[PG_LI_INVOICE_DETAILS_RMA] 0,0, '00318769','XXXXXXXX','JL1204-1', 'IRVI02'
---CREATE PROCEDURE [dbo].[PG_LI_INVOICE_DETAILS_RMA]
---	@PP_K_SISTEMA_EXE				INT,
---	@PP_K_USUARIO_ACCION			INT,
---	-- ===========================
---	--@PP_ORDEN_FACTURACION			VARCHAR(50),
---	@PP_INVOICE_NO					VARCHAR(50),
---	@PP_PACKING_NO					VARCHAR(50),
---	@PP_CUSTOMER					VARCHAR(50)
---AS
---	-- =========================================		
-	
---	IF @PP_INVOICE_NO = 'XXXXXXXX'
---		BEGIN
---			DECLARE @VP_CUS_PART_NO	VARCHAR(100) = ''
---			DECLARE @VP_ITEM_NO		VARCHAR(100) = ''
---			DECLARE @VP_QTY_SHIP	INT = 0
-
---			DECLARE @VP_TBL_DETALLE_INVOICE TABLE(
---				Item_No			VARCHAR(100),
---				Item_Desc_1		VARCHAR(100),
---				Cus_Item_No		VARCHAR(100),
---				Qty_To_Ship		VARCHAR(20),
---				UOM_MANUAL		VARCHAR(10),
---				Unit_Price		VARCHAR(10),
---				TOTAL_KIT		DECIMAL(13,2)
---			)
-
---			-- ///////////////////////////////////////////
---			DECLARE CU_MATERIAL_A_FACTURAR CURSOR 
---			FOR SELECT	CUS_PART_NO, 
---						ITEM_NO,
---						SUM(QTY) AS QTY_SHIP
---				FROM	INVENTARIO_EMBARQUE
---				WHERE	PACKING_NO = @PP_PACKING_NO
---				GROUP BY CUS_PART_NO, ITEM_NO
-			
---			OPEN CU_MATERIAL_A_FACTURAR
---			FETCH NEXT FROM CU_MATERIAL_A_FACTURAR INTO @VP_CUS_PART_NO, @VP_ITEM_NO, @VP_QTY_SHIP
-			
---			WHILE @@FETCH_STATUS = 0
---				BEGIN
---					DECLARE @VP_ITEM_DESC_1 VARCHAR(150) = ''
---					DECLARE @VP_BPO_NUMBER	VARCHAR(50) = ''
-
---					SELECT @VP_ITEM_DESC_1 = LTRIM(RTRIM(ITEM_DESC_1)),
---							@VP_BPO_NUMBER = LTRIM(RTRIM(ISNULL(filler_0003, '')))
---					FROM IMITMIDX_SQL 
---					WHERE LTRIM(RTRIM(item_no)) = @VP_ITEM_NO
-
---					-- ///////////////////////////////////////////
---					DECLARE @VP_PRECIO_UNITARIO DECIMAL(13,2) = 0 -- REVISAR CALCULOS PORQUE EL PRECIO ESTA A 6 DECIMALES
---					SELECT TOP 1 @VP_PRECIO_UNITARIO = PRC_OR_DISC_1
---					FROM	OEPRCFIL_SQL 
---					WHERE	LTRIM(RTRIM(filler_0001)) LIKE '%' + @VP_ITEM_NO 
---					AND		LTRIM(RTRIM(filler_0001)) LIKE @PP_CUSTOMER + '%'
---					ORDER BY A4GLIdentity DESC
-
---					-- ///////////////////////////////////////////
---					DECLARE @VP_TOTAL_KIT DECIMAL(13,2) = 0
---					SET @VP_TOTAL_KIT = @VP_QTY_SHIP * @VP_PRECIO_UNITARIO
-
---					INSERT INTO @VP_TBL_DETALLE_INVOICE 
---						SELECT	@VP_ITEM_NO AS Item_No,
---								@VP_ITEM_DESC_1 AS Item_Desc_1,
---								-- =========================================
---								( CASE WHEN @PP_CUSTOMER = 'FAUR01' THEN
---											CONCAT(@VP_CUS_PART_NO, ' (', @VP_BPO_NUMBER, ')') 
---										ELSE @VP_CUS_PART_NO END ) AS Cus_Item_No,
---								-- =========================================
---								@VP_QTY_SHIP AS Qty_To_Ship,
---								'EA' AS UOM_MANUAL,
---								@VP_PRECIO_UNITARIO AS Unit_Price,
---								@VP_TOTAL_KIT AS TOTAL_KIT
-
---					FETCH NEXT FROM CU_MATERIAL_A_FACTURAR INTO @VP_CUS_PART_NO, @VP_ITEM_NO, @VP_QTY_SHIP
-	
---				END
-				
---				CLOSE CU_MATERIAL_A_FACTURAR
---				DEALLOCATE CU_MATERIAL_A_FACTURAR
-
---				-- ///////////////////////////////////////////
---				SELECT *
---				FROM @VP_TBL_DETALLE_INVOICE
---		END
---	ELSE
---		BEGIN
---			SELECT	
---					OELINHST_SQL.Item_No,
---					OELINHST_SQL.Item_Desc_1,
---					-- =========================================
---					( CASE WHEN @PP_CUSTOMER = 'FAUR01' THEN
---								CONCAT(LTRIM(RTRIM(OELINHST_SQL.Cus_Item_No)), ' (', LTRIM(RTRIM(ISNULL(filler_0003, ''))) , ')') 
---						ELSE LTRIM(RTRIM(OELINHST_SQL.Cus_Item_No)) END ) AS Cus_Item_No,
---					-- =========================================
---					OELINHST_SQL.Qty_To_Ship,
---					'EA'	AS UOM_MANUAL,
---					OELINHST_SQL.Unit_Price,
---					SLS_AMT	AS	TOTAL_KIT
---			-- =========================================-- =========================================
---			FROM	OELINHST_SQL
---			LEFT JOIN IMITMIDX_SQL ON LTRIM(RTRIM(IMITMIDX_SQL.item_no)) = LTRIM(RTRIM(OELINHST_SQL.item_no))
---			WHERE	OELINHST_SQL.Inv_No	= @PP_INVOICE_NO
---			AND		LTRIM(RTRIM(CUS_NO)) = @PP_CUSTOMER
---			ORDER BY OELINHST_SQL.Line_Seq_No
---		END
-
-	
---	-- /////////////////////////////////////////////////////////////////////
---GO
-
+-- ///////////////////////////////////////////////////////////////////////////////////////
+-- ///////////////////////////////////////////////////////////////////////////////////////
+-- ///////////////////////////////////////////////////////////////////////////////////////
