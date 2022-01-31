@@ -345,6 +345,227 @@ AS
 	-- //////////////////////////////////////////////////////////////
 
 GO
+
+
+
+
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> INSERT / UPDATE
+-- //////////////////////////////////////////////////////////////
+-- USE [PPMS_PEARL]
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LIBERAR_ORDEN]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LIBERAR_ORDEN]
+GO
+/*
+	EXEC  [dbo].[PG_LIBERAR_ORDEN] 0, 144 , '48100' , 'Table 18' , 1 , 'ORLANDO HERNANDEZ BAUTISTA' , 'ARMIDA HERNANDEZ RIVERA' , 'IT-010' , 'franciscoe' 
+*/
+CREATE PROCEDURE [dbo].[PG_LIBERAR_ORDEN]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_ORDEN							VARCHAR(50),
+	@PP_MESA							VARCHAR(100),
+	@PP_TIPO_ORDEN						INT,
+	@PP_INSP_CALIDAD					VARCHAR(255),
+	@PP_JEFE_GRUPO						VARCHAR(255),
+	@PP_USER							VARCHAR(100),
+	@PP_ESTACION						VARCHAR(100)
+AS
+
+	DECLARE @VP_MENSAJE		VARCHAR(300) = ''
+
+	-- ////////RN VALIDACIONES///////////////////////////////////////////////////////
+	DECLARE @VP_LIBERADO INT = 0
+	SELECT @VP_LIBERADO = COUNT(ID)
+	FROM [PPMS_PEARL].[dbo].rechazos (NOLOCK)
+	WHERE orden = @PP_ORDEN
+	AND [Status] = 'L'
+
+	IF @VP_LIBERADO IS NULL
+		SET @VP_LIBERADO = 0
+
+	IF @VP_LIBERADO > 0
+		SET @VP_MENSAJE = 'La orden que intenta liberar ya fue liberada anteriormente.'
+	
+	-- ///////////////////////////////////////////////////////////////
+	IF @VP_MENSAJE=''
+		EXECUTE [DATA_02].[dbo].[PG_RN_CCJOBHDR_SQL_JOBNO_EXISTE]		@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
+																		@PP_ORDEN,
+																		@OU_RESULTADO_VALIDACION = @VP_MENSAJE		OUTPUT
+		
+	IF @VP_MENSAJE=''
+		EXECUTE [DATA_02].[dbo].[PG_RN_CCJOBHDR_SQL_VALIDA_ESTATUS]		@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
+																		@PP_ORDEN,
+																		@OU_RESULTADO_VALIDACION = @VP_MENSAJE		OUTPUT
+
+	-- ////////SI PASA LAS VALIDACIONES SE ABRE LA TRANSACCION///////////////////////////////////////////////////////
+	IF @VP_MENSAJE=''
+		BEGIN
+			BEGIN TRANSACTION 
+			BEGIN TRY				
+				-- /////////SE OBTIENEN LOS NUMEROS DE PARTES CON TOTAL DE PATRONES PROGRAMADOS///////////////////////////////////////
+				DECLARE @VP_MUESTRA INT = 0
+				SELECT	@VP_MUESTRA = SUM(CONVERT(INT, (OriginalQty * imitmidx_sql.CUBE_QTY_PER)))
+				FROM DATA_02.DBO.ccjoblin_sql  (NOLOCK)
+				INNER JOIN DATA_02.dbo.imitmidx_sql (NOLOCK) ON ccjoblin_sql.item_no = imitmidx_sql.item_no
+				WHERE LTRIM(RTRIM(ccjoblin_sql.jobno)) = @PP_ORDEN 
+				
+				-- ===========================
+				IF @VP_MUESTRA IS NULL
+					SET @VP_MUESTRA = 0
+
+				-- /////////SE OBTIENEN LOS DEFECTOS DE LA ORDEN///////////////////////////////////////
+				DECLARE @VP_CANTIDAD_DEFECTO INT = 0
+				SELECT @VP_CANTIDAD_DEFECTO = COUNT(ID) 
+				FROM [PPMS_PEARL].[dbo].Rechazos (NOLOCK) 
+				WHERE ORDEN = @PP_ORDEN
+
+				-- ===========================
+				IF @VP_CANTIDAD_DEFECTO IS NULL
+					SET @VP_CANTIDAD_DEFECTO = 0
+
+				-- /////////SE CALCULAN LOS PPMS DE LA ORDEN///////////////////////////////////////
+				DECLARE @VP_PPMS INT = 0
+				IF @VP_MUESTRA > 0
+					SET @VP_PPMS = CONVERT(INT, (CONVERT(DECIMAL(13,2), @VP_CANTIDAD_DEFECTO) / CONVERT(DECIMAL(13,2), @VP_MUESTRA) * 1000000) )
+				
+				-- /////////SE OBTIENEN LOS DEFECTOS LA ORDEN POR TIPO DE DEFECTO///////////////////////////////////////
+				DECLARE @VP_CANTIDAD_DEFECTO_LAMINADO INT = 0, @VP_CANTIDAD_DEFECTO_PERFORADO	INT = 0;
+				DECLARE @VP_CANTIDAD_DEFECTO_QUILTY	INT = 0, @VP_CANTIDAD_DEFECTO_SKIVING	INT = 0;
+
+				SELECT @VP_CANTIDAD_DEFECTO_LAMINADO = COUNT(ID)
+				FROM [PPMS_PEARL].[dbo].Rechazos (NOLOCK) 
+				INNER JOIN [PPMS_PEARL].[dbo].DEF (NOLOCK) ON Rechazos.defecto = clave
+				WHERE ORDEN = @PP_ORDEN
+				AND tipodef = 'LAMINADO'
+
+				IF @VP_CANTIDAD_DEFECTO_LAMINADO IS NULL
+					SET @VP_CANTIDAD_DEFECTO_LAMINADO = 0
+				-- ===========================
+
+				SELECT @VP_CANTIDAD_DEFECTO_PERFORADO = COUNT(ID)
+				FROM [PPMS_PEARL].[dbo].Rechazos (NOLOCK) 
+				INNER JOIN [PPMS_PEARL].[dbo].DEF (NOLOCK) ON Rechazos.defecto = clave
+				WHERE ORDEN = @PP_ORDEN
+				AND tipodef = 'PERFORADO'
+
+				IF @VP_CANTIDAD_DEFECTO_PERFORADO IS NULL
+					SET @VP_CANTIDAD_DEFECTO_PERFORADO = 0
+				-- ===========================
+
+				SELECT @VP_CANTIDAD_DEFECTO_QUILTY = COUNT(ID)
+				FROM [PPMS_PEARL].[dbo].Rechazos (NOLOCK) 
+				INNER JOIN [PPMS_PEARL].[dbo].DEF (NOLOCK) ON Rechazos.defecto = clave
+				WHERE ORDEN = @PP_ORDEN
+				AND tipodef = 'QUILTY'
+
+				IF @VP_CANTIDAD_DEFECTO_QUILTY IS NULL
+					SET @VP_CANTIDAD_DEFECTO_QUILTY = 0
+				-- ===========================
+
+				SELECT @VP_CANTIDAD_DEFECTO_SKIVING = COUNT(ID)
+				FROM [PPMS_PEARL].[dbo].Rechazos (NOLOCK) 
+				INNER JOIN [PPMS_PEARL].[dbo].DEF (NOLOCK) ON Rechazos.defecto = clave
+				WHERE ORDEN = @PP_ORDEN
+				AND tipodef = 'SKIVING'
+
+				IF @VP_CANTIDAD_DEFECTO_SKIVING IS NULL
+					SET @VP_CANTIDAD_DEFECTO_SKIVING = 0
+				-- ===========================
+
+				DECLARE @VP_CANTIDAD_DEFECTO_MESA INT = @VP_CANTIDAD_DEFECTO - (@VP_CANTIDAD_DEFECTO_LAMINADO + @VP_CANTIDAD_DEFECTO_PERFORADO + @VP_CANTIDAD_DEFECTO_QUILTY + @VP_CANTIDAD_DEFECTO_SKIVING)
+
+				-- /////////SE INGRESA EL REGISTRO DE LIBERACION DE LA ORDEN///////////////////////////////////////
+				INSERT INTO [ORDEN_LIBERADA] (	
+												[K_TIPO_ORDEN_LIBERADA],
+												-- ====================
+												[ORDEN],					
+												[MESA],					
+												[MUESTRA],				
+												[DEFECTOS],				
+												[PPMS],	
+												-- =========================
+												[DEFECTOS_LAMINADO],	
+												[DEFECTOS_PERFORADO],		
+												[DEFECTOS_QUILTY],			
+												[DEFECTOS_SKIVING],			
+												[DEFECTOS_MESA],				
+												-- =========================																
+												[INSPECTOR_CALIDAD],		
+												[JEFE_GRUPO],			
+												-- ====================
+												[F_LIBERACION],			
+												-- =============================
+												[K_USUARIO_ALTA], [F_ALTA], [K_USUARIO_CAMBIO], [F_CAMBIO],
+												[L_BORRADO], [K_USUARIO_BAJA], [F_BAJA]  
+											)
+									VALUES(	
+												@PP_TIPO_ORDEN,
+												@PP_ORDEN,
+												@PP_MESA,
+												@VP_MUESTRA,
+												@VP_CANTIDAD_DEFECTO,
+												@VP_PPMS,
+												-- ===========================
+												@VP_CANTIDAD_DEFECTO_LAMINADO, 
+												@VP_CANTIDAD_DEFECTO_PERFORADO,
+												@VP_CANTIDAD_DEFECTO_QUILTY,
+												@VP_CANTIDAD_DEFECTO_SKIVING,
+												@VP_CANTIDAD_DEFECTO_MESA,
+												-- ===========================
+												@PP_INSP_CALIDAD,
+												@PP_JEFE_GRUPO,
+												-- ===========================
+												GETDATE(),
+												-- ===========================
+												@PP_K_USUARIO_ACCION, GETDATE(), @PP_K_USUARIO_ACCION, GETDATE(),
+												0, NULL, NULL 
+											)
+				IF @@ROWCOUNT = 0
+					RAISERROR ('ERROR: No fue posible guardar el registro de la orden en [ORDEN_LIBERADA] ', 16, 1 ) --MENSAJE - Severity -State.
+
+				-- /////////SE ACTUALIZAN LOS RECHAZOS DE LA ORDEN A L QUE SIGNIFICA QUE LA ORDEN SE LIBERO///////////////////////////////////////
+				UPDATE Rechazos  
+					SET [status] = 'L' 
+				WHERE Orden = @PP_ORDEN
+
+				-- ////////SE GUARDA EL LOG///////////////////////////////////////////////////////		
+				DECLARE @VP_DETALLE VARCHAR(255) = '# INSPECTOR: '	+ @PP_INSP_CALIDAD + ' JEFE DE GRUPO: ' + @PP_JEFE_GRUPO
+				EXECUTE DATA_02.[dbo].[PG_IN_PEARL_LOG]		@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
+															@PP_USER, @PP_ESTACION, 'RECHAZOS',
+															@PP_ORDEN, 'LIBERAR_ORDEN', @VP_DETALLE, ''
+
+			COMMIT TRANSACTION 
+			END TRY
+	
+			BEGIN CATCH
+				/* Ocurrió un error, deshacemos los cambios*/ 
+				ROLLBACK TRANSACTION
+				DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
+				SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
+				SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_LIBERAR_ORDEN // ' + @VP_ERROR_TRANS
+			END CATCH
+				
+		END
+
+	-- // SECCION#3 ////////////////////////////////////////////////////////// MENSAJE DE SALIDA
+	
+	IF @VP_MENSAJE<>''
+		BEGIN
+		
+		SET		@VP_MENSAJE = 'No es posible [LIBERAR] la orden: ' + @VP_MENSAJE 
+		SET		@VP_MENSAJE = @VP_MENSAJE + ' ( '
+		SET		@VP_MENSAJE = @VP_MENSAJE + '[#Ord.'+CONVERT(VARCHAR(10),@PP_ORDEN)+']'
+		SET		@VP_MENSAJE = @VP_MENSAJE + ' )'
+	
+		END
+	
+	SELECT	@VP_MENSAJE AS MENSAJE, @PP_ORDEN AS CLAVE
+
+	-- ///////////////////////////////////////////////////////////////
+	-- //////////////////////////////////////////////////////////////
+
+GO
 -- //////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////

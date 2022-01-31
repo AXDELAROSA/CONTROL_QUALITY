@@ -1450,7 +1450,7 @@ AS
 	AND certificacion_rpt.turno = @PP_TURNO  
 	GROUP BY insp_certi
 	HAVING	SUM(total) > 0
-	AND	SUM(total) <= 7000
+	AND	SUM(total) <= 10000
 	ORDER BY	SUM(total) DESC
 
 	-- ////SE HACE LA UNION PARA OBTENER NOMBRE Y APELLIDO///////////////////
