@@ -1,0 +1,133 @@
+	/*
+		SELECT * --TOP 1  D_KIT_RUTA_EVENTO 
+		FROM KIT_RUTA (NOLOCK)
+		INNER JOIN KIT_RUTA_EVENTO (NOLOCK) ON KIT_RUTA_EVENTO.K_KIT_RUTA_EVENTO = KIT_RUTA.K_KIT_RUTA_EVENTO
+		WHERE KIT_RUTA.ITEM_NO = 'PWALBRRWLCPT3'
+		AND KIT_RUTA.MODELNO = 'WAL'
+		AND KIT_RUTA.VERSIONNO = '0014'
+
+		--	SELECT * FROM DATA_02.[dbo].ccjobhdr_sql WHERE JOBNO = '53415' 
+		SELECT * FROM DATA_02.[dbo].ccjoblin_sql WHERE jobno = '40885' ORDER BY ser_no
+
+		--	SELECT * FROM [PPMS_PEARL].[dbo].Perforacion where orden = '52490' order by noserie
+		--	SELECT DISTINCT NOSERIE_CAJA FROM [PPMS_PEARL].[dbo].certificacion_rpt where orden = '52490' order by NOSERIE_CAJA
+
+		SELECT * FROM [PPMS_PEARL].[dbo].Perforacion where noserie = '40885001' AND [status] = 'FINALIZADO'
+		SELECT * FROM [PPMS_PEARL].[dbo].certificacion_rpt where noserie_caja = '40885001' 
+
+		SELECT * FROM DATA_02.DBO.[MATERIAL_PROGRAMADO_LOG] (NOLOCK) WHERE SERIAL = '40885006'
+		SELECT * FROM DATA_02.DBO.[INVENTARIO_EMBARQUE] (NOLOCK) WHERE SERIAL_1 = '40885001'
+
+		SELECT * FROM [PPMS_PEARL].DBO.[ORDEN_LIBERADA] (NOLOCK)  WHERE ORDEN = '52638'
+		SELECT * FROM DATA_02.[dbo].ccjobhdr_sql WHERE JOBNO = '52500'
+		 
+			--insert into [PPMS_PEARL].[dbo].Perforacion
+			--select orden, '41841005', status, fecha, hora, '2775074XTX7', estacion, sello, 'RPWSSFBRWSPAX7,Q30-S41841005*2775074XTX7-04%FAUR01#FW2@501941'
+			--from [PPMS_PEARL].[dbo].Perforacion where noserie = '41841001'
+
+	*/
+
+	--El serial: 40885001 no ha pasado por Inspección de Perforación!
+	DECLARE @VP_RESULTADO	VARCHAR(300) = '', @PP_ORDEN VARCHAR(20) = '40885';
+	DECLARE @VP_ORDEN_COMPLEMENTO VARCHAR(20)= '', @VP_VALIDAR_PROCESO INT = 1;
+
+	SELECT @VP_ORDEN_COMPLEMENTO = ISNULL(lotno, '') 
+	FROM DATA_02.[dbo].ccjobhdr_sql 
+	WHERE jobno = @PP_ORDEN
+
+	IF @VP_ORDEN_COMPLEMENTO IS NULL 
+		SET @VP_ORDEN_COMPLEMENTO = ''
+	
+	IF @VP_ORDEN_COMPLEMENTO <> ''
+		BEGIN
+			IF CONVERT( INT, @PP_ORDEN ) < CONVERT( INT, @VP_ORDEN_COMPLEMENTO )
+				BEGIN
+					DECLARE @VP_N_ORDEN_LIBERADA INT = 0
+					SELECT @VP_N_ORDEN_LIBERADA = COUNT([K_ORDEN_LIBERADA])
+					FROM [PPMS_PEARL].DBO.[ORDEN_LIBERADA] (NOLOCK)
+					WHERE ORDEN = @VP_ORDEN_COMPLEMENTO
+
+					IF ( @VP_N_ORDEN_LIBERADA IS NULL OR @VP_N_ORDEN_LIBERADA = 0 )
+						BEGIN
+							SELECT @VP_N_ORDEN_LIBERADA = COUNT(ID) 
+							FROM [PPMS_PEARL].[dbo].[QC] 
+							WHERE Order_No = @VP_ORDEN_COMPLEMENTO
+
+							IF ( @VP_N_ORDEN_LIBERADA IS NULL OR @VP_N_ORDEN_LIBERADA = 0 )
+								SET @VP_RESULTADO = 'Debe liberar primero su orden complemento: ' + @VP_ORDEN_COMPLEMENTO
+						END		
+				END 
+			ELSE
+				BEGIN
+					SET @VP_VALIDAR_PROCESO = 0
+				END
+		END
+
+	IF ( @VP_RESULTADO = '' AND @VP_VALIDAR_PROCESO = 1 )
+		BEGIN
+			-- /////////SE CREA EL CURSOR PARA RECORRER LOS KITS EN LA ORDEN///////////////////////////////////////
+			DECLARE @VP_ITEM_NO VARCHAR(50) = '', @VP_MODELO VARCHAR(50) = '', @VP_VERSION VARCHAR(50) = '', @VP_SERIAL VARCHAR(50) = '';
+			DECLARE CU_KIT_TERMINADO CURSOR 
+			FOR SELECT	LTRIM(RTRIM(ccjoblin_sql.item_no)), 
+						LEFT(LTRIM(RTRIM(ChangeLevel)), 3),
+						RIGHT(LTRIM(RTRIM(ChangeLevel)), 4),
+						CONCAT(LTRIM(RTRIM(ccjoblin_sql.jobno)) , RIGHT('000' + CONVERT(VARCHAR(5), ccjoblin_sql.Ser_No), 3))
+				FROM DATA_02.DBO.ccjoblin_sql  (NOLOCK)
+				WHERE LTRIM(RTRIM(ccjoblin_sql.jobno)) = @PP_ORDEN
+				ORDER BY Ser_No
+
+			OPEN CU_KIT_TERMINADO
+			FETCH NEXT FROM CU_KIT_TERMINADO INTO @VP_ITEM_NO, @VP_MODELO, @VP_VERSION, @VP_SERIAL
+
+			WHILE @@FETCH_STATUS = 0 AND @VP_RESULTADO = ''
+				BEGIN
+					DECLARE @VP_N_KIT_PERFORADO INT = 0
+					SELECT	@VP_N_KIT_PERFORADO = COUNT(KIT_RUTA.K_KIT_RUTA_EVENTO) 
+					FROM DATA_02.DBO.KIT_RUTA (NOLOCK)
+					INNER JOIN DATA_02.DBO.KIT_RUTA_EVENTO (NOLOCK) ON KIT_RUTA_EVENTO.K_KIT_RUTA_EVENTO = KIT_RUTA.K_KIT_RUTA_EVENTO
+					WHERE KIT_RUTA.ITEM_NO = @VP_ITEM_NO
+					AND KIT_RUTA.MODELNO = @VP_MODELO
+					AND KIT_RUTA.VERSIONNO = @VP_VERSION
+					AND KIT_RUTA.K_KIT_RUTA_EVENTO = 230 -- #230 PERFORACION
+					
+					DECLARE @VP_N_EXISTE INT = 0
+					IF @VP_N_KIT_PERFORADO > 0
+						BEGIN							
+							SELECT @VP_N_EXISTE = COUNT(orden) 
+							FROM [PPMS_PEARL].[dbo].Perforacion (NOLOCK)
+							WHERE orden = @PP_ORDEN 
+							AND noserie = @VP_SERIAL
+							AND [status] = 'FINALIZADO'
+
+							IF ( @VP_N_EXISTE IS NULL OR @VP_N_EXISTE = 0 )
+								SET @VP_RESULTADO = 'El serial: ' + @VP_SERIAL + ' no ha pasado por Inspección de Perforación!'
+						END
+					ELSE
+						BEGIN
+							SELECT @VP_N_EXISTE = COUNT([K_MATERIAL_PROGRAMADO_LOG])
+							FROM DATA_02.DBO.[MATERIAL_PROGRAMADO_LOG] (NOLOCK) 
+							WHERE SERIAL = @VP_SERIAL
+							AND K_TIPO_EVENTO_KIT = 400 --#400 CERTIFICACION
+
+							IF ( @VP_N_EXISTE IS NULL OR @VP_N_EXISTE = 0 )
+								BEGIN
+									SELECT @VP_N_EXISTE = COUNT(id) 
+									FROM [PPMS_PEARL].[dbo].certificacion_rpt 
+									WHERE noserie_caja = @VP_SERIAL
+
+									IF ( @VP_N_EXISTE IS NULL OR @VP_N_EXISTE = 0 )
+										SET @VP_RESULTADO = 'El serial: ' + @VP_SERIAL + ' no ha pasado por Certificación!'
+								END
+						END				
+
+					FETCH NEXT FROM CU_KIT_TERMINADO INTO @VP_ITEM_NO, @VP_MODELO, @VP_VERSION, @VP_SERIAL
+				END
+				
+			CLOSE CU_KIT_TERMINADO
+			DEALLOCATE CU_KIT_TERMINADO
+		END
+	-- /////////////////////////////////////////////////////
+
+	-- /////////////////////////////////////////////////////
+	SELECT @VP_RESULTADO
+	-- /////////////////////////////////////////////////////

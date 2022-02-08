@@ -1,13 +1,14 @@
 
 
 USE PPMS_PEARL
+
 	SELECT * FROM numpart WHERE noparte = '200766DTX7'
 	SELECT * FROM certificacion_rpt WHERE orden = 50011 order by id
 
 	SELECT * FROM [PPMS_PEARL].[dbo].personal (NOLOCK) WHERE SELLO = '100'
 	SELECT * FROM [PPMS_PEARL].[dbo].personal (NOLOCK) WHERE NORELOJ =14869
 
-	 SELECT  * FROM	DATA_02.DBO.IMITMIDX_SQL WHERE LTRIM(RTRIM(LANDED_COST_CD)) = '2532968'
+	 SELECT  * FROM	DATA_02.DBO.IMITMIDX_SQL WHERE item_no= 'UWALFBLWLCPT3'
 
 	SELECT * --LTRIM(RTRIM(CUS.CUS_ITEM_NO)) 
 	FROM DATA_02.DBO.cccusitm_sql (NOLOCK)  
@@ -26,13 +27,19 @@ USE PPMS_PEARL
 
 	SELECT * FROM HOWE.DBO.VISTA_GAFETES (NOLOCK) WHERE  EN_NUM_EMP = 13367
 
+	SELECT * FROM BD_GENERAL.dbo.USUARIO_PEARL WHERE D_USUARIO_PEARL = 'CERTIFICACION'
+	
 	--	DEFECTO CRITICO: ( 'EE', 'ES', 'FL', 'LE', 'LM', 'MI', 'PF', 'PFL', 'PM', 'PSP', 'PS', 'PE', 'PSL', 'SB' )
 	SELECT * FROM DEF WHERE CRITICO = 1
 
 	SELECT * FROM [PPMS_PEARL].[dbo].DEF WHERE clave IN ('AC', 'AR' )
 
 	-- //////////PPMS DE PRD////////////////////////////////////////////////////
-	SELECT * FROM [DATA_02].dbo.ccjoblin_sql WHERE JOBNO = '51169'
+	SELECT * FROM [DATA_02].dbo.ccjoblin_sql WHERE JOBNO IN ( '52816', '53401')
+
+	SELECT * FROM  [PPMS_PEARL].[dbo].Perforacion where orden = '41841' AND noserie = '41841005' AND [status] = 'FINALIZADO'
+
+	SELECT * FROM [PPMS_PEARL].[dbo].certificacion_rpt where orden = '52795' AND noserie_caja = '52318001' 
 
 	SELECT * FROM [DATA_02].dbo.pearl_log WHERE JOBNO = '51823'
 
@@ -55,23 +62,32 @@ USE PPMS_PEARL
 
 	SELECT * FROM [PPMS_PEARL].[dbo].personal (NOLOCK) WHERE SELLO = '100'
 
-	SELECT * FROM [DATA_02].dbo.cccuthst_sql WHERE  jobno = '51169' ORDER BY LOTNO
+	SELECT * FROM DATA_02.DBO.cccuthst_sql WHERE jobno IN ( '52638')
 
-	SELECT * FROM [PPMS_PEARL].[dbo].rechazos WHERE orden = 51169
+	SELECT * FROM DATA_02.DBO.ccjobhdr_sql WHERE jobno IN ( '53400', '53401')
+	SELECT * FROM DATA_02.DBO.pearl_log WHERE jobno IN ( '53400', '53401')
+
+	SELECT * FROM [PPMS_PEARL].[dbo].rechazos WHERE orden = 52553
 
 	-- 339 + 1814 = 2,153
 	SELECT * --SUM(DEFECTOS) DEFECTO, SUM(MUESTRA) MUESTRA 
-	FROM [PPMS_PEARL].DBO.[ORDEN_LIBERADA] -- WHERE  ORDEN = 48100  AND F_LIBERACION = '2022-01-24' 
-	ORDER BY F_LIBERACION DESC 
+	FROM [PPMS_PEARL].DBO.[ORDEN_LIBERADA]  WHERE ORDEN IN ( 53400 , 53401 ) 
+	--AND 
+	F_LIBERACION = '2022-02-07' --and K_TIPO_ORDEN_LIBERADA = 2
+	ORDER BY F_ALTA DESC 	
 
-	SELECT * FROM [PPMS_PEARL].[dbo].[QC] WHERE Order_No = '48100' -- ID IN (303022)
+	SELECT RIGHT('000'+ CONVERT(VARCHAR(5), 1), 3)
+
+	SELECT * FROM [PPMS_PEARL].[dbo].[QC] WHERE Order_No = '53401' -- ID IN (303022)
 
 	SELECT * FROM [PPMS_PEARL].[dbo].[DEFECTOS] WHERE Orden = 50011 -- ID IN (303022)
 	
-	SELECT * FROM [BD_GENERAL].[dbo].USUARIO_PEARL 
+	SELECT * FROM [BD_GENERAL].[dbo].USUARIO_PEARL WHERE K_USUARIO_PEARL = 82
 
 	SELECT * FROM [PPMS_PEARL].[dbo].[QC] WHERE Order_No = '50011' -- ID IN (303022)
-
+	
+	SELECT LEFT(LTRIM(RTRIM('WLK')), 3)
+	
 	SELECT * --COUNT(ID) AS DEFECTOS
 	FROM [PPMS_PEARL].[dbo].rechazos 
 	WHERE orden IN (	SELECT ORDEN
@@ -102,50 +118,47 @@ USE PPMS_PEARL
 
 	SELECT * FROM DATA_02.dbo.pearl_log WHERE jobno = '48100' -- screen_opt = 'RECHAZOS'
 
-	-- logica para liberar orden
+	select * from DATA_02.[dbo].ccjoblin_sql where jobno = '52318' 
+	select * from DATA_02.[dbo].ccjobhdr_sql where jobno = '52318' 
 
-SELECT		ccjoblin_sql.item_no, SUM(CONVERT(int,(OriginalQty * CUBE_QTY_PER))) as muestra,
-(select top 1 cus_item_no from DATA_02.dbo.cccusitm_sql where cccusitm_sql.item_no = ccjoblin_sql.Item_No
-			order by versionno desc) AS noparte
-FROM DATA_02.dbo.ccjoblin_sql  (NOLOCK)
-inner join DATA_02.dbo.imitmidx_sql on ccjoblin_sql.item_no = imitmidx_sql.item_no
-WHERE	ccjoblin_sql.jobno = '48665'  
-group by ccjoblin_sql.item_no order by item_no
+	select * from [PPMS_PEARL].[dbo].Perforacion where orden = '52318' AND noserie = '52318001' AND [status] = 'FINALIZADO'
 
-select * from [PPMS_PEARL].[dbo].numpart WHERE nopartepearl in ( SELECT item_no FROM	DATA_02.dbo.ccjoblin_sql (NOLOCK)
-WHERE	jobno in ('48665'))
-             
-SELECT * FROM [PPMS_PEARL].[dbo].[RECHAZOS] WHERE Orden IN (45200)
+	select * from [PPMS_PEARL].[dbo].Perforacion where noserie = '52736008'
+	select * from [PPMS_PEARL].[dbo].certificacion_rpt where noserie_caja = '52736008' 
 
-SELECT * FROM [PPMS_PEARL].[dbo].DEF WHERE clave IN (
-	SELECT DISTINCT DEFECTO FROM [PPMS_PEARL].[dbo].[RECHAZOS] WHERE Orden IN (48336)
-)
+	-- RPMRUSBRMCKDX9,Q60-S52795001*174926D%MAGN03#RUE0028@68971
+		SELECT * --TOP 1  D_KIT_RUTA_EVENTO
+		FROM KIT_RUTA (NOLOCK)
+		INNER JOIN KIT_RUTA_EVENTO (NOLOCK) ON KIT_RUTA_EVENTO.K_KIT_RUTA_EVENTO = KIT_RUTA.K_KIT_RUTA_EVENTO
+		WHERE KIT_RUTA.ITEM_NO = 'PWSSFBRWSPAX7'
+		AND KIT_RUTA.MODELNO = 'FW2'
+		AND KIT_RUTA.VERSIONNO = '0011'
 
-SELECT COUNT(id) AS TOTAL_DEFECTO FROM [PPMS_PEARL].[dbo].[RECHAZOS] WHERE Orden IN (45200)
+	-- RPWD2RC6CNPDX9,Q30-S52736008*187562B%MAGN03#WDM0020@109471           
+		SELECT * --TOP 1  D_KIT_RUTA_EVENTO
+		FROM KIT_RUTA (NOLOCK)
+		INNER JOIN KIT_RUTA_EVENTO (NOLOCK) ON KIT_RUTA_EVENTO.K_KIT_RUTA_EVENTO = KIT_RUTA.K_KIT_RUTA_EVENTO
+		WHERE KIT_RUTA.ITEM_NO = 'PWD2RC6CNPDX9'
+		AND KIT_RUTA.MODELNO = 'WDM'
+		AND KIT_RUTA.VERSIONNO = '0020'
 
-SELECT * FROM [PPMS_PEARL].[dbo].[QC] WHERE ORDER_NO = '46981' -- ID IN (303022)
+		SELECT * FROM [PPMS_PEARL].[dbo].Perforacion WHERE noserie = '52847001'
+		SELECT * FROM [PPMS_PEARL].[dbo].certificacion_rpt WHERE noserie_caja = '52847001'
 
-SELECT * FROM [PPMS_PEARL].[dbo].[DEFECTOS] WHERE Orden IN (45200)
-SELECT SUM(Cant) AS TOTAL_DEFECTO FROM [PPMS_PEARL].[dbo].[DEFECTOS] WHERE Orden IN (45200)
+		SELECT * FROM [MATERIAL_PROGRAMADO_LOG] (NOLOCK) WHERE SERIAL = '52923006'  
+		ESTACION = 'QCPERF-002' AND CONVERT(DATE, F_LOG) = CONVERT(DATE, GETDATE())  
+		ORDER BY  [K_MATERIAL_PROGRAMADO_LOG] DESC
 
-SELECT * FROM	DATA_02.dbo.ccjoblin_sql (NOLOCK) WHERE	jobno in ('43929')
+		--////////////MEZCLAR KITS A ORDEN DE PRODUCCION DE DIFERENTES COLORES/////////////////////////////////////////////////////////
+		
+SELECT * FROM [DATA_02].dbo.ccjoblin_sql WHERE JOBNO IN ( '51877', '51878') ORDER BY jobno, Ser_No
 
-SELECT		ccjoblin_sql.item_no, SUM(CONVERT(int,(OriginalQty * CUBE_QTY_PER))) as muestra
-FROM DATA_02.dbo.ccjoblin_sql  (NOLOCK)
-inner join DATA_02.dbo.imitmidx_sql on ccjoblin_sql.item_no = imitmidx_sql.item_no
-WHERE	ccjoblin_sql.jobno = '48100'  
-group by ccjoblin_sql.item_no order by item_no
+SELECT * FROM [DATA_02].dbo.ccjobhdr_sql WHERE JOBNO IN ( '51877', '51878')
 
+--UPDATE [DATA_02].dbo.ccjoblin_sql 
+--	SET jobno = '51878'
+--WHERE JOBNO = '51877' AND User_def_Fld1 = 'Y'
 
-SELECT * FROM	DATA_02.dbo.ccjobhdr_sql (NOLOCK)
-WHERE	jobno in ('48100')
-
-SELECT * FROM	DATA_02.dbo.ccjoblin_sql WHERE	jobno in ('48100') --ORDER BY item_no
-
-SELECT item_no, CUBE_QTY_PER FROM DATA_02.dbo.imitmidx_sql (NOLOCK) 
-WHERE item_no IN ( SELECT DISTINCT item_no 
-					FROM DATA_02.dbo.ccjoblin_sql (NOLOCK) 
-					WHERE	ccjoblin_sql.jobno = '48100') ORDER BY item_no
-
-
-
+--UPDATE [DATA_02].dbo.ccjoblin_sql 
+--	SET Ser_No = 20
+--WHERE JOBNO = '51878' AND Ser_No = 6 AND User_def_Fld1 IS NULL
