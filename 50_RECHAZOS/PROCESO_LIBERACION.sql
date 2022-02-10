@@ -6,19 +6,19 @@
 		AND KIT_RUTA.MODELNO = 'WAL'
 		AND KIT_RUTA.VERSIONNO = '0014'
 
-		--	SELECT * FROM DATA_02.[dbo].ccjobhdr_sql WHERE JOBNO = '53415' 
+		--	SELECT * FROM DATA_02.[dbo].ccjobhdr_sql  WHERE JOBNO = '52822' 
 		SELECT * FROM DATA_02.[dbo].ccjoblin_sql WHERE jobno = '40885' ORDER BY ser_no
 
 		--	SELECT * FROM [PPMS_PEARL].[dbo].Perforacion where orden = '52490' order by noserie
 		--	SELECT DISTINCT NOSERIE_CAJA FROM [PPMS_PEARL].[dbo].certificacion_rpt where orden = '52490' order by NOSERIE_CAJA
 
-		SELECT * FROM [PPMS_PEARL].[dbo].Perforacion where noserie = '40885001' AND [status] = 'FINALIZADO'
-		SELECT * FROM [PPMS_PEARL].[dbo].certificacion_rpt where noserie_caja = '40885001' 
+		SELECT * FROM [PPMS_PEARL].[dbo].Perforacion where noserie = '53394003' AND [status] = 'FINALIZADO'
+		SELECT * FROM [PPMS_PEARL].[dbo].certificacion_rpt where noserie_caja = '53394003' 
 
-		SELECT * FROM DATA_02.DBO.[MATERIAL_PROGRAMADO_LOG] (NOLOCK) WHERE SERIAL = '40885006'
-		SELECT * FROM DATA_02.DBO.[INVENTARIO_EMBARQUE] (NOLOCK) WHERE SERIAL_1 = '40885001'
+		SELECT * FROM DATA_02.DBO.[MATERIAL_PROGRAMADO_LOG] (NOLOCK) WHERE SERIAL = '53394003'
+		SELECT * FROM DATA_02.DBO.[INVENTARIO_EMBARQUE] (NOLOCK) WHERE SERIAL_1 = '53394003'
 
-		SELECT * FROM [PPMS_PEARL].DBO.[ORDEN_LIBERADA] (NOLOCK)  WHERE ORDEN = '52638'
+		SELECT * FROM [PPMS_PEARL].DBO.[ORDEN_LIBERADA] (NOLOCK)  WHERE ORDEN = '52822'
 		SELECT * FROM DATA_02.[dbo].ccjobhdr_sql WHERE JOBNO = '52500'
 		 
 			--insert into [PPMS_PEARL].[dbo].Perforacion
@@ -27,8 +27,8 @@
 
 	*/
 
-	--El serial: 40885001 no ha pasado por Inspección de Perforación!
-	DECLARE @VP_RESULTADO	VARCHAR(300) = '', @PP_ORDEN VARCHAR(20) = '40885';
+	--El serial: 53394003 no ha pasado por Certificación!
+	DECLARE @VP_RESULTADO	VARCHAR(300) = '', @PP_ORDEN VARCHAR(20) = '53394';
 	DECLARE @VP_ORDEN_COMPLEMENTO VARCHAR(20)= '', @VP_VALIDAR_PROCESO INT = 1;
 
 	SELECT @VP_ORDEN_COMPLEMENTO = ISNULL(lotno, '') 
@@ -67,6 +67,7 @@
 		BEGIN
 			-- /////////SE CREA EL CURSOR PARA RECORRER LOS KITS EN LA ORDEN///////////////////////////////////////
 			DECLARE @VP_ITEM_NO VARCHAR(50) = '', @VP_MODELO VARCHAR(50) = '', @VP_VERSION VARCHAR(50) = '', @VP_SERIAL VARCHAR(50) = '';
+
 			DECLARE CU_KIT_TERMINADO CURSOR 
 			FOR SELECT	LTRIM(RTRIM(ccjoblin_sql.item_no)), 
 						LEFT(LTRIM(RTRIM(ChangeLevel)), 3),
