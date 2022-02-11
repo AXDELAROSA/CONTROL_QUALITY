@@ -9,7 +9,7 @@
 -- // Fecha creación:	17/SEP/2020
 -- ////////////////////////////////////////////////////////////// 
 
-USE [DATA_02PRUEBAS] 
+USE [DATA_02] 
 GO
 
 -- ////////////////////////////////////////////////////////////// 
@@ -33,7 +33,7 @@ CREATE PROCEDURE [dbo].[PG_CONFIGURAR_CORREO_LOTE_INSPECCIONADO_REVISION]
 AS
 
 	-- ///////////////////////////////////////////
-	DECLARE @VP_SUBJECT		VARCHAR(255) = 'Lote inspeccionado en espera de Autorización'
+	DECLARE @VP_SUBJECT		VARCHAR(255) = 'Lote inspeccionado'
 	DECLARE @VP_DATE		DATE = GETDATE()
 
 	DECLARE @VP_RECIPIENTS	NVARCHAR(MAX)  = '' -- 'franciscoe@pearlleather.com.mx:'
