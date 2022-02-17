@@ -46,6 +46,30 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[HOJA_E
 	DROP TABLE [dbo].[HOJA_EMPAQUE_RUTAS_IMAGEN]
 GO
 
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[HOJA_EMPAQUE_REGISTRO_CORREO]') AND type in (N'U'))
+	DROP TABLE [dbo].[HOJA_EMPAQUE_REGISTRO_CORREO]
+GO
+
+-- ////////////////////////////////////////////////////////////////
+-- //					HOJA_EMPAQUE_REGISTRO_CORREO
+-- ////////////////////////////////////////////////////////////////
+CREATE TABLE [dbo].[HOJA_EMPAQUE_REGISTRO_CORREO] (
+	[CUS_NO]					[VARCHAR](6)	NOT NULL,
+	[MODELNO]					[VARCHAR](3)	NOT NULL,
+	[VERSIONNO]					[INT]			NOT NULL,
+	-- ============================
+	[ITEM_NO]					NVARCHAR(MAX)	,
+	-- ===========================
+	[CUSTOMER_ITEM_NO]			NVARCHAR(MAX)	,
+	[D_ITEM_NO]					NVARCHAR(MAX)	,
+	[U_ITEM]					NVARCHAR(MAX)	,
+	-- ===========================
+	[D_TIPO_CAMBIO_KIT]			NVARCHAR(MAX)	 ,
+	-- ===========================
+	[K_TIPO_MOVIMIENTO]			NVARCHAR(MAX)	 --	K_TIPO_MOVIMIENTO: #1 KIT	// #2 PROCESOS_ESPECIALES	// #3 TOTAL_PROCESOS_ESPECIALES
+) ON [PRIMARY]
+GO
+
 -- ////////////////////////////////////////////////////////////////
 -- //					HOJA_EMPAQUE_RUTAS_IMAGEN
 -- ////////////////////////////////////////////////////////////////

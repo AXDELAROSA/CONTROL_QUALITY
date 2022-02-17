@@ -15,9 +15,7 @@ GO
 --	[PG_LI_HOJA_EMPAQUE]
 --	[PG_LI_HOJA_EMPAQUE_X_TEXTO]
 --	[PG_LI_IMPRIMIR_HOJA_EMPAQUE_X_ORDEN]
---	[PG_LI_HOJA_EMPAQUE_COLORES]		--	FUE REEMPLAZADO POR EL QUE FUNCIONARÁ PARA LOS U NUMBERS			(VIEJO)
---	[PG_LI_HOJA_EMPAQUE_COLORES_U]		--	PARA REEMPLAZAR EL USADO ACTUALMENTE								(NUEVO)
---	[PG_LI_HOJA_EMPAQUE_PROCESO]
+--	[PG_LI_HOJA_EMPAQUE_COLORES_U]		--	PARA REEMPLAZAR EL USADO ACTUALMENTE	(NUEVO)	--	[PG_LI_HOJA_EMPAQUE_COLORES]		--	FUE REEMPLAZADO POR EL QUE FUNCIONARÁ PARA LOS U NUMBERS			(VIEJO)
 --	[PG_LI_HOJA_EMPAQUE_PROCESO_U]
 --	[PG_LI_HOJA_EMPAQUE_PROCESO_REPORTE]
 --	[PG_LI_HOJA_EMPAQUE_PROCESO_SIMBOLO]
@@ -35,11 +33,12 @@ GO
 --	[PG_PR_COPIAR_IMAGEN_CAPA]
 --	[PG_PR_LIMPIAR_RUTA_IMAGEN]
 -- //////////////////////////////////////////////////////////////
---	[PG_INUP_HOJA_EMPAQUE]		-- REEMPLAZARÁ A [PG_UP_HOJA_EMPAQUE]
+----------	[PG_INUP_HOJA_EMPAQUE]		-- REEMPLAZARÁ A [PG_UP_HOJA_EMPAQUE]
 --	[PG_IN_HOJA_EMPAQUE_U]
 --	[PG_UP_HOJA_EMPAQUE_U]
 --	[PG_INUP_HOJA_EMPAQUE_PROCESO_U]
 -- //////////////////////////////////////////////////////////////
+--	[PG_LI_HOJA_EMPAQUE_PROCESO]		--	SE DEBE ELIMINAR SI NO FALLA NADA EN EL SISTEMA. AX: 20220217
 
 
 -- //////////////////////////////////////////////////////////////
@@ -52,55 +51,163 @@ GO
 --		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE] 0,139,'FAUR01','FW2'
 --		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE] 0,139,'DAIM05','WDK'
 --		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE] 0,139,'MAGN02','WAL'
---		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE] 0,139,'MAGN03','WD2'
+--		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE] 0,139,'253293','MAGN03','WD2'		
+--		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE] 0,139,'PJLFCRL','MAGN03','WD2'
+--		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE] 0,139,'','IRVI02','JLI'
 CREATE PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
 	-- ===========================
 	--@PP_BUSCAR						VARCHAR(25),
 	--@PP_K_HOJA_EMPAQUE_STATUS				INT,
+	@PP_ITEM						VARCHAR(25),
 	@PP_CUS_NO						VARCHAR(20),
 	@PP_MODELNO						VARCHAR(25)
 	--@PP_F_INIT						DATE,
 	--@PP_F_FINISH					DATE
 AS
-	SET @PP_MODELNO = LTRIM(RTRIM(LEFT(@PP_MODELNO,3)))
+	DECLARE  @VP_HORA			INT			= FORMAT(CAST(GETDATE() AS TIME(0)), N'hhmmss');
+	DECLARE  @VP_TURNO			VARCHAR(5)	= '2'
+	
+	IF @VP_HORA > 2000 AND @VP_HORA < 60002
+		SET @VP_TURNO = '3'
+	ELSE IF @VP_HORA > 60001 AND @VP_HORA < 153001
+		SET @VP_TURNO = '1'	
+	-- =========================================================================================================
+	--	LA PRIMER OPCIÓN ES BUSCAR POR "P"/"U" O POR NÚMERO DE PARTE DEL CLIENTE.
+	IF @PP_ITEM	<> ''
+	BEGIN
+		IF LEFT(@PP_ITEM ,1) = 'P'
+		BEGIN
+			SELECT	--DISTINCT (ITEM_P)
+					 ITEM_NO					AS ITEM_P
+					,CUS_NO
+					,MODELNO
+					,VERSIONNO
+					,LTRIM(RTRIM(D_ITEM_NO))	AS D_ITEM_NO
+					,REVISION_HOJA_EMPAQUE
+					,COLOR
+					,CAJA_HOJA_EMPAQUE
+					,C_HOJA_EMPAQUE
+					,(CASE
+							WHEN	HOJA_EMPAQUE.VERSIONNO	= ISNULL(	(	SELECT	DISTINCT
+																					CCVERHDR_SQL.VERSIONNO
+																			FROM	CCVERHDR_SQL		(NOLOCK)
+																			WHERE	CCVERHDR_SQL.STATUS			= 'L'
+																			AND		CCVERHDR_SQL.SPECSTATUS		= 'U'
+																			AND		CCVERHDR_SQL.CUS_NO			=	[HOJA_EMPAQUE].CUS_NO
+																			AND		CCVERHDR_SQL.MODELNO		=	[HOJA_EMPAQUE].MODELNO
+																			--ORDER	BY CUS_NO	,MODELNO	,VERSIONNO	
+																			),0)	THEN 1
+							ELSE	0
+					END)	AS L_LIVE,
+					L_REVISION_ACTIVA
+					,(	CASE
+							WHEN	U_ITEM	<> ''	THEN	'SI'
+							ELSE	'NO'
+					END) AS U_ITEM
+			--	===========================================================================
+					,0					AS SER_NO
+					,'-'				AS MESA
+					,@VP_TURNO			AS TURNO
+					,0					AS IMPRIMIR
+			--	===========================================================================
+					,(	CASE	
+							WHEN	L_CAPAS_COMPLETAS	= 0	THEN 'NO'
+							WHEN	L_CAPAS_COMPLETAS	= 1	THEN 'SI'
+					END) AS L_CAPAS_COMPLETAS
+					,STANDAR_PACK
+			FROM	HOJA_EMPAQUE		(NOLOCK)
+			WHERE	ITEM_NO	LIKE ( '%' + @PP_ITEM + '%' )
+			ORDER	BY CUS_NO	,MODELNO	,VERSIONNO DESC--, ITEM_P, L_REVISION_ACTIVA DESC
+		END
+		ELSE
+		BEGIN
+			SELECT	--DISTINCT (ITEM_P)
+					 ITEM_NO					AS ITEM_P
+					,CUS_NO
+					,MODELNO
+					,VERSIONNO
+					,LTRIM(RTRIM(D_ITEM_NO))	AS D_ITEM_NO
+					,REVISION_HOJA_EMPAQUE
+					,COLOR
+					,CAJA_HOJA_EMPAQUE
+					,C_HOJA_EMPAQUE
+					,(CASE
+							WHEN	HOJA_EMPAQUE.VERSIONNO	= ISNULL(	(	SELECT	DISTINCT
+																					CCVERHDR_SQL.VERSIONNO
+																			FROM	CCVERHDR_SQL		(NOLOCK)
+																			WHERE	CCVERHDR_SQL.STATUS			= 'L'
+																			AND		CCVERHDR_SQL.SPECSTATUS		= 'U'
+																			AND		CCVERHDR_SQL.CUS_NO			=	[HOJA_EMPAQUE].CUS_NO
+																			AND		CCVERHDR_SQL.MODELNO		=	[HOJA_EMPAQUE].MODELNO
+																			--ORDER	BY CUS_NO	,MODELNO	,VERSIONNO	
+																			),0)	THEN 1
+							ELSE	0
+					END)	AS L_LIVE,
+					L_REVISION_ACTIVA
+					,(	CASE
+							WHEN	U_ITEM	<> ''	THEN	'SI'
+							ELSE	'NO'
+					END) AS U_ITEM
+			--	===========================================================================
+					,0					AS SER_NO
+					,'-'				AS MESA
+					,@VP_TURNO			AS TURNO
+					,0					AS IMPRIMIR
+			--	===========================================================================
+					,(	CASE	
+							WHEN	L_CAPAS_COMPLETAS	= 0	THEN 'NO'
+							WHEN	L_CAPAS_COMPLETAS	= 1	THEN 'SI'
+					END) AS L_CAPAS_COMPLETAS
+					,STANDAR_PACK
+			FROM		HOJA_EMPAQUE	(NOLOCK)
+			WHERE	CUSTOMER_ITEM_NO	LIKE ( '%' + @PP_ITEM + '%' )
+			ORDER	BY CUS_NO	,MODELNO	,VERSIONNO DESC--, ITEM_P, L_REVISION_ACTIVA DESC
+		END
+	END
+	ELSE
+	-- =========================================================================================================
+	--	LA OPCIÓN FINAL SERÁ BUSCAR TODOS LOS COMPONENTES QUE PERTENEZCAN AL CLIENTE, MODELO.
+	BEGIN
+		SET @PP_MODELNO = LTRIM(RTRIM(LEFT(@PP_MODELNO,3)))
 
-	SELECT	DISTINCT (ITEM_P)
-			,CUS_NO
-			,MODELNO
-			,VERSIONNO
-			,LTRIM(RTRIM(D_ITEM_NO))	AS D_ITEM_NO
-			,REVISION_HOJA_EMPAQUE
-			,CAJA_HOJA_EMPAQUE
-			,C_HOJA_EMPAQUE
-			,(CASE
-					WHEN	HOJA_EMPAQUE.VERSIONNO	= ISNULL(	(	SELECT	DISTINCT
-																			CCVERHDR_SQL.VERSIONNO
-																	FROM	CCVERHDR_SQL		(NOLOCK)
-																	WHERE	CCVERHDR_SQL.STATUS			= 'L'
-																	AND		CCVERHDR_SQL.SPECSTATUS		= 'U'
-																	AND		CCVERHDR_SQL.CUS_NO			=	[HOJA_EMPAQUE].CUS_NO
-																	AND		CCVERHDR_SQL.MODELNO		=	[HOJA_EMPAQUE].MODELNO
-																	--ORDER	BY CUS_NO	,MODELNO	,VERSIONNO	
-																	),0)	THEN 1
-					ELSE	0
-			END)	AS L_LIVE
-			,L_REVISION_ACTIVA
-			,(	CASE	
-					WHEN	L_CAPAS_COMPLETAS	= 0	THEN 'NO'
-					WHEN	L_CAPAS_COMPLETAS	= 1	THEN 'SI'
-			END) AS L_CAPAS_COMPLETAS
-			,(	CASE
-					WHEN	U_ITEM	<> ''	THEN	'SI'
-					ELSE	'NO'
-			END) AS L_U_ITEM
-			,ISNULL(U_ITEM,'--------')	 AS U_ITEM
-			,STANDAR_PACK
-	FROM	[HOJA_EMPAQUE]		(NOLOCK)
-	WHERE	( @PP_CUS_NO		= '( TODOS )'	OR	CUS_NO		= @PP_CUS_NO  )
-	AND		( @PP_MODELNO		= '( T'			OR	MODELNO		= @PP_MODELNO )
-	ORDER	BY CUS_NO	,MODELNO	,VERSIONNO DESC, U_ITEM DESC, ITEM_P, L_REVISION_ACTIVA DESC
+		SELECT	DISTINCT (ITEM_P)
+				,CUS_NO
+				,MODELNO
+				,VERSIONNO
+				,LTRIM(RTRIM(D_ITEM_NO))	AS D_ITEM_NO
+				,REVISION_HOJA_EMPAQUE
+				,CAJA_HOJA_EMPAQUE
+				,C_HOJA_EMPAQUE
+				,(CASE
+						WHEN	HOJA_EMPAQUE.VERSIONNO	= ISNULL(	(	SELECT	DISTINCT
+																				CCVERHDR_SQL.VERSIONNO
+																		FROM	CCVERHDR_SQL		(NOLOCK)
+																		WHERE	CCVERHDR_SQL.STATUS			= 'L'
+																		AND		CCVERHDR_SQL.SPECSTATUS		= 'U'
+																		AND		CCVERHDR_SQL.CUS_NO			=	[HOJA_EMPAQUE].CUS_NO
+																		AND		CCVERHDR_SQL.MODELNO		=	[HOJA_EMPAQUE].MODELNO
+																		--ORDER	BY CUS_NO	,MODELNO	,VERSIONNO	
+																		),0)	THEN 1
+						ELSE	0
+				END)	AS L_LIVE
+				,L_REVISION_ACTIVA
+				,(	CASE	
+						WHEN	L_CAPAS_COMPLETAS	= 0	THEN 'NO'
+						WHEN	L_CAPAS_COMPLETAS	= 1	THEN 'SI'
+				END) AS L_CAPAS_COMPLETAS
+				,(	CASE
+						WHEN	U_ITEM	<> ''	THEN	'SI'
+						ELSE	'NO'
+				END) AS L_U_ITEM
+				,ISNULL(U_ITEM,'--------')	 AS U_ITEM
+				,STANDAR_PACK
+		FROM	[HOJA_EMPAQUE]		(NOLOCK)
+		WHERE	( @PP_CUS_NO		= '( TODOS )'	OR	CUS_NO		= @PP_CUS_NO  )
+		AND		( @PP_MODELNO		= '( T'			OR	MODELNO		= @PP_MODELNO )
+		ORDER	BY CUS_NO	,MODELNO	,VERSIONNO DESC, U_ITEM DESC, ITEM_P, L_REVISION_ACTIVA DESC
+	END
 --	-- /////////////////////////////////////////////////////////////////////
 GO
 
@@ -748,6 +855,12 @@ GO
 
 --		 EXECUTE [dbo].[PG_SK_HOJA_EMPAQUE] 0,139, 'MAGN03' , 'WD2' , '0016' , 'PW2RB60', 0
 --		 EXECUTE [dbo].[PG_SK_HOJA_EMPAQUE] 0,139, 'MAGN02' , 'WAL' , '0014' , 'PWALBRR', 0
+
+--		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_COLORES_U]	0,139, 'IRVI02' , 'JLI' , '0059' , 'PJLFBR2MCKTX7' , '0'
+--		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_COLORES_U]	0,139, 'IRVI02' , 'JLI' , '0059' , 'PJLFBR2' , '0' 
+
+--		 EXECUTE [dbo].[PG_SK_HOJA_EMPAQUE] 0,139, 'IRVI02' , 'JLI' , '0059' , 'PJLFBR2MCKTX7' , '0'
+--		 EXECUTE [dbo].[PG_SK_HOJA_EMPAQUE] 0,139, 'IRVI02' , 'JLI' , '0059' , 'PJLFBR2' , '0' 
 CREATE PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_COLORES_U]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -759,6 +872,9 @@ CREATE PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_COLORES_U]
 	-- ===========================
 	@PP_REVISION_HOJA_EMPAQUE		INT
 AS
+
+	SET		@PP_ITEM_P	= LEFT(LTRIM(RTRIM(@PP_ITEM_P)),7)
+
 	SELECT	--COLOR,
 			ITEM_P AS COLOR,
 			LTRIM(RTRIM(CUSTOMER_ITEM_NO))	AS CUSTOMER_ITEM_NO,
@@ -787,62 +903,6 @@ GO
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> MUESTRA EL DETALLE DE LOS SPECIAL_PROCESS POR KIT
 -- //////////////////////////////////////////////////////////////
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_HOJA_EMPAQUE_PROCESO]') AND type in (N'P', N'PC'))
-	DROP PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO]
-GO
---		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO] 0,139, 'DAIM05' , 'WDK' , '8' , 'PL2ARLH' ,0
---		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO] 0,139, 'FAUR01'	, 'FW2'	, '11',	'PWSSC20' ,0
---		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO] 0,139, 'FAUR01'	, 'FW2'	, '11',	'PWSFCL2' ,0
-CREATE PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO]
-	@PP_K_SISTEMA_EXE				INT,
-	@PP_K_USUARIO_ACCION			INT,
-	-- ===========================
-	@PP_CUS_NO						VARCHAR(20),
-	@PP_MODELNO						VARCHAR(25),
-	@PP_VERSIONNO					INT,
-	@PP_ITEM_P						VARCHAR(25),
-	-- ===========================
-	@PP_REVISION_HOJA_EMPAQUE		INT
-AS
-
-	SELECT	--	HOJA_EMPAQUE_PROCESO.*,
-			K_HOJA_EMPAQUE_PROCESO,
-			HOJA_EMPAQUE_PROCESO.K_PROCESO_SIMBOLO,
-			L_HOJA_EMPAQUE_PROCESO,
-			--(CASE
-			--	WHEN	K_PROCESO	IN (1)				THEN	1
-			--	WHEN	K_PROCESO	IN (2,8,9,11,12,13)	THEN	2
-			--	WHEN	K_PROCESO	IN (3,10)			THEN	3
-			--	WHEN	K_PROCESO	IN (4)				THEN	4
-			--	WHEN	K_PROCESO	IN (5,14,15)		THEN	5
-			--	WHEN	K_PROCESO	IN (6)				THEN	6
-			--	WHEN	K_PROCESO	IN (7)				THEN	7
-			--	ELSE	50
-			--END)	AS K_PROCESO,
-			(CASE
-				WHEN	K_PROCESO	< 50 	THEN	K_PROCESO
-				ELSE	50
-			END)	AS K_PROCESO,
-			(CASE
-				WHEN	D_HOJA_EMPAQUE_PROCESO <> ''	THEN	D_HOJA_EMPAQUE_PROCESO
-				WHEN	D_HOJA_EMPAQUE_PROCESO =  ''	THEN	D_PROCESO_SIMBOLO
-			END)										AS	D_HOJA_EMPAQUE_PROCESO,
-			(	RUTA_SERVIDOR + RUTA_IMAGEN + RUTA_EXTENSION	)	AS	RUTA_AV_PROCESO_SIMBOLO
-			--RUTA_AV_PROCESO_SIMBOLO						AS RUTA_AV_PROCESO_SIMBOLO
-	FROM	[HOJA_EMPAQUE_PROCESO]			 (NOLOCK)
-	LEFT JOIN	PROCESO_SIMBOLO (NOLOCK) ON PROCESO_SIMBOLO.K_PROCESO_SIMBOLO	= HOJA_EMPAQUE_PROCESO.K_PROCESO_SIMBOLO
-	WHERE	CUS_NO					= @PP_CUS_NO
-	AND		MODELNO					= @PP_MODELNO
-	AND		VERSIONNO				= @PP_VERSIONNO
-	AND		ITEM_P					= @PP_ITEM_P
-	AND		REVISION_HOJA_EMPAQUE	= @PP_REVISION_HOJA_EMPAQUE
-	ORDER	BY K_PROCESO
-GO
-
-
--- //////////////////////////////////////////////////////////////
--- // STORED PROCEDURE ---> MUESTRA EL DETALLE DE LOS SPECIAL_PROCESS POR KIT
--- //////////////////////////////////////////////////////////////
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_HOJA_EMPAQUE_PROCESO_U]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO_U]
 GO
@@ -854,6 +914,12 @@ GO
 --		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO]		0,139, 'FAUR01'	, 'FW2'	, '11',	'PWSFCL2' ,0
 --		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO_U] 0,139, 'MAGN02' , 'WAL' , '14', 'PWALBRR' ,0
 --		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO_U] 0,139, 'MAGN03' , 'WD2' , '16', 'PWD2TBL' ,0
+
+
+--		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO_U] 0,139, 'IRVI02' , 'JLI' , '59' , 'PJLFCRLMCKTX7' , 0
+--		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO_U] 0,139, 'IRVI02' , 'JLI' , '59' , 'PJLFCRL' , 0
+--		 EXECUTE [dbo].[PG_SK_HOJA_EMPAQUE] 0,139, 'IRVI02' , 'JLI' , '0059' , 'PJLFCRLMCKTX7' , '0'
+--		 EXECUTE [dbo].[PG_SK_HOJA_EMPAQUE] 0,139, 'IRVI02' , 'JLI' , '0059' , 'PJLFCRL' , '0' 
 CREATE PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO_U]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -865,6 +931,9 @@ CREATE PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO_U]
 	-- ===========================
 	@PP_REVISION_HOJA_EMPAQUE		INT
 AS
+	
+	SET		@PP_ITEM_P	= LEFT(LTRIM(RTRIM(@PP_ITEM_P)),7)
+	
 	DECLARE	@VP_TA_ITEM_P		AS TABLE
 	(	TA_ITEM_P				VARCHAR(50)		)
 
@@ -1164,7 +1233,8 @@ CREATE PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_CAPA]
 	@PP_ITEM_P						VARCHAR(25),
 	-- ===========================
 	@PP_REVISION_HOJA_EMPAQUE		INT
-AS
+AS	
+	SET		@PP_ITEM_P	= LEFT(LTRIM(RTRIM(@PP_ITEM_P)),7)
 	-- ///////////////////////////////////////////
 		DECLARE @TA_HOJA_EMPAQUE_CAPA	AS TABLE	
 		(	TA_K_HOJA_EMPAQUE_CAPA				INT		NOT NULL,
@@ -1389,7 +1459,9 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_
 	DROP PROCEDURE [dbo].[PG_SK_HOJA_EMPAQUE]
 GO
 --		 EXECUTE [dbo].[PG_SK_HOJA_EMPAQUE] 0,139, 'MAGN03' , 'WD2' , '0016' , 'PW2RB60', 0
---		 EXECUTE [dbo].[PG_SK_HOJA_EMPAQUE] 0,139, 'MAGN02' , 'WAL' , '0014' , 'PWALBRR', 0
+--		 EXECUTE [dbo].[PG_SK_HOJA_EMPAQUE] 0,139, 'MAGN02' , 'WAL' , '0014' , 'PWALBRR', 0				
+ --		 EXECUTE [dbo].[PG_SK_HOJA_EMPAQUE] 0,139, 'IRVI02' , 'JLI' , '0059' , 'PJLFBR2MCKTX7' , '0' 
+ --		 EXECUTE [dbo].[PG_SK_HOJA_EMPAQUE] 0,139, 'IRVI02' , 'JLI' , '0059' , 'PJLFBR2' , '0' 
 CREATE PROCEDURE [dbo].[PG_SK_HOJA_EMPAQUE]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -1406,9 +1478,11 @@ AS
 			,@K_ARCUSFIL_PROGRAM	INT
 			,@CB_ARCUSFIL_PROGRAM	VARCHAR(250)
 
-	SELECT	@CB_ARCUSFIL_PROGRAM	= RTRIM(LTRIM(PROD_CAT_DESC))
-	FROM	ARCUSFIL_PROGRAM_MODEL	(NOLOCK)
+	SELECT	@CB_ARCUSFIL_PROGRAM		= RTRIM(LTRIM(PROD_CAT_DESC))
+	FROM	ARCUSFIL_PROGRAM_MODEL		(NOLOCK)
 	WHERE	S_ARCUSFIL_PROGRAM_MODEL	= @PP_MODELNO
+	
+	SET		@PP_ITEM_P	= LEFT(LTRIM(RTRIM(@PP_ITEM_P)),7)
 
 	SELECT		TOP (1)
 				-- =============================	 
@@ -1881,7 +1955,9 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 
 	
 	DECLARE @PP_NO_VERSION_ANTERIOR					INT		=  @PP_NO_VERSION - 1
-	DECLARE	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR		AS NVARCHAR(MAX)	=	'\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE\'
+	DECLARE	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR				AS NVARCHAR(MAX)	=	'\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE\'
+	DECLARE	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE		AS NVARCHAR(MAX)	=	'\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE\REPORTES\'
+
 															 
 	DECLARE	@VP_TA_HOJA_NUEVA					AS TABLE
 	(		TA_ITEM_NO							VARCHAR(50),
@@ -1988,10 +2064,7 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 			TA_REVISION_HOJA_EMPAQUE			INT,
 			TA_ITEM_P							VARCHAR(50),
 			TA_TIPO_CAMBIO						INT,
-			TA_ITEM_U							VARCHAR(50)
-
-	)
-
+			TA_ITEM_U							VARCHAR(50)		)
 	--IF @PP_NO_VERSION > 1
 	--BEGIN
 		DECLARE CU_CURSOR	CURSOR LOCAL STATIC READ_ONLY FORWARD_ONLY FOR
@@ -2172,10 +2245,40 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 														'Verifique....'
 					RAISERROR (@VP_MENSAJE, 16, 1 ) 
 				END						
+	
+				INSERT INTO HOJA_EMPAQUE_REGISTRO_CORREO
+				(	[CUS_NO]	,	[MODELNO]			,
+					[VERSIONNO]	,
+					-- ============================
+					[ITEM_NO]	,	[CUSTOMER_ITEM_NO]	,
+					[D_ITEM_NO]	,	[U_ITEM]			,
+					[D_TIPO_CAMBIO_KIT]		,
+					[K_TIPO_MOVIMIENTO]		)
+				SELECT
+					@VP_CU_CUS_NO		,	@VP_CU_MODELNO			,	
+					@VP_CU_VERSIONNO	,
+					-- ============================
+					@VP_CU_ITEM_NO		,	@VP_CU_CUSTOMER_ITEM_NO	,
+					@VP_CU_D_ITEM_NO	,	@VP_U_ITEM				,
+					--	//	#0: SIN CAMBIOS,	#1: DIMENSIONES,	#2: PROCESOS_ESPECIALES,	#3: VARIOS_CAMBIOS, #4 REVISIÓN	,	#5 NUEVO KIT
+					-- ================================================================================================================
+					(	CASE	
+							WHEN	@VP_CU_K_TIPO_CAMBIO_KIT	= 0	THEN	'SIN CAMBIOS'
+							WHEN	@VP_CU_K_TIPO_CAMBIO_KIT	= 1	THEN	'CAMBIOS EN #PATRONES / ÁREA(NET-GROSS)'
+							WHEN	@VP_CU_K_TIPO_CAMBIO_KIT	= 5	THEN	'KIT NUEVO'
+					END		),
+					-- ================================================================================================================
+					1	--	K_TIPO_MOVIMIENTO: #1 KIT	// #2 PROCESOS_ESPECIALES	// #3 TOTAL_PROCESOS_ESPECIALES
+				IF @@ROWCOUNT = 0
+				BEGIN
+					SET @VP_MENSAJE = '[INSERT]: No se insertó el registro. [HERC]# '+ @VP_CU_ITEM_NO + CHAR(13)+CHAR(10) +
+														'Verifique....'
+					RAISERROR (@VP_MENSAJE, 16, 1 ) 
+				END
 				
-			FETCH NEXT FROM  CU_CURSOR INTO    @VP_CU_ITEM_NO				,@VP_CU_K_HOJA_EMPAQUE_STATUS			
+			FETCH NEXT FROM  CU_CURSOR INTO    @VP_CU_ITEM_NO				,@VP_CU_K_HOJA_EMPAQUE_STATUS
 											   -- ============================
-											   ,@VP_CU_CUS_NO				,@VP_CU_MODELNO					,@VP_CU_VERSIONNO						
+											   ,@VP_CU_CUS_NO				,@VP_CU_MODELNO					,@VP_CU_VERSIONNO
 											   -- ============================
 											   ,@VP_CU_COLOR				,@VP_CU_ITEM_P					,@VP_CU_CUSTOMER_ITEM_NO			,@VP_CU_D_ITEM_NO						
 											   -- ============================
@@ -2208,6 +2311,7 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 				@VP_CU_2_REVISION_HOJA_EMPAQUE		INT,
 				@VP_CU_2_K_TIPO_CAMBIO_KIT			INT,
 				@VP_CU_2_ITEM_U						VARCHAR(50)
+		
 		--DECLARE @VP_TA_RUTAS_IMAGEN		AS TABLE
 		--(	TA_RUTA_SERVR		NVARCHAR(MAX),
 		--	TA_RUTA_LOCAL		NVARCHAR(MAX),
@@ -2221,7 +2325,7 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 			WHILE @@FETCH_STATUS=0
 			BEGIN
 			--	//	#0: SIN CAMBIOS,	#1: DIMENSIONES,	#2: PROCESOS_ESPECIALES,	#3: VARIOS_CAMBIOS, #4 REVISIÓN	,	#5 NUEVO KIT
-				IF @VP_CU_K_TIPO_CAMBIO_KIT IN (0)
+				IF @VP_CU_2_K_TIPO_CAMBIO_KIT IN (0)
 				BEGIN
 					
 					DECLARE	@VP_RUTA_CAPA_NUEVA	NVARCHAR(MAX)	= LTRIM(RTRIM(@VP_CU_2_CUS_NO)) +'\'+ LTRIM(RTRIM(@VP_CU_2_MODELNO)) +'\'+ LTRIM(RTRIM(@VP_CU_2_VERSIONNO)) + '\'
@@ -2285,13 +2389,14 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 					AND		VERSIONNO				= @PP_NO_VERSION_ANTERIOR
 					AND		REVISION_HOJA_EMPAQUE	= @VP_CU_2_REVISION_HOJA_EMPAQUE
 					AND		ITEM_P					= @VP_CU_2_ITEM_P
-					--IF @@ROWCOUNT = 0
-					--BEGIN
-					--	SET @VP_MENSAJE = '[INSERT]: No se insertó el registro. [HECP]# '+ @VP_CU_2_ITEM_P + CHAR(13)+CHAR(10) + 'Verifique....'
-					--	RAISERROR (@VP_MENSAJE, 16, 1 ) 
-					--END
-					--ELSE
-					--BEGIN
+					IF @@ROWCOUNT = 0
+					BEGIN
+						SET @VP_MENSAJE = '[INSERT]: No se insertó el registro. [HECP]# '+ @VP_CU_2_ITEM_P + CHAR(13)+CHAR(10) + 'Verifique....'
+						RAISERROR (@VP_MENSAJE, 16, 1 ) 
+					END
+					ELSE
+					BEGIN
+						--	PARA EL REGISTRO NORMAL.
 						--	SÓLO CUANDO EL KIT NO SUFRE CAMBIOS SE REALIZA LA COPIA DE LA IMAGEN. EN CASO CONTRARIO SERÁ NECESARIO INGRESARLA DESDE EL FRONT.
 						INSERT INTO HOJA_EMPAQUE_RUTAS_IMAGEN	--@VP_TA_RUTAS_IMAGEN
 						(	[CUS_NO]		,
@@ -2314,9 +2419,34 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 							SET @VP_MENSAJE='El registro de la ruta no fue ingresado. [HECI# '+CONVERT(VARCHAR(10),@VP_CU_2_ITEM_P) + ']'
 							RAISERROR (@VP_MENSAJE, 16, 1 ) 
 						END
-					--END
+						--	PARA LOS REPORTES DE IMPRESIÓN.
+						--	SÓLO CUANDO EL KIT NO SUFRE CAMBIOS SE REALIZA LA COPIA DE LA IMAGEN. EN CASO CONTRARIO SERÁ NECESARIO INGRESARLA DESDE EL FRONT.
+						INSERT INTO HOJA_EMPAQUE_RUTAS_IMAGEN	--@VP_TA_RUTAS_IMAGEN
+						(	[CUS_NO]		,
+							[MODELNO]		,
+							[VERSIONNO]		,
+						-- ============================
+							[RUTA_SERVR]	,	
+							[RUTA_LOCAL]	,
+							[CREAR_CARP]	)
+						VALUES
+						(	@PP_S_CUSTOMER	 ,
+							@PP_S_MODEL		 ,
+							@PP_NO_VERSION	 ,
+						-- ============================							
+							@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE + @VP_RUTA_CAPA_NUEVA + @VP_CAPA_IMAGEN + '.PNG'	,		--'',
+							@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE + @VP_RUTA_CAPA_ANTER + @VP_CAPA_IMAGEN + '.PNG'	,		--'',
+							@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE	+ @VP_RUTA_CAPA_NUEVA	)									--'')
+						IF @@ROWCOUNT = 0
+						BEGIN
+							SET @VP_MENSAJE='El registro de la ruta no fue ingresado. [HECI# '+CONVERT(VARCHAR(10),@VP_CU_2_ITEM_P) + ']'
+							RAISERROR (@VP_MENSAJE, 16, 1 ) 
+						END
+
+					END
+					
 				END
-				ELSE IF @VP_CU_K_TIPO_CAMBIO_KIT IN (1)
+				ELSE IF @VP_CU_2_K_TIPO_CAMBIO_KIT IN (1)
 				BEGIN
 					INSERT INTO [dbo].[HOJA_EMPAQUE_CAPA]
 					(		 [CUS_NO]	,[MODELNO]	,[VERSIONNO]
@@ -2344,8 +2474,9 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 						SET @VP_MENSAJE = '[INSERT]: No se insertó el registro. [HECP]# '+ @VP_CU_2_ITEM_P + CHAR(13)+CHAR(10) + 'Verifique....'
 						RAISERROR (@VP_MENSAJE, 16, 1 ) 
 					END
+					
 				END
-				ELSE IF @VP_CU_K_TIPO_CAMBIO_KIT IN (5)
+				ELSE IF @VP_CU_2_K_TIPO_CAMBIO_KIT IN (5)
 				BEGIN
 					INSERT INTO [dbo].[HOJA_EMPAQUE_CAPA]
 					(		 [CUS_NO]	,[MODELNO]	,[VERSIONNO]
@@ -2368,6 +2499,7 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 						SET @VP_MENSAJE = '[INSERT]: No se insertó el registro. [HECP]# '+ @VP_CU_2_ITEM_P + CHAR(13)+CHAR(10) + 'Verifique....'
 						RAISERROR (@VP_MENSAJE, 16, 1 ) 
 					END
+				
 				END
 			FETCH NEXT FROM  CU_CURSOR_CAPA INTO    @VP_CU_2_ITEM_P	,@VP_CU_2_CUS_NO	,@VP_CU_2_MODELNO	,@VP_CU_2_VERSIONNO	,@VP_CU_2_REVISION_HOJA_EMPAQUE	,@VP_CU_2_K_TIPO_CAMBIO_KIT,	@VP_CU_2_ITEM_U
 		END
@@ -2482,7 +2614,7 @@ DECLARE	 @VP_CU_ITEM_NO							VARCHAR(50)
 
 	SET	@VP_VERSION_ANTERIOR	= @PP_NO_VERSION  - 1
 
-	DECLARE	@VP_TA_HOJA_PROCESO						AS TABLE
+	DECLARE	@VP_TA_HOJA_PROCESO					AS TABLE
 	(		TA_ITEM_NO							VARCHAR(50),	
 			-- ============================
 			TA_CUS_NO							VARCHAR(6),
@@ -2519,40 +2651,6 @@ AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	REVISION_HOJA_EMPAQU
 															AND		HOJA_EMPAQUE.MODELNO			= @PP_S_MODEL			--	
 															AND		HOJA_EMPAQUE.VERSIONNO			= @VP_VERSION_ANTERIOR	--
 															AND		HOJA_EMPAQUE.L_REVISION_ACTIVA	= 1		)
-
---SELECT	DISTINCT	(LEFT(HOJA_EMPAQUE.ITEM_NO,7)) AS IT,
---	-- ============================
---		SPITMIDX_SQL.CUS_NO,
---		SPITMIDX_SQL.MODELNO,
---		SPITMIDX_SQL.VERSIONNO,
---		0,
---	-- ============================
---		K_PROCESS,
---		(CASE
---			WHEN	K_PROCESS IN (2,8,9,11,12,13)	THEN	1
---			WHEN	K_PROCESS IN (3,10)				THEN	2
---			WHEN	K_PROCESS IN (5,14,15)			THEN	3
---			ELSE	0
---		END) AS K_PROCESO_SIMBOLO,		
---		(CASE
---			WHEN	K_PROCESS IN (1,4,6,7)			THEN	0
---			ELSE	1
---		END)	AS L_HOJA_EMPAQUE_PROCESO,
---	-- ============================
---		D_PROCESS
---FROM	SPITMIDX_SQL	(NOLOCK)
---INNER JOIN HOJA_EMPAQUE	(NOLOCK)	ON HOJA_EMPAQUE.CUS_NO	= SPITMIDX_SQL.CUS_NO
---AND		HOJA_EMPAQUE.MODELNO	= SPITMIDX_SQL.MODELNO
---AND		HOJA_EMPAQUE.VERSIONNO	= SPITMIDX_SQL.VERSIONNO
---AND		HOJA_EMPAQUE.ITEM_NO	= SPITMIDX_SQL.ITEM_NO_KIT
---WHERE	SPITMIDX_SQL.CUS_NO		= @PP_S_CUSTOMER		--	'MAGN03'
---AND		SPITMIDX_SQL.MODELNO	= @PP_S_MODEL			--	'WD2'
---AND		SPITMIDX_SQL.VERSIONNO	= @VP_VERSION_ANTERIOR	--	'0015'
---ORDER BY SPITMIDX_SQL.CUS_NO,
---		SPITMIDX_SQL.MODELNO,
---		SPITMIDX_SQL.VERSIONNO,
---		IT DESC
-
 
 	DECLARE CU_CURSOR	CURSOR LOCAL STATIC READ_ONLY FORWARD_ONLY FOR
 		SELECT	DISTINCT	(LEFT(HOJA_EMPAQUE.ITEM_NO,7)) AS IT,
@@ -2622,8 +2720,7 @@ AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	REVISION_HOJA_EMPAQU
 						--AND		TA_VERSIONNO	= @VP_CU_VERSIONNO
 						AND		TA_ITEM_NO		= @VP_CU_ITEM_NO	
 						AND		TA_K_PROCESO	= @VP_CU_K_PROCESO		)	<>	@VP_CU_D_PROCESO
-				BEGIN
-					
+				BEGIN					
 					SET	@VP_CU_D_PROCESO				= @VP_D_PROCESS
 				END
 				ELSE
@@ -2637,10 +2734,59 @@ AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	REVISION_HOJA_EMPAQU
 																	AND		TA_K_PROCESO	= @VP_CU_K_PROCESO	)	,	0 )
 					
 					SET	@VP_CU_L_HOJA_EMPAQUE_PROCESO	= @VP_L_HOJA_EMPAQUE_PROCESO
-				
+					
+					INSERT INTO HOJA_EMPAQUE_REGISTRO_CORREO
+					(	[CUS_NO]	,	[MODELNO]			,
+						[VERSIONNO]	,
+						-- ============================
+						[ITEM_NO]	,	[CUSTOMER_ITEM_NO]	,
+						[D_ITEM_NO]	,	[U_ITEM]			,
+						[D_TIPO_CAMBIO_KIT]		,
+						[K_TIPO_MOVIMIENTO]		)
+					SELECT
+						@VP_CU_CUS_NO		,	@VP_CU_MODELNO	,	
+						@VP_CU_VERSIONNO	,
+						-- ============================
+						@VP_CU_ITEM_NO		,	''				,	-- @VP_CU_CUSTOMER_ITEM_NO	,
+						''					,	''				,	-- @VP_CU_D_ITEM_NO	,	@VP_U_ITEM				,
+						-- ================================================================================================================
+						'CAMBIO DE NOMBRE DE PROCESO ESPECIAL'	,
+						-- ================================================================================================================
+						2	--	K_TIPO_MOVIMIENTO: #1 KIT	// #2 PROCESOS_ESPECIALES	// #3 TOTAL_PROCESOS_ESPECIALES
+					IF @@ROWCOUNT = 0
+					BEGIN
+						SET @VP_MENSAJE = '[INSERT]: No se insertó el registro. [HEpr]# '+ @VP_CU_ITEM_NO + CHAR(13)+CHAR(10) +	'Verifique....'
+						RAISERROR (@VP_MENSAJE, 16, 1 ) 
+					END
+
 				END
 			END
-
+			ELSE
+			BEGIN
+				INSERT INTO HOJA_EMPAQUE_REGISTRO_CORREO
+				(	[CUS_NO]	,	[MODELNO]			,
+					[VERSIONNO]	,
+					-- ============================
+					[ITEM_NO]	,	[CUSTOMER_ITEM_NO]	,
+					[D_ITEM_NO]	,	[U_ITEM]			,
+					[D_TIPO_CAMBIO_KIT]		,
+					[K_TIPO_MOVIMIENTO]		)
+				SELECT
+					@VP_CU_CUS_NO		,	@VP_CU_MODELNO	,	
+					@VP_CU_VERSIONNO	,
+					-- ============================
+					@VP_CU_ITEM_NO		,	''				,	-- @VP_CU_CUSTOMER_ITEM_NO	,
+					''					,	''				,	-- @VP_CU_D_ITEM_NO	,	@VP_U_ITEM				,
+					-- ================================================================================================================
+					'NUEVO PROCESO ESPECIAL'	,
+					-- ================================================================================================================
+					2	--	K_TIPO_MOVIMIENTO: #1 KIT	// #2 PROCESOS_ESPECIALES	// #3 TOTAL_PROCESOS_ESPECIALES
+				IF @@ROWCOUNT = 0
+				BEGIN
+					SET @VP_MENSAJE = '[INSERT]: No se insertó el registro. [HEpr]# '+ @VP_CU_ITEM_NO + CHAR(13)+CHAR(10) +	'Verifique....'
+					RAISERROR (@VP_MENSAJE, 16, 1 ) 
+				END									   
+			END										   
 
 					INSERT INTO [HOJA_EMPAQUE_PROCESO] (
 								--[K_HOJA_EMPAQUE]					,
@@ -2686,6 +2832,62 @@ AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	REVISION_HOJA_EMPAQU
 		END
 	CLOSE		CU_CURSOR
 	DEALLOCATE	CU_CURSOR	
+
+	DECLARE @VP_LEYENDA_INSERTA AS VARCHAR(500)	= ''
+
+	IF (ISNULL(	(	SELECT	COUNT(K_HOJA_EMPAQUE_PROCESO)
+					FROM	HOJA_EMPAQUE_PROCESO	(NOLOCK)
+					WHERE	HOJA_EMPAQUE_PROCESO.CUS_NO		= @PP_S_CUSTOMER		--	
+					AND		HOJA_EMPAQUE_PROCESO.MODELNO	= @PP_S_MODEL			--	
+					AND		HOJA_EMPAQUE_PROCESO.VERSIONNO	= @VP_VERSION_ANTERIOR	--	
+					AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	REVISION_HOJA_EMPAQUE
+																				FROM	HOJA_EMPAQUE	
+																				WHERE	HOJA_EMPAQUE.CUS_NO				= @PP_S_CUSTOMER		--	
+																				AND		HOJA_EMPAQUE.MODELNO			= @PP_S_MODEL			--	
+																				AND		HOJA_EMPAQUE.VERSIONNO			= @VP_VERSION_ANTERIOR	--
+																				AND		HOJA_EMPAQUE.L_REVISION_ACTIVA	= 1		))	,0)	)	<>
+	(ISNULL( (		SELECT	COUNT(K_HOJA_EMPAQUE_PROCESO)
+					FROM	HOJA_EMPAQUE_PROCESO	(NOLOCK)
+					WHERE	HOJA_EMPAQUE_PROCESO.CUS_NO		= @PP_S_CUSTOMER		--	
+					AND		HOJA_EMPAQUE_PROCESO.MODELNO	= @PP_S_MODEL			--	
+					AND		HOJA_EMPAQUE_PROCESO.VERSIONNO	= @VP_VERSION_ANTERIOR	--	
+					AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	REVISION_HOJA_EMPAQUE
+																				FROM	HOJA_EMPAQUE	
+																				WHERE	HOJA_EMPAQUE.CUS_NO				= @PP_S_CUSTOMER		--	
+																				AND		HOJA_EMPAQUE.MODELNO			= @PP_S_MODEL			--	
+																				AND		HOJA_EMPAQUE.VERSIONNO			= @PP_NO_VERSION	--
+																				AND		HOJA_EMPAQUE.L_REVISION_ACTIVA	= 1	))	,0)	)
+	BEGIN		
+		SET	@VP_LEYENDA_INSERTA	= 	'EL MODELO SUFRIÓ CAMBIOS'
+	END
+	ELSE
+	BEGIN
+		SET	@VP_LEYENDA_INSERTA	= 	'SIN CAMBIOS EN CANTIDAD DE PROCESOS ESPECIALES'
+	END
+
+		INSERT INTO HOJA_EMPAQUE_REGISTRO_CORREO
+		(	[CUS_NO]	,	[MODELNO]			,
+			[VERSIONNO]	,
+			-- ============================
+			[ITEM_NO]	,	[CUSTOMER_ITEM_NO]	,
+			[D_ITEM_NO]	,	[U_ITEM]			,
+			[D_TIPO_CAMBIO_KIT]		,
+			[K_TIPO_MOVIMIENTO]		)
+		SELECT
+			@PP_S_CUSTOMER		,	@PP_S_MODEL		,
+			@PP_NO_VERSION		,
+			-- ============================
+			''					,	''				,	-- @VP_CU_CUSTOMER_ITEM_NO	,
+			''					,	''				,	-- @VP_CU_D_ITEM_NO	,	@VP_U_ITEM				,
+			-- ================================================================================================================
+			@VP_LEYENDA_INSERTA	,
+			-- ================================================================================================================
+			3	--	K_TIPO_MOVIMIENTO: #1 KIT	// #2 PROCESOS_ESPECIALES	// #3 TOTAL_PROCESOS_ESPECIALES
+		IF @@ROWCOUNT = 0
+		BEGIN
+			SET @VP_MENSAJE = '[INSERT]: No se insertó el registro. [HEpr]# '+ @VP_CU_ITEM_NO + CHAR(13)+CHAR(10) +	'Verifique....'
+			RAISERROR (@VP_MENSAJE, 16, 1 ) 
+		END	
 GO
 
 
@@ -2721,7 +2923,7 @@ GO
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> LIMPIA LA TABLA DE LOS REGISTRO RECIEN
 -- //						COPIADOS A LA NUEVA VERSIÓN.
--- // SISTEMA DE PRODUCTIVO							20220117
+-- // SISTEMA DE PRODUCTIVO			20220117
 -- //////////////////////////////////////////////////////////////
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_PR_LIMPIAR_RUTA_IMAGEN]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_PR_LIMPIAR_RUTA_IMAGEN]
@@ -2738,11 +2940,16 @@ CREATE PROCEDURE [dbo].[PG_PR_LIMPIAR_RUTA_IMAGEN]
 AS
 DECLARE	 @VP_MENSAJE			NVARCHAR(MAX)
 
-	DELETE	HOJA_EMPAQUE_RUTAS_IMAGEN
-	WHERE	CUS_NO		= @PP_S_CUSTOMER	
-	AND		MODELNO		= @PP_S_MODEL		
-	AND		VERSIONNO	= @PP_NO_VERSION
-
+	--DELETE	HOJA_EMPAQUE_RUTAS_IMAGEN
+	--WHERE	CUS_NO		= @PP_S_CUSTOMER	
+	--AND		MODELNO		= @PP_S_MODEL		
+	--AND		VERSIONNO	= @PP_NO_VERSION
+			
+	--DELETE	
+	--FROM	DATA_02.DBO.HOJA_EMPAQUE_REGISTRO_CORREO
+	--WHERE	CUS_NO				= @PP_S_CUSTOMER
+	--AND		MODELNO				= @PP_S_MODEL		
+	--AND		VERSIONNO			= @PP_NO_VERSION
 GO
 
 
@@ -2846,7 +3053,8 @@ BEGIN TRY
 	-- =======================================================================================================================
 	--	DECLARACIÓN DE VARIABLES DE USO GENERAL.
 	-- =======================================================================================================================	
-	DECLARE	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR		AS NVARCHAR(MAX)	=	'\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE\'--	'\\10.1.1.5\documents\IT\001_DEVELOPER_FILES\APQP\AV_HE\'
+	DECLARE	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR				AS NVARCHAR(MAX)	=	'\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE\'--	'\\10.1.1.5\documents\IT\001_DEVELOPER_FILES\APQP\AV_HE\'
+	DECLARE	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE		AS NVARCHAR(MAX)	=	'\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE\REPORTES\'
 	DECLARE @VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO		AS NVARCHAR(MAX)	=	LTRIM(RTRIM(@PP_CUS_NO)) +'\'+ LTRIM(RTRIM(@PP_MODELNO)) +'\'+ LTRIM(RTRIM(@PP_VERSIONNO)) + '\'
 	DECLARE @VP_RUTA_HOJA_EMPAQUE_CAPA_IMAGEN		AS NVARCHAR(MAX)	=	''
 	DECLARE @VP_RUTA_HOJA_EMPAQUE_CAPA_EXTENSION	AS NVARCHAR(MAX)	=	'.PNG'
@@ -3251,8 +3459,23 @@ BEGIN TRY
 							BEGIN
 								SET @VP_MENSAJE='El registro de la ruta no fue ingresado. [KHEU# '+CONVERT(VARCHAR(10),@VP_VALOR_K_HOJA)+'-'+CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)+']'
 								RAISERROR (@VP_MENSAJE, 16, 1 ) 
-							END				  
-							
+							END
+														
+							INSERT INTO @VP_TA_RUTAS_IMAGEN
+							(		 TA_RUTA_SERVR		,TA_RUTA_LOCAL		
+									,TA_CREAR_CARP		,TA_L_CAMBIO	,MENSAJE	)
+							SELECT	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE		+	
+									@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO		+
+									@VP_CU_U_ITEM	+ '_' + FORMAT(@PP_REVISION_HOJA_EMPAQUE,'000') + '_' + CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA) +										
+									@VP_RUTA_HOJA_EMPAQUE_CAPA_EXTENSION
+									,@VP_VALOR_RUTA_N	,@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO
+									,1					,''
+							IF @@ROWCOUNT = 0
+							BEGIN
+								SET @VP_MENSAJE='El registro de la ruta no fue ingresado. [KHEU# '+CONVERT(VARCHAR(10),@VP_VALOR_K_HOJA)+'-'+CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)+']'
+								RAISERROR (@VP_MENSAJE, 16, 1 ) 
+							END
+
 						FETCH NEXT FROM  CU_CURSOR_U_ITEM INTO  @VP_CU_ITEM_P, @VP_CU_U_ITEM
 						END
 						CLOSE		CU_CURSOR_U_ITEM
@@ -3292,6 +3515,22 @@ BEGIN TRY
 						VALUES
 						(	 @VP_VALOR_RUTA_C	,@VP_VALOR_RUTA_N
 							,@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO
+							,@VP_L_CAMBIO
+							,''			)
+						IF @@ROWCOUNT = 0
+						BEGIN
+							SET @VP_MENSAJE='El registro de la ruta no fue ingresado. [KHE# '+CONVERT(VARCHAR(10),@VP_VALOR_K_HOJA)+'-'+CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)+']'
+							RAISERROR (@VP_MENSAJE, 16, 1 ) 
+						END	
+						
+						INSERT INTO @VP_TA_RUTAS_IMAGEN
+						(	 TA_RUTA_SERVR		,TA_RUTA_LOCAL	
+							,TA_CREAR_CARP
+							,TA_L_CAMBIO
+							,MENSAJE	)
+						VALUES
+						(	 @VP_VALOR_RUTA_C	,@VP_VALOR_RUTA_N
+							,@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO
 							,@VP_L_CAMBIO
 							,''			)
 						IF @@ROWCOUNT = 0
@@ -3421,6 +3660,22 @@ BEGIN TRY
 								SET @VP_MENSAJE='El registro de la ruta no fue ingresado. [KHEU# '+CONVERT(VARCHAR(10),@VP_VALOR_K_HOJA)+'-'+CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)+']'
 								RAISERROR (@VP_MENSAJE, 16, 1 ) 
 							END
+							
+							INSERT INTO @VP_TA_RUTAS_IMAGEN
+							(		 TA_RUTA_SERVR		,TA_RUTA_LOCAL		
+									,TA_CREAR_CARP		,TA_L_CAMBIO	,MENSAJE	)
+							SELECT	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE		+	
+									@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO		+
+									TA_U_ITEM	+ '_' + FORMAT(@PP_REVISION_HOJA_EMPAQUE,'000') + '_' + CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA) +										
+									@VP_RUTA_HOJA_EMPAQUE_CAPA_EXTENSION
+									,@VP_VALOR_RUTA_N	,@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO
+									,1					,''
+							FROM	@TA_U_ITEMS_X_P
+							IF @@ROWCOUNT = 0
+							BEGIN
+								SET @VP_MENSAJE='El registro de la ruta no fue ingresado. [KHEU# '+CONVERT(VARCHAR(10),@VP_VALOR_K_HOJA)+'-'+CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)+']'
+								RAISERROR (@VP_MENSAJE, 16, 1 ) 
+							END
 
 						FETCH NEXT FROM  CU_CURSOR_U_ITEM INTO  @VP_CU_ITEM_P
 						END
@@ -3489,6 +3744,22 @@ BEGIN TRY
 						VALUES
 						(	@VP_RUTA_IMAGEN		,	@VP_VALOR_RUTA_N
 							,@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO
+							,1
+							,''			)
+						IF @@ROWCOUNT = 0
+						BEGIN
+							SET @VP_MENSAJE='El registro de la ruta no fue ingresado. [KHE# '+CONVERT(VARCHAR(10),@VP_VALOR_K_HOJA)+'-'+CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)+']'
+							RAISERROR (@VP_MENSAJE, 16, 1 ) 
+						END	
+						
+						INSERT INTO @VP_TA_RUTAS_IMAGEN
+						(	 TA_RUTA_SERVR		,TA_RUTA_LOCAL		
+							,TA_CREAR_CARP
+							,TA_L_CAMBIO
+							,MENSAJE	)
+						VALUES
+						(	@VP_RUTA_IMAGEN		,	@VP_VALOR_RUTA_N
+							,@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO
 							,1
 							,''			)
 						IF @@ROWCOUNT = 0
@@ -3630,7 +3901,22 @@ BEGIN TRY
 							SET @VP_MENSAJE='El registro de la ruta no fue ingresado. [KHEU# '+CONVERT(VARCHAR(10),@VP_VALOR_K_HOJA)+'-'+CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)+']'
 							RAISERROR (@VP_MENSAJE, 16, 1 ) 
 						END
-
+						
+						INSERT INTO @VP_TA_RUTAS_IMAGEN
+						(		 TA_RUTA_SERVR		,TA_RUTA_LOCAL		
+								,TA_CREAR_CARP		,TA_L_CAMBIO	,MENSAJE	)
+						SELECT	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE		+	
+								@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO		+
+								TA_U_ITEM	+ '_' + FORMAT(@PP_REVISION_HOJA_EMPAQUE,'000') + '_' + CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA) +										
+								@VP_RUTA_HOJA_EMPAQUE_CAPA_EXTENSION
+								,@VP_VALOR_RUTA_N	,@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO
+								,1					,''
+						FROM	@TA_U_ITEMS
+						IF @@ROWCOUNT = 0
+						BEGIN
+							SET @VP_MENSAJE='El registro de la ruta no fue ingresado. [KHEU# '+CONVERT(VARCHAR(10),@VP_VALOR_K_HOJA)+'-'+CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)+']'
+							RAISERROR (@VP_MENSAJE, 16, 1 ) 
+						END
 					FETCH NEXT FROM  CU_CURSOR_U_ITEM INTO  @VP_CU_ITEM_P
 					END
 					CLOSE		CU_CURSOR_U_ITEM
@@ -3695,6 +3981,22 @@ BEGIN TRY
 					VALUES
 					(	@VP_RUTA_IMAGEN		,	@VP_VALOR_RUTA_N
 						,@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO
+						,1
+						,''			)
+					IF @@ROWCOUNT = 0
+					BEGIN
+						SET @VP_MENSAJE='El registro de la ruta no fue ingresado. [KHE# '+CONVERT(VARCHAR(10),@VP_VALOR_K_HOJA)+'-'+CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)+']'
+						RAISERROR (@VP_MENSAJE, 16, 1 ) 
+					END	
+					
+					INSERT INTO @VP_TA_RUTAS_IMAGEN
+					(	 TA_RUTA_SERVR		,TA_RUTA_LOCAL		
+						,TA_CREAR_CARP
+						,TA_L_CAMBIO
+						,MENSAJE	)
+					VALUES
+					(	@VP_RUTA_IMAGEN		,	@VP_VALOR_RUTA_N
+						,@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO
 						,1
 						,''			)
 					IF @@ROWCOUNT = 0
@@ -4394,648 +4696,258 @@ AS
 -- /////////////////////////////////////////////////////////////////////
 GO
 
--- //////////////////////////////////////////////////////////////
--- // STORED PROCEDURE ---> MUESTRA EL COLOR Y NÚMERO DE PARTE CLIENTE DEL P SELECCIONADO.
--- //////////////////////////////////////////////////////////////
---IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_HOJA_EMPAQUE_COLORES]') AND type in (N'P', N'PC'))
---	DROP PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_COLORES]
---GO
-----		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_COLORES] 0,139, 'DAIM05' , 'WDK' , '8' , 'PL2ARLH',	0
-----		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_COLORES] 0,139, 'FAUR01'	, 'FW2'	, '11',	'PWSSC20',	0
-----		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_COLORES] 0,139, 'FAUR01'	, 'FW2'	, '11',	'PWSFCL2',	0
---CREATE PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_COLORES]
---	@PP_K_SISTEMA_EXE				INT,
---	@PP_K_USUARIO_ACCION			INT,
---	-- ===========================
---	@PP_CUS_NO						VARCHAR(20),
---	@PP_MODELNO						VARCHAR(25),
---	@PP_VERSIONNO					INT,
---	@PP_ITEM_P						VARCHAR(25),
---	-- ===========================
---	@PP_REVISION_HOJA_EMPAQUE		INT
---AS
---	SELECT	COLOR, 
---			LTRIM(RTRIM(CUSTOMER_ITEM_NO))	AS CUSTOMER_ITEM_NO
---	FROM	[HOJA_EMPAQUE]						(NOLOCK)
---	WHERE	HOJA_EMPAQUE.ITEM_P					= @PP_ITEM_P
---	AND		HOJA_EMPAQUE.CUS_NO					= @PP_CUS_NO	
---	AND		HOJA_EMPAQUE.MODELNO				= @PP_MODELNO	
---	AND		HOJA_EMPAQUE.VERSIONNO				= @PP_VERSIONNO
---	AND		HOJA_EMPAQUE.REVISION_HOJA_EMPAQUE	= @PP_REVISION_HOJA_EMPAQUE
---	AND		HOJA_EMPAQUE.L_BORRADO	<> 1
---	ORDER	BY CUSTOMER_ITEM_NO		--,COLOR
---GO
+---- //////////////////////////////////////////////////////////////
+---- // STORED PROCEDURE --->	NOTIFICAR CAMBIOS HOJA_EMPAQUE
+---- //							AX: 20220216
+---- ////////////////////////////////////////////////////////////// 
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_NOTIFICAR_HOJA_EMPAQUE]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_NOTIFICAR_HOJA_EMPAQUE]
+GO
+--		EXECUTE  [dbo].[PG_NOTIFICAR_HOJA_EMPAQUE] 	0,139, 'MAGN03','RUA','0039'
+CREATE PROCEDURE [dbo].[PG_NOTIFICAR_HOJA_EMPAQUE]
+	@PP_K_SISTEMA_EXE			INT,
+	@PP_K_USUARIO_ACCION		INT,
+	-- ===========================
+	@PP_S_CUSTOMER				VARCHAR(20),
+	@PP_S_MODEL					VARCHAR(20),
+	@PP_NO_VERSION				VARCHAR(20)
+	-- ===========================
+AS
+DECLARE @VP_MENSAJE NVARCHAR(MAX)
+	DECLARE @VP_SUBJECT			VARCHAR(255) = '[HOJA_EMPAQUE_LIVE] '+ @PP_S_CUSTOMER +' // ' + @PP_S_MODEL + ' (Ver.# ' + @PP_NO_VERSION + ') Live'
+			,@VP_RECIPIENTS		NVARCHAR(MAX)  = ''
+			,@VP_BODY_HTML		NVARCHAR(MAX) 
+			,@VP_K_TIPO_GRUPO_APROBADOR	VARCHAR(15)	=	7000
 
+	SELECT  @VP_RECIPIENTS	=	@VP_RECIPIENTS + ';' + CORREO_USUARIO_PEARL
+	FROM	BD_GENERAL.dbo.USUARIO_PEARL AS USERS  (NOLOCK) 
+	INNER	JOIN	BD_GENERAL.dbo.GRUPO_APROBADOR (NOLOCK) ON GRUPO_APROBADOR.K_USUARIO	= USERS.K_USUARIO_PEARL
+	WHERE	GRUPO_APROBADOR.K_TIPO_GRUPO_APROBADOR			= @VP_K_TIPO_GRUPO_APROBADOR
+	AND		K_ESTATUS_GRUPO_APROBADOR						= 1
 
--- //////////////////////////////////////////////////////////////
--- // STORED PROCEDURE ---> UPDATE / FICHA
--- //////////////////////////////////////////////////////////////
---IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_UP_HOJA_EMPAQUE]') AND type in (N'P', N'PC'))
---	DROP PROCEDURE [dbo].[PG_UP_HOJA_EMPAQUE]
---GO
-----		EXECUTE [dbo].[PG_SK_HOJA_EMPAQUE] 0,139, 'MAGN02' , 'WAL' , '0014' , 'PWALBRR', 0
----- EXECUTE [dbo].[PG_UP_HOJA_EMPAQUE]	0, 139,	'0' , 'DAIM05' , WDK , '8' , 'PL2ARRH' , 'P133124' , '' , '0' , 2 , '' , 1 ,				
-----										'1' , '2' , '\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE\DAIM05\WDK\8\PL2ARRH_000_1.PNG' , 
-----										'\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE\DAIM05\WDK\8\PL2ARRH_000_1.PNG' , 
-----										'8' , '' , '' , '' , '' , ''
-------	EXECUTE [dbo].[PG_UP_HOJA_EMPAQUE]	0, 139, '0' , 'MAGN02' , WAL , '14' , 'PWALBR2' , 'M02516-06' , '' , '0' , 3 , 'FALTA QUE SE REFLEN LOS PATRONES CON KUFNER TK1080' , 6 
-------	, '1/2/3' , '1/1/1' , '\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE\MAGN02\WAL\14\PWALBR2_000_1.PNG/\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE\MAGN02\WAL\14\PWALBR2_000_2.PNG/\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE\MAGN02\WAL\14\PWALBR2_000_3.PNG' 
-------	, '\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE\MAGN02\WAL\14\PWALBR2_000_1.PNG/\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE\MAGN02\WAL\14\PWALBR2_000_2.PNG/\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE\MAGN02\WAL\14\PWALBR2_000_3.PNG' 
-------	, '60/61/62' , '449/446/447/448' , '2/3/7/8' , '1/2/0/1' , '1/1/0/1' , 'MULLER 6MM 6035/AXIS II/SHAVING/KUFNER TK 1080 BLACK' 
---CREATE PROCEDURE [dbo].[PG_UP_HOJA_EMPAQUE]
---	@PP_K_SISTEMA_EXE				INT,
---	@PP_K_USUARIO_ACCION			INT,
---	-- ===========================
---	--@PP_K_HOJA_EMPAQUE				INT,
---	-- ===========================
---	@PP_L_NUEVA_REVISIÓN				INT,
---	-- ============================
---	@PP_CUS_NO							VARCHAR(6),
---	@PP_MODELNO							VARCHAR(3),
---	@PP_VERSIONNO						VARCHAR(5),
---	-- ============================
---	@PP_ITEM_P							VARCHAR(50),	-- ES EL P DEL ITEM_NO
---	-- ============================
---	@PP_CAJA_HOJA_EMPAQUE				VARCHAR (150),
---	@PP_DIBUJO_HOJA_EMPAQUE				VARCHAR (150),
---	@PP_REVISION_HOJA_EMPAQUE			INT,			
---	-- ============================
---	@PP_CANTIDAD_PATRONES				INT,
---	-- ============================
---	@PP_C_HOJA_EMPAQUE					NVARCHAR(MAX),
---	-- ============================
---	@PP_K_HOJA_EMPAQUE_CAPA_DIVISION	INT,
---	---- ============================---- ============================
---	@PP_ARRAY_N_CAPA					NVARCHAR(MAX),
---	@PP_ARRAY_N_PATR					NVARCHAR(MAX),
---	@PP_ARRAY_RUTA_C					NVARCHAR(MAX),
---	@PP_ARRAY_RUTA_N					NVARCHAR(MAX),
---	@PP_ARRAY_K_HOJA					NVARCHAR(MAX),
---	---- ============================---- ============================
---	@PP_ARRAY_K_HE_PROC					NVARCHAR(MAX),
---	@PP_ARRAY_K_PROCESO					NVARCHAR(MAX),
---	@PP_ARRAY_K_P_SIMBO					NVARCHAR(MAX),
---	@PP_ARRAY_L_PROCESO					NVARCHAR(MAX),
---	@PP_ARRAY_D_PROCESO					NVARCHAR(MAX)
---	---- ============================---- ============================
---AS			
---DECLARE  @VP_MENSAJE					NVARCHAR(MAX)
---		,@VP_CANTIDAD_PATRONES			INT	= 0
---		,@VP_CANTIDAD_CAPAS				INT	= 0
---		,@VP_L_CAPAS_COMPLETAS			INT	= 0
----- /////////////////////////////////////////////////////////////////////
---BEGIN TRANSACTION 
---BEGIN TRY
---	-- =======================================================================================================================
---	--	VALIDACIÓN DE CANTIDAD DE PATRONES EN LA HOJA DE EMPAQUE VS CANTIDAD REGISTRADA EN SISTEMA.
---	-- =======================================================================================================================
---	SELECT	TOP (1)
---			@VP_CANTIDAD_PATRONES			= CANTIDAD_PATRONES
---	FROM	HOJA_EMPAQUE					(NOLOCK)
---	WHERE	CUS_NO							= @PP_CUS_NO	
---	AND		MODELNO							= @PP_MODELNO
---	AND		VERSIONNO						= @PP_VERSIONNO
---	-- ============================
---	AND		ITEM_P							= @PP_ITEM_P
---	AND		REVISION_HOJA_EMPAQUE			= @PP_REVISION_HOJA_EMPAQUE
+	SET @VP_RECIPIENTS = SUBSTRING(@VP_RECIPIENTS,2,LEN(@VP_RECIPIENTS))
 
---	SET	@VP_CANTIDAD_CAPAS	= (	CASE
---										WHEN	@PP_K_HOJA_EMPAQUE_CAPA_DIVISION	IN (1)			THEN	1
---										WHEN	@PP_K_HOJA_EMPAQUE_CAPA_DIVISION	IN (2,3)		THEN	2
---										WHEN	@PP_K_HOJA_EMPAQUE_CAPA_DIVISION	IN (4,5,6,7)	THEN	3
---										WHEN	@PP_K_HOJA_EMPAQUE_CAPA_DIVISION	IN (8)			THEN	4
---										ELSE	0
---								END )
+	DECLARE	@VP_CUERPO_CORREO_01	AS NVARCHAR(MAX)	= '',
+			@VP_CUERPO_CORREO_02	AS NVARCHAR(MAX)	= '',
+			@VP_CUERPO_CORREO_03	AS NVARCHAR(MAX)	= ''
 
---	--SELECT	*--COUNT(K_HOJA_EMPAQUE)
---	--FROM	HOJA_EMPAQUE					(NOLOCK)
---	--WHERE	CUS_NO							= 'daim05'	--@PP_CUS_NO	
---	--AND		MODELNO							= 'wdk'	--@PP_MODELNO
---	--AND		VERSIONNO						= '0008'	--@PP_VERSIONNO
---	---- ============================
---	--AND		ITEM_P							= 'pl2arrh'	--@PP_ITEM_P
---	--AND		REVISION_HOJA_EMPAQUE			= '0'		--@PP_REVISION_HOJA_EMPAQUE
+		IF	(	SELECT	COUNT(CUS_NO)
+				FROM	HOJA_EMPAQUE_REGISTRO_CORREO	(NOLOCK)
+				WHERE	CUS_NO				= @PP_S_CUSTOMER
+				AND		MODELNO				= @PP_S_MODEL		
+				AND		VERSIONNO			= @PP_NO_VERSION
+				AND		K_TIPO_MOVIMIENTO	= 1		) <= 0
+		BEGIN
+			SELECT @VP_CUERPO_CORREO_01	= 'No se presentaron cambios en: los Movimientos generales de KITS.'
+		END
+		ELSE
+		BEGIN
+			SELECT @VP_CUERPO_CORREO_01	=	N'<thead>' + 
+												N'<tr>' + 
+												N'<th colspan="5">Movimientos generales de KITS:</th>'			+
+												N'</tr>' + 
+												N'<tr>' +
+												N'	<th width: 10%>   Item				</th>	
+													<th width: 15%>   Customer Part		</th>	
+													<th width: 30%>   Descripción		</th>
+													<th width: 15%>   U Item 			</th>
+													<th width: 30%>   Tipo de Cambio	</th>'		+ 
+												N'</tr>' + 
+											N'</thead>' + 
+											N'<tbody>' + 
+												CAST ( (	 SELECT td = ISNULL([ITEM_NO]				,'----'), '',  
+																	td = ISNULL([CUSTOMER_ITEM_NO]		,'----'), '',  
+																	td = ISNULL([D_ITEM_NO]				,'----'), '',  
+																	td = ISNULL([U_ITEM]				,'----'), '',  
+																	td = ISNULL([D_TIPO_CAMBIO_KIT]		,'----'), ''
+															FROM	HOJA_EMPAQUE_REGISTRO_CORREO	(NOLOCK)
+															WHERE	CUS_NO				= @PP_S_CUSTOMER
+															AND		MODELNO				= @PP_S_MODEL		
+															AND		VERSIONNO			= @PP_NO_VERSION
+															AND		K_TIPO_MOVIMIENTO	= 1
+														FOR XML PATH('tr'), TYPE   
+												) AS NVARCHAR(MAX) ) +  
+											N'</tbody>' + 
+											N'</table>' 
+		END
+
+		IF	(	SELECT	COUNT(CUS_NO)
+				FROM	HOJA_EMPAQUE_REGISTRO_CORREO	(NOLOCK)
+				WHERE	CUS_NO				= @PP_S_CUSTOMER
+				AND		MODELNO				= @PP_S_MODEL		
+				AND		VERSIONNO			= @PP_NO_VERSION
+				AND		K_TIPO_MOVIMIENTO	= 2		) <= 0
+		BEGIN
+			SELECT @VP_CUERPO_CORREO_02	= 'No se presentaron cambios en: los Movimientos de los Procesos Especiales de KITS.'
+		END
+		ELSE
+		BEGIN
+			SELECT @VP_CUERPO_CORREO_02	=	N'<table>' +
+												N'<thead>' + 
+													N'<tr>' + 
+													N'<th colspan="5">Movimientos de los Procesos Especiales de KITS:</th>'			+
+													N'</tr>' + 
+													N'<tr>' +
+													N'	<th width: 10%>   Item				</th>	
+														<th width: 15%>   Customer Part		</th>	
+														<th width: 30%>   Descripción		</th>
+														<th width: 15%>   U Item 			</th>
+														<th width: 30%>   Tipo de Cambio	</th>'		+ 
+													N'</tr>' + 
+												N'</thead>' + 
+												N'<tbody>' + 
+													CAST ( (	 SELECT td = RTRIM(LTRIM([ITEM_NO])), '',  
+																		td = RTRIM(LTRIM([CUSTOMER_ITEM_NO])), '',  
+																		td = RTRIM(LTRIM([D_ITEM_NO])), '',  
+																		td = RTRIM(LTRIM([U_ITEM])), '',  
+																		td = RTRIM(LTRIM([D_TIPO_CAMBIO_KIT])), ''
+																FROM	HOJA_EMPAQUE_REGISTRO_CORREO	(NOLOCK)
+																WHERE	K_TIPO_MOVIMIENTO	= 2
+															FOR XML PATH('tr'), TYPE   
+													) AS NVARCHAR(MAX) ) +  
+												N'</tbody>' + 
+											N'</table>'
+		END
+
+		IF	(	SELECT	COUNT(CUS_NO)
+				FROM	HOJA_EMPAQUE_REGISTRO_CORREO	(NOLOCK)
+				WHERE	CUS_NO				= @PP_S_CUSTOMER
+				AND		MODELNO				= @PP_S_MODEL		
+				AND		VERSIONNO			= @PP_NO_VERSION
+				AND		K_TIPO_MOVIMIENTO	= 3		) <= 0
+		BEGIN
+			SELECT @VP_CUERPO_CORREO_03	= 'No se presentaron cambios en: los Movimientos de los Procesos Especiales de KITS.'
+		END
+		ELSE
+		BEGIN
+			SELECT @VP_CUERPO_CORREO_03	=	N'<table>' +
+											N'<thead>' + 
+												N'<tr>' + 
+												N'<th colspan="1">Movimientos Cantidad de Procesos Especiales:</th>'			+
+												N'</tr>' + 
+												N'<tr>' +
+												--N'	<th width: 10%>   Item				</th>	
+												--	<th width: 15%>   Customer Part		</th>	
+												--	<th width: 30%>   Descripción		</th>
+												--	<th width: 15%>   U Item 			</th>
+												N'	<th width: 30%>   Tipo de Cambio	</th>'		+ 
+												N'</tr>' + 
+											N'</thead>' + 
+											N'<tbody>' + 
+												CAST ( (	 SELECT --td = RTRIM(LTRIM([ITEM_NO])), '',  
+																	--td = RTRIM(LTRIM([CUSTOMER_ITEM_NO])), '',  
+																	--td = RTRIM(LTRIM([D_ITEM_NO])), '',  
+																	--td = RTRIM(LTRIM([U_ITEM])), '',  
+																	td = RTRIM(LTRIM([D_TIPO_CAMBIO_KIT])), ''
+															FROM	HOJA_EMPAQUE_REGISTRO_CORREO	(NOLOCK)
+															WHERE	K_TIPO_MOVIMIENTO	= 3
+														FOR XML PATH('tr'), TYPE   
+												) AS NVARCHAR(MAX) ) +  
+											N'</tbody>' + 
+											N'</table>'
+		END
+
 	
---	IF	(	@VP_CANTIDAD_PATRONES	) <>	@PP_CANTIDAD_PATRONES
---	BEGIN
---		SET @VP_MENSAJE='La cantidad de patrones ingresada no coincide con la registrada en el sistema. [HE#'+CONVERT(VARCHAR(10),@PP_ITEM_P )+'] (' + CONVERT(VARCHAR(10),@VP_CANTIDAD_PATRONES) + ' // '+ CONVERT(VARCHAR(10),@PP_CANTIDAD_PATRONES) +')'
---		RAISERROR (@VP_MENSAJE, 16, 1 ) 
---	END
---	-- =======================================================================================================================
---	--	DECLARACIÓN DE VARIABLES DE USO GENERAL.
---	-- =======================================================================================================================	
---	DECLARE	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR		AS NVARCHAR(MAX)	=	'\\10.1.1.5\documents\Common\APQP\AV_CUSTOMER\AV_HE\'--	'\\10.1.1.5\documents\IT\001_DEVELOPER_FILES\APQP\AV_HE\'
---	DECLARE @VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO		AS NVARCHAR(MAX)	=	LTRIM(RTRIM(@PP_CUS_NO)) +'\'+ LTRIM(RTRIM(@PP_MODELNO)) +'\'+ LTRIM(RTRIM(@PP_VERSIONNO)) + '\'
---	DECLARE @VP_RUTA_HOJA_EMPAQUE_CAPA_IMAGEN		AS NVARCHAR(MAX)	=	''
---	DECLARE @VP_RUTA_HOJA_EMPAQUE_CAPA_EXTENSION	AS NVARCHAR(MAX)	=	'.PNG'
---	DECLARE	@VP_RUTA_IMAGEN							AS NVARCHAR(MAX)	=	''
---	------------------------------------------------------------------------------
---	DECLARE	@VP_REVISION_NUEVA						AS INT				=	@PP_REVISION_HOJA_EMPAQUE + 1
---	------------------------------------------------------------------------------
---	DECLARE @VP_TA_RUTAS_IMAGEN		AS TABLE
---		(	TA_RUTA_SERVR		NVARCHAR(MAX),
---			TA_RUTA_LOCAL		NVARCHAR(MAX),
---			TA_CREAR_CARP		NVARCHAR(MAX),
---			TA_L_CAMBIO			INT,
---			MENSAJE				VARCHAR(50) DEFAULT ''	)
---	------------------------------------------------------------------------------		
---	DECLARE @VP_TA_CAPAS_INCLUIDAS	AS TABLE
---		(	TA_K_IDENTITY		INT IDENTITY (1,1),
---			TA_N_CAPA			INT	)
---	------------------------------------------------------------------------------
---	DECLARE	 @VP_POSICION_N_CAPA	INT
---			,@VP_POSICION_N_PATR	INT
---			,@VP_POSICION_RUTA_C	INT
---			,@VP_POSICION_RUTA_N	INT
---			,@VP_POSICION_K_HOJA	INT
---		-- ============================	
---			,@VP_VALOR_N_CAPA		NVARCHAR(MAX)
---			,@VP_VALOR_N_PATR		NVARCHAR(MAX)
---			,@VP_VALOR_RUTA_C		NVARCHAR(MAX)
---			,@VP_VALOR_RUTA_N		NVARCHAR(MAX)
---			,@VP_VALOR_K_HOJA		NVARCHAR(MAX)
-				
---	-- =======================================================================================================================
---	-- =======================================================================================================================
---	IF @PP_L_NUEVA_REVISIÓN	= 1
---	BEGIN
---			-- =======================================================================================================================
---			--	SE COLOCA INACTIVA LA REVISIÓN ACTUAL, PARA DAR PASO A LA NUEVA REVISIÓN.
---			-- =======================================================================================================================
---			UPDATE	HOJA_EMPAQUE
---			SET		[L_REVISION_ACTIVA]				= 0	,
---					-- ============================	= -- ============================
---					[F_BAJA]						= GETDATE(), 
---					[K_USUARIO_BAJA]				= @PP_K_USUARIO_ACCION
---			WHERE	[CUS_NO]						= @PP_CUS_NO	
---			AND		[MODELNO]						= @PP_MODELNO	
---			AND		[VERSIONNO]						= @PP_VERSIONNO
---			AND		[ITEM_P]						= @PP_ITEM_P
---			AND		[REVISION_HOJA_EMPAQUE]			= @PP_REVISION_HOJA_EMPAQUE
---			IF @@ROWCOUNT = 0
---			BEGIN
---				SET @VP_MENSAJE='Registro no fue modificado. (0)(N)[HE#'+CONVERT(VARCHAR(10),@PP_ITEM_P )+']'
---				RAISERROR (@VP_MENSAJE, 16, 1 ) 
---			END
---			-- =======================================================================================================================
---			--	SE INGRESA LA INFORMACIÓN DEL NUEVA REVISIÓN DE LA HOJA DE EMPAQUE.
---			-- =======================================================================================================================
---			INSERT INTO [dbo].[HOJA_EMPAQUE] (
---					[K_HOJA_EMPAQUE_STATUS]			,
---					-- ============================
---					[CUS_NO]						,	[MODELNO]						,
---					[VERSIONNO]						,
---					-- ============================
---					[ITEM_NO]						,	[COLOR]							,	
---					[ITEM_P]						,	[CUSTOMER_ITEM_NO]				,	
---					[D_ITEM_NO]						,
---					-- ============================
---					[CAJA_HOJA_EMPAQUE]				,	[DIBUJO_HOJA_EMPAQUE]			,
---					[REVISION_HOJA_EMPAQUE]			,
---					-- ============================
---					[STANDAR_PACK]					,	[CANTIDAD_PATRONES]				,
---					--[CUBE_WIDTH]					,	[CUBE_LENGTH]					,
---					[AREA_NETA]						,	[AREA_GROSS]					,
---					-- ============================
---					[C_HOJA_EMPAQUE]				,	[L_REVISION_ACTIVA]				,
---					-- ============================
---					[K_HOJA_EMPAQUE_CAPA_DIVISION]	,
---					[N_CAPAS]						,	--[L_CAPAS_COMPLETAS]				,
---					-- ============================
---					[K_TIPO_CAMBIO_KIT]				,		--AX:20211203	//	#0: SIN CAMBIOS,	#1: LONGITUD,	#2: AGREGADO/ELIMINADO PROCESOS ESPECIALES,	#3: CAMBIO PROCESOS ESPECIALES, #4 REVISIÓN
---					-- ============================
---					[K_USUARIO_ALTA]				,	[F_ALTA]						,
---					[K_USUARIO_CAMBIO]				,	[F_CAMBIO]						,
---					[L_BORRADO]						)				
---			--------------------------------------------
---			SELECT	[K_HOJA_EMPAQUE_STATUS]			,
---					-- ============================
---					[CUS_NO]						,	[MODELNO]						,
---					[VERSIONNO]						,
---					-- ============================
---					[ITEM_NO]						,	[COLOR]							,
---					[ITEM_P]						,	[CUSTOMER_ITEM_NO]				,
---					[D_ITEM_NO]						,
---					-- ============================
---					@PP_CAJA_HOJA_EMPAQUE			,	[DIBUJO_HOJA_EMPAQUE]			,
---					@VP_REVISION_NUEVA				,
---					-- ============================
---					[STANDAR_PACK]					,	[CANTIDAD_PATRONES]				,
---					--[CUBE_WIDTH]					,	[CUBE_LENGTH]					,
---					[AREA_NETA]						,	[AREA_GROSS]					,
---					-- ============================
---					@PP_C_HOJA_EMPAQUE				,	1								,
---					-- ============================
---					@PP_K_HOJA_EMPAQUE_CAPA_DIVISION,	
---					@VP_CANTIDAD_CAPAS				,	--@VP_L_CAPAS_COMPLETAS
---					-- ============================
---					4								,	--[K_TIPO_CAMBIO_KIT]	
---					-- ============================
---					@PP_K_USUARIO_ACCION			,	GETDATE()						,
---					@PP_K_USUARIO_ACCION			,	GETDATE()						,
---					0
---			FROM	[HOJA_EMPAQUE]			(NOLOCK)
---			WHERE	CUS_NO					= @PP_CUS_NO
---			AND		MODELNO					= @PP_MODELNO
---			AND		VERSIONNO				= @PP_VERSIONNO
---			AND		ITEM_P					= @PP_ITEM_P
---			AND		REVISION_HOJA_EMPAQUE	= @PP_REVISION_HOJA_EMPAQUE
---			IF @@ROWCOUNT = 0
---			BEGIN
---				SET @VP_MENSAJE='Registro no fue ingresado.(N)[HE#'+CONVERT(VARCHAR(10),@PP_ITEM_P )+ ' // ' +CONVERT(VARCHAR(10),@VP_REVISION_NUEVA) + ']'
---				RAISERROR (@VP_MENSAJE, 16, 1 ) 
---			END
---	END
---	ELSE
---	BEGIN
---			-- =======================================================================================================================
---			--	ACTUALIZA LA INFORMACIÓN DEL ENCABEZADO DE LA HOJA DE EMPAQUE
---			-- =======================================================================================================================
---			UPDATE	HOJA_EMPAQUE
---			SET		[CAJA_HOJA_EMPAQUE]				= @PP_CAJA_HOJA_EMPAQUE				,
---					[DIBUJO_HOJA_EMPAQUE]			= @PP_DIBUJO_HOJA_EMPAQUE			,	
---					[REVISION_HOJA_EMPAQUE]			= @PP_REVISION_HOJA_EMPAQUE			,
---					-- ============================ -- ============================
---					[CANTIDAD_PATRONES]				= @PP_CANTIDAD_PATRONES				,
---					-- ============================ -- ============================
---					[C_HOJA_EMPAQUE]				= @PP_C_HOJA_EMPAQUE				,
---					-- ============================ -- ============================
---					[K_HOJA_EMPAQUE_CAPA_DIVISION]	= @PP_K_HOJA_EMPAQUE_CAPA_DIVISION	,
---					[N_CAPAS]						= @VP_CANTIDAD_CAPAS				,
---					-- ============================	= -- ============================
---					[F_CAMBIO]						= GETDATE(), 
---					[K_USUARIO_CAMBIO]				= @PP_K_USUARIO_ACCION
---			WHERE	[CUS_NO]						= @PP_CUS_NO	
---			AND		[MODELNO]						= @PP_MODELNO	
---			AND		[VERSIONNO]						= @PP_VERSIONNO
---			AND		[ITEM_P]						= @PP_ITEM_P
---			AND		[REVISION_HOJA_EMPAQUE]			= @PP_REVISION_HOJA_EMPAQUE
---			IF @@ROWCOUNT = 0
---			BEGIN
---				SET @VP_MENSAJE='Registro no fue modificado. [HE#'+CONVERT(VARCHAR(10),@PP_ITEM_P )+']'
---				RAISERROR (@VP_MENSAJE, 16, 1 ) 
---			END
---	END
+	SET @VP_BODY_HTML =
+		N'<html>'+
+		N'<head>'+		
+		N'<style>'+
+		N'table	{border: solid 1px;border-collapse:collapse; width: 50%; cellspacing="1"}'+
+		N'th	{border: solid 1px;padding: 3px;text-align: "center";background:"#ADD8E6"; color:"#000000"}'+
+		N'td	{border: solid 1px;padding: 3px;text-align: "center";background:"#48D1CC"; color:"#000000"}'+
+		N'</style> </head>'+
 
---	-- ========================================================================================================================================================================
---	-- ========================================================================================================================================================================
---	-- ========================================================================================================================================================================
---	-- ========================================================================================================================================================================
---	--Colocamos un separador al final de los parametros para que funcione bien nuestro codigo
---	SET	@PP_ARRAY_N_CAPA		= @PP_ARRAY_N_CAPA	+ '/'
---	SET	@PP_ARRAY_N_PATR		= @PP_ARRAY_N_PATR	+ '/'
---	SET	@PP_ARRAY_RUTA_C		= @PP_ARRAY_RUTA_C	+ '/'
---	SET	@PP_ARRAY_RUTA_N		= @PP_ARRAY_RUTA_N	+ '/'
---	SET	@PP_ARRAY_K_HOJA		= @PP_ARRAY_K_HOJA	+ '/'	
---	--Hacemos un bucle que se repite mientras haya separadores, patindex busca un patron en una cadena y nos devuelve su posicion
---	WHILE patindex('%/%' , @PP_ARRAY_N_CAPA) <> 0
---	BEGIN
---		SELECT @VP_POSICION_N_CAPA	=	patindex(	'%/%' , @PP_ARRAY_N_CAPA	)
---		SELECT @VP_POSICION_N_PATR	=	patindex(	'%/%' , @PP_ARRAY_N_PATR	)
---		SELECT @VP_POSICION_RUTA_C	=	patindex(	'%/%' , @PP_ARRAY_RUTA_C	)
---		SELECT @VP_POSICION_RUTA_N	=	patindex(	'%/%' , @PP_ARRAY_RUTA_N	)
---		SELECT @VP_POSICION_K_HOJA	=	patindex(	'%/%' , @PP_ARRAY_K_HOJA	)
+		N'</head>'+
+		N'<body>'+
 
---		--Buscamos la posicion de la primera y obtenemos los caracteres hasta esa posicion
---		SELECT @VP_VALOR_N_CAPA	= LEFT(	@PP_ARRAY_N_CAPA	, @VP_POSICION_N_CAPA	- 1	)
---		SELECT @VP_VALOR_N_PATR	= LEFT(	@PP_ARRAY_N_PATR	, @VP_POSICION_N_PATR	- 1	)
---		SELECT @VP_VALOR_RUTA_C	= LEFT(	@PP_ARRAY_RUTA_C	, @VP_POSICION_RUTA_C	- 1	)
---		SELECT @VP_VALOR_RUTA_N	= LEFT(	@PP_ARRAY_RUTA_N	, @VP_POSICION_RUTA_N	- 1	)
---		SELECT @VP_VALOR_K_HOJA	= LEFT(	@PP_ARRAY_K_HOJA	, @VP_POSICION_K_HOJA	- 1	)
---			--========================================================================================================================================
---			--	SE VALIDA SI ES UNA ACTUALIZACIÓN DE VALORES EN LA CAPA DE LA HOJA DE EMPAQUE. EL VALOR DE LA RUTA NO PUEDE VENIR VACÍO, 
---			--	ESTO SUCEDE CUANDO SE ELIMINA LA IMAGEN DE LA CAPA, SE COLOCA COMO VACÍO, PERO EL USUARIO DEBE AGREGAR UNA NUEVA ANTES DE GUARDAR EL REGISTRO.
---			--========================================================================================================================================
---			IF	@VP_VALOR_RUTA_N	= ''
---			BEGIN
---				SET @VP_MENSAJE='Es necesario indicar una imagen para todas las capas activas de la Hoja de Empaque. [Capa# '+CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)+']'
---				RAISERROR (@VP_MENSAJE, 16, 1 ) 
---			END						
---			--========================================================================================================================================
---			--========================================================================================================================================
---			IF @PP_L_NUEVA_REVISIÓN	= 0
---			BEGIN
---					-- ===============================================================================================================================================
---					-- ===============================================================================================================================================
---					-- ===============================================================================================================================================
---					IF	@VP_VALOR_K_HOJA	>  0
---					BEGIN
---						DECLARE	@VP_L_CAMBIO AS INTEGER	= 0
+		N'<p style="color:black; font-size:12.0pt;font-family:"Calisto MT",serif">'+
+		N'A quien corresponda, <br><br>'+
+		N'Se ha realizado el alta de un nuevo modelo (la información del mismo viene indicada en el asunto del presente correo), <br>' +
+		N'y en el cuerpo del mensaje se presenta el detalle los movimientos de cada uno de los KITS. <br><br>'	+
+		N'TOMAR LAS MEDIDAS NECESARIAS PARA ACTUALIZAR LA INFORMACIÓN FALTANTE. </p><br><br><br>' +
+		
+		@VP_CUERPO_CORREO_01 +
+		N'<br><br><br><br>'  +
+		@VP_CUERPO_CORREO_02 +
+		N'<br><br><br><br>'  +
+		@VP_CUERPO_CORREO_03 +
+		N'<br><br><br><br>'  +
 
---						UPDATE	[HOJA_EMPAQUE_CAPA]
---						SET		-- ========================== 
---								[N_CAPA]					= @VP_VALOR_N_CAPA,
---								[N_PATRONES_CAPA]			= @VP_VALOR_N_PATR
---								-- ========================== 
---						WHERE	K_HOJA_EMPAQUE_CAPA			= @VP_VALOR_K_HOJA
+		N'</body>'+
+		N'</html>';
+		SET ROWCOUNT 0
 
---						IF @@ROWCOUNT = 0
---						BEGIN
---							SET @VP_MENSAJE='El registro no fue actualizado. [KHE# '+CONVERT(VARCHAR(10),@VP_VALOR_K_HOJA)+']'
---							RAISERROR (@VP_MENSAJE, 16, 1 ) 
---						END	
+		EXEC msdb.dbo.sp_send_dbmail 
+		--@recipients=@VP_RECIPIENTS,
+		--@blind_copy_recipients='ALEJANDROD@PEARLLEATHER.COM.MX',
+		@recipients	=	'ALEJANDROD@PEARLLEATHER.COM.MX',
+		@subject = @VP_SUBJECT,
+		@body = @VP_BODY_HTML,  
+		@body_format = 'HTML',
+		@importance= 'HIGH'--@VP_IMPORTANCE
+	----- ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	----- ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+GO
 
---						--	SI LA RUTA ORIGEN Y LA RUTA NUEVA SON IGUALES, ES POR QUE NO SUFRIÓ CAMBIOS EL REGISTRO EN LO QUE SE REFIERE A LA IMAGEN DE LA CAPA.
---						IF @VP_VALOR_RUTA_C	<>	@VP_VALOR_RUTA_N
---						BEGIN
---							SET @VP_L_CAMBIO	= 1
---						END
-						
---						INSERT INTO @VP_TA_RUTAS_IMAGEN
---						(	 TA_RUTA_SERVR		,TA_RUTA_LOCAL	
---							,TA_CREAR_CARP
---							,TA_L_CAMBIO
---							,MENSAJE	)
---						VALUES
---						(	 @VP_VALOR_RUTA_C	,@VP_VALOR_RUTA_N
---							,@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO
---							,@VP_L_CAMBIO
---							,''			)
---						IF @@ROWCOUNT = 0
---						BEGIN
---							SET @VP_MENSAJE='El registro de la ruta no fue ingresado. [KHE# '+CONVERT(VARCHAR(10),@VP_VALOR_K_HOJA)+'-'+CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)+']'
---							RAISERROR (@VP_MENSAJE, 16, 1 ) 
---						END	
 
---					END
---					ELSE
---					BEGIN
---						SET @VP_RUTA_HOJA_EMPAQUE_CAPA_IMAGEN	=	LTRIM(RTRIM(@PP_ITEM_P)) +'_'+FORMAT(@PP_REVISION_HOJA_EMPAQUE,'000') +'_'+ CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)
-										
---						SET	@VP_RUTA_IMAGEN	=	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO		+
---												@VP_RUTA_HOJA_EMPAQUE_CAPA_IMAGEN	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_EXTENSION
-
---						INSERT INTO [HOJA_EMPAQUE_CAPA]
---							(
---								[CUS_NO]						,	[MODELNO]			,
---								[VERSIONNO]						,
---								-- ============================	
---								[ITEM_P]						,	[REVISION_HOJA_EMPAQUE]			,
---								-- ============================	
---								[N_CAPA]						,	[N_PATRONES_CAPA]	,
---								-- ============================	
---								--[RUTA_AV_HOJA_EMPAQUE_CAPA]		,
---								[RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR]	,
---								[RUTA_HOJA_EMPAQUE_CAPA_MODELO]		,
---								[RUTA_HOJA_EMPAQUE_CAPA_IMAGEN]		,
---								[RUTA_HOJA_EMPAQUE_CAPA_EXTENSION]	,
---								-- ============================	
---								[K_USUARIO_ALTA]				,	[F_ALTA]			,
---								[K_USUARIO_CAMBIO]				,	[F_CAMBIO]			
---							)
---						VALUES
---							(	
---								@PP_CUS_NO						,	@PP_MODELNO			,	
---								@PP_VERSIONNO					,
---								-- ============================	
---								@PP_ITEM_P						,	@PP_REVISION_HOJA_EMPAQUE		,
---								-- ============================	
---								@VP_VALOR_N_CAPA				,	@VP_VALOR_N_PATR	,
---								-- ============================	
---								--@VP_RUTA_IMAGEN					,
---								@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR	 ,
---								@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO	 ,
---								@VP_RUTA_HOJA_EMPAQUE_CAPA_IMAGEN	 ,
---								@VP_RUTA_HOJA_EMPAQUE_CAPA_EXTENSION ,
---								-- ============================	
---								@PP_K_USUARIO_ACCION			,	GETDATE()			,
---								@PP_K_USUARIO_ACCION			,	GETDATE()
---							)																															
---						IF @@ROWCOUNT = 0
---						BEGIN
---							SET @VP_MENSAJE='La información de la capa no fue ingresada. [CAPA#'+CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)+']'
---							RAISERROR (@VP_MENSAJE, 16, 1 )
---						END
-
---						INSERT INTO @VP_TA_RUTAS_IMAGEN
---						(	 TA_RUTA_SERVR		,TA_RUTA_LOCAL		
---							,TA_CREAR_CARP
---							,TA_L_CAMBIO
---							,MENSAJE	)
---						VALUES
---						(	@VP_RUTA_IMAGEN		,	@VP_VALOR_RUTA_N
---							,@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO
---							,1
---							,''			)
---						IF @@ROWCOUNT = 0
---						BEGIN
---							SET @VP_MENSAJE='El registro de la ruta no fue ingresado. [KHE# '+CONVERT(VARCHAR(10),@VP_VALOR_K_HOJA)+'-'+CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)+']'
---							RAISERROR (@VP_MENSAJE, 16, 1 ) 
---						END	
-
---					END
-						
---					-- ===============================================================================================================================================
---					-- ===============================================================================================================================================
---					INSERT INTO @VP_TA_CAPAS_INCLUIDAS
---					VALUES	( @VP_VALOR_N_CAPA )
---					IF @@ROWCOUNT = 0
---					BEGIN
---						SET @VP_MENSAJE='ERRO'
---						RAISERROR (@VP_MENSAJE, 16, 1 ) 
---					END	
---					-- ===============================================================================================================================================
---					-- ===============================================================================================================================================
---					-- ===============================================================================================================================================
---			END
---			ELSE
---			BEGIN
---				------------------------------------------------------------------------------------------------------------------------------------------
---				--	RUTA GENERICA PARA GUARDAR LAS IMAGENES.
---				SET @VP_RUTA_HOJA_EMPAQUE_CAPA_IMAGEN	 =	LTRIM(RTRIM(@PP_ITEM_P)) +'_'+FORMAT(@VP_REVISION_NUEVA,'000') +'_'+ CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)
---				------------------------------------------------------------------------------------------------------------------------------------------
---				SET	@VP_RUTA_IMAGEN	=	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_IMAGEN	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_EXTENSION
-
---				INSERT INTO [HOJA_EMPAQUE_CAPA]
---					(
---						[CUS_NO]						,	[MODELNO]			,
---						[VERSIONNO]						,
---						-- ============================	
---						[ITEM_P]						,	[REVISION_HOJA_EMPAQUE]			,
---						-- ============================	
---						[N_CAPA]						,	[N_PATRONES_CAPA]	,
---						-- ============================	
---						--[RUTA_AV_HOJA_EMPAQUE_CAPA]		,
---						[RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR]	,
---						[RUTA_HOJA_EMPAQUE_CAPA_MODELO]		,
---						[RUTA_HOJA_EMPAQUE_CAPA_IMAGEN]		,
---						[RUTA_HOJA_EMPAQUE_CAPA_EXTENSION]	,
---						-- ============================	
---						[K_USUARIO_ALTA]				,	[F_ALTA]			,
---						[K_USUARIO_CAMBIO]				,	[F_CAMBIO]			
---					)
---				VALUES
---					(	
---						@PP_CUS_NO						,	@PP_MODELNO			,	
---						@PP_VERSIONNO					,
---						-- ============================	
---						@PP_ITEM_P						,	@VP_REVISION_NUEVA	,
---						-- ============================	
---						@VP_VALOR_N_CAPA				,	@VP_VALOR_N_PATR	,
---						-- ============================	
---						--@VP_RUTA_IMAGEN					,
---						@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR	 ,
---						@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO	 ,
---						@VP_RUTA_HOJA_EMPAQUE_CAPA_IMAGEN	 ,
---						@VP_RUTA_HOJA_EMPAQUE_CAPA_EXTENSION ,
---						-- ============================	
---						@PP_K_USUARIO_ACCION			,	GETDATE()			,
---						@PP_K_USUARIO_ACCION			,	GETDATE()
---					)																															
---				IF @@ROWCOUNT = 0
---				BEGIN
---					SET @VP_MENSAJE='La información de la capa no fue ingresada.(N)[CAPA#'+CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)+']'
---					RAISERROR (@VP_MENSAJE, 16, 1 )
---				END
-
---				INSERT INTO @VP_TA_RUTAS_IMAGEN
---				(	 TA_RUTA_SERVR		,TA_RUTA_LOCAL		
---					,TA_CREAR_CARP
---					,TA_L_CAMBIO
---					,MENSAJE	)
---				VALUES
---				(	@VP_RUTA_IMAGEN		,	@VP_VALOR_RUTA_N
---					,@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR	+	@VP_RUTA_HOJA_EMPAQUE_CAPA_MODELO
---					,1
---					,''			)
---				IF @@ROWCOUNT = 0
---				BEGIN
---					SET @VP_MENSAJE='El registro de la ruta no fue ingresado.(N)[KHE# '+CONVERT(VARCHAR(10),@VP_VALOR_K_HOJA)+'-'+CONVERT(VARCHAR(10),@VP_VALOR_N_CAPA)+']'
---					RAISERROR (@VP_MENSAJE, 16, 1 ) 
---				END	
-
---				-- ===============================================================================================================================================
---				-- ===============================================================================================================================================
---				INSERT INTO @VP_TA_CAPAS_INCLUIDAS
---				VALUES	( @VP_VALOR_N_CAPA )
---				IF @@ROWCOUNT = 0
---				BEGIN
---					SET @VP_MENSAJE='ERRO'
---					RAISERROR (@VP_MENSAJE, 16, 1 ) 
---				END	
---				-- ===============================================================================================================================================
---				-- ===============================================================================================================================================
---				-- ===============================================================================================================================================
-
---			END
---			--========================================================================================================================================
---			--========================================================================================================================================
---		--Reemplazamos lo procesado con nada con la funcion stuff
---		SELECT @PP_ARRAY_N_CAPA	= STUFF(@PP_ARRAY_N_CAPA	, 1, @VP_POSICION_N_CAPA , '')
---		SELECT @PP_ARRAY_N_PATR	= STUFF(@PP_ARRAY_N_PATR	, 1, @VP_POSICION_N_PATR , '')			
---		SELECT @PP_ARRAY_RUTA_C	= STUFF(@PP_ARRAY_RUTA_C	, 1, @VP_POSICION_RUTA_C , '')
---		SELECT @PP_ARRAY_RUTA_N	= STUFF(@PP_ARRAY_RUTA_N	, 1, @VP_POSICION_RUTA_N , '')
---		SELECT @PP_ARRAY_K_HOJA	= STUFF(@PP_ARRAY_K_HOJA	, 1, @VP_POSICION_K_HOJA , '')
---	END
---	-- ========================================================================================================================================================================
---	-- ========================================================================================================================================================================
---	-- ========================================================================================================================================================================
---	-- ========================================================================================================================================================================
---	IF @PP_L_NUEVA_REVISIÓN	= 0
---	BEGIN
---		--SELECT  FROM @VP_TA_CAPAS_INCLUIDAS
---		DELETE	[HOJA_EMPAQUE_CAPA]
---		WHERE	[CUS_NO]					= @PP_CUS_NO 
---		AND		[MODELNO]					= @PP_MODELNO
---		AND		[VERSIONNO]					= @PP_VERSIONNO
---				-- ============================
---		AND		[ITEM_P]					= @PP_ITEM_P
---		AND		[REVISION_HOJA_EMPAQUE]		= @PP_REVISION_HOJA_EMPAQUE
---				-- ============================
---		AND		[N_CAPA]			NOT IN (	SELECT	TA_N_CAPA 
---												FROM	@VP_TA_CAPAS_INCLUIDAS	)
---	END
-
---	EXECUTE [dbo].[PG_INUP_HOJA_EMPAQUE_PROCESO]	@PP_K_SISTEMA_EXE			,	@PP_K_USUARIO_ACCION	,
---													@PP_L_NUEVA_REVISIÓN		,
---													-- ============================
---													@PP_CUS_NO					,	@PP_MODELNO				,
---													@PP_VERSIONNO				,	@PP_ITEM_P				,
---													@PP_REVISION_HOJA_EMPAQUE	,
---													---- ===========================
---													@PP_ARRAY_K_HE_PROC			,
---													@PP_ARRAY_K_PROCESO			,	@PP_ARRAY_K_P_SIMBO		,
---													@PP_ARRAY_L_PROCESO			,	@PP_ARRAY_D_PROCESO
-
---		IF	@VP_CANTIDAD_CAPAS	= (	SELECT	COUNT(K_HOJA_EMPAQUE_CAPA)
---									FROM	[HOJA_EMPAQUE_CAPA]
---									WHERE	[CUS_NO]						= @PP_CUS_NO 
---									AND		[MODELNO]						= @PP_MODELNO
---									AND		[VERSIONNO]						= @PP_VERSIONNO
---											-- ============================
---									AND		[ITEM_P]						= @PP_ITEM_P
---									AND		[REVISION_HOJA_EMPAQUE]			= @PP_REVISION_HOJA_EMPAQUE
---									AND		[RUTA_HOJA_EMPAQUE_CAPA_IMAGEN]	<> ''	)
---		BEGIN
---			SET		@VP_L_CAPAS_COMPLETAS	= 1
---		END
-
---			UPDATE	[HOJA_EMPAQUE]
---			SET		[L_CAPAS_COMPLETAS]		= @VP_L_CAPAS_COMPLETAS
---					-- ============================
---			WHERE	CUS_NO					= @PP_CUS_NO
---			AND		MODELNO					= @PP_MODELNO
---			AND		VERSIONNO				= @PP_VERSIONNO
---			AND		ITEM_P					= @PP_ITEM_P
---			AND		REVISION_HOJA_EMPAQUE	= @PP_REVISION_HOJA_EMPAQUE
---			IF @@ROWCOUNT = 0
---			BEGIN
---				SET @VP_MENSAJE='Registro no fue ingresado.(L_CAPAS)[HE#' + CONVERT(VARCHAR(10),@PP_ITEM_P ) + ']'
---				RAISERROR (@VP_MENSAJE, 16, 1 ) 
---			END
-
----- /////////////////////////////////////////////////////////////////////
---COMMIT TRANSACTION 
---END TRY
-
---BEGIN CATCH
---	ROLLBACK TRANSACTION
---	DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
---	SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
---	SET @VP_MENSAJE = 'ERROR:// ' + @VP_ERROR_TRANS
---END CATCH	
---	-- /////////////////////////////////////////////////////////////////////	
---	IF @VP_MENSAJE<>''
---	BEGIN
---		SET	@VP_MENSAJE = 'No es posible [Actualizar] la [Hoja de Empaque]: ' + @VP_MENSAJE
---		--SET	@VP_MENSAJE +=	@PP_L_NUEVA_REVISIÓN					+ '*-*'
---		--				-- ============================
---		--SET	@VP_MENSAJE +=	@PP_CUS_NO								+ '*-*'
---		--SET	@VP_MENSAJE +=	@PP_MODELNO								+ '*-*'
---		--SET	@VP_MENSAJE +=	@PP_VERSIONNO							+ '*-*'
---		--				-- ============================
---		--SET	@VP_MENSAJE +=	@PP_ITEM_P								+ '*-*'
---		--				-- ============================
---		--SET	@VP_MENSAJE +=	@PP_CAJA_HOJA_EMPAQUE					+ '*-*'
---		--SET	@VP_MENSAJE +=	@PP_DIBUJO_HOJA_EMPAQUE					+ '*-*'
---		--SET	@VP_MENSAJE +=	@PP_REVISION_HOJA_EMPAQUE				+ '*-*'
---		--				-- ============================
---		--SET	@VP_MENSAJE +=	@PP_CANTIDAD_PATRONES					+ '*-*'
---		--				-- ============================
---		--SET	@VP_MENSAJE +=	@PP_C_HOJA_EMPAQUE						+ '*-*'
---		--				-- ============================
---		--SET	@VP_MENSAJE +=	@PP_K_HOJA_EMPAQUE_CAPA_DIVISION		+ '*-*'
---		--				-- ============================
---		--SET	@VP_MENSAJE +=	@PP_ARRAY_N_CAPA						+ '*-*'
---		--SET	@VP_MENSAJE +=	@PP_ARRAY_N_PATR						+ '*-*'
---		--SET	@VP_MENSAJE +=	@PP_ARRAY_RUTA_C						+ '*-*'
---		--SET	@VP_MENSAJE +=	@PP_ARRAY_RUTA_N						+ '*-*'
---		--SET	@VP_MENSAJE +=	@PP_ARRAY_K_HOJA						+ '*-*'
---		--				-- ============================
---		--SET	@VP_MENSAJE +=	@PP_ARRAY_K_HE_PROC						+ '*-*'
---		--SET	@VP_MENSAJE +=	@PP_ARRAY_K_PROCESO						+ '*-*'
---		--SET	@VP_MENSAJE +=	@PP_ARRAY_K_P_SIMBO						+ '*-*'
---		--SET	@VP_MENSAJE +=	@PP_ARRAY_L_PROCESO						+ '*-*'
---		--SET	@VP_MENSAJE +=	@PP_ARRAY_D_PROCESO						+ '*-*'
-
---		SELECT	@VP_MENSAJE AS MENSAJE, @PP_ITEM_P AS CLAVE	--CONCAT(	@PP_CUS_NO,	@PP_MODELNO	,@PP_VERSIONNO )	AS CLAVE		
---	END
---	ELSE
---	BEGIN
---		SELECT * FROM	@VP_TA_RUTAS_IMAGEN
---	END
---	-- //////////////////////////////////////////////////////////////	
---GO
 -- //////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> MUESTRA EL DETALLE DE LOS SPECIAL_PROCESS POR KIT
+-- //////////////////////////////////////////////////////////////
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_HOJA_EMPAQUE_PROCESO]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO]
+GO
+--		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO] 0,139, 'DAIM05' , 'WDK' , '8' , 'PL2ARLH' ,0
+--		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO] 0,139, 'FAUR01'	, 'FW2'	, '11',	'PWSSC20' ,0
+--		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO] 0,139, 'FAUR01'	, 'FW2'	, '11',	'PWSFCL2' ,0
+--		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO] 0,139, 'IRVI02' , 'JLI' , '0059' , 'PJLFCRLMCKTX7' , '0'
+--		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO] 0,139, 'IRVI02' , 'JLI' , '0059' , 'PJLFCRL' , '0' 
+CREATE PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_PROCESO]
+	@PP_K_SISTEMA_EXE				INT,
+	@PP_K_USUARIO_ACCION			INT,
+	-- ===========================
+	@PP_CUS_NO						VARCHAR(20),
+	@PP_MODELNO						VARCHAR(25),
+	@PP_VERSIONNO					INT,
+	@PP_ITEM_P						VARCHAR(25),
+	-- ===========================
+	@PP_REVISION_HOJA_EMPAQUE		INT
+AS
+
+	SET		@PP_ITEM_P	= LEFT(LTRIM(RTRIM(@PP_ITEM_P)),7)
+
+	SELECT	--	HOJA_EMPAQUE_PROCESO.*,
+			K_HOJA_EMPAQUE_PROCESO,
+			HOJA_EMPAQUE_PROCESO.K_PROCESO_SIMBOLO,
+			L_HOJA_EMPAQUE_PROCESO,
+			--(CASE
+			--	WHEN	K_PROCESO	IN (1)				THEN	1
+			--	WHEN	K_PROCESO	IN (2,8,9,11,12,13)	THEN	2
+			--	WHEN	K_PROCESO	IN (3,10)			THEN	3
+			--	WHEN	K_PROCESO	IN (4)				THEN	4
+			--	WHEN	K_PROCESO	IN (5,14,15)		THEN	5
+			--	WHEN	K_PROCESO	IN (6)				THEN	6
+			--	WHEN	K_PROCESO	IN (7)				THEN	7
+			--	ELSE	50
+			--END)	AS K_PROCESO,
+			(CASE
+				WHEN	K_PROCESO	< 50 	THEN	K_PROCESO
+				ELSE	50
+			END)	AS K_PROCESO,
+			(CASE
+				WHEN	D_HOJA_EMPAQUE_PROCESO <> ''	THEN	D_HOJA_EMPAQUE_PROCESO
+				WHEN	D_HOJA_EMPAQUE_PROCESO =  ''	THEN	D_PROCESO_SIMBOLO
+			END)										AS	D_HOJA_EMPAQUE_PROCESO,
+			(	RUTA_SERVIDOR + RUTA_IMAGEN + RUTA_EXTENSION	)	AS	RUTA_AV_PROCESO_SIMBOLO
+			--RUTA_AV_PROCESO_SIMBOLO						AS RUTA_AV_PROCESO_SIMBOLO
+	FROM	[HOJA_EMPAQUE_PROCESO]			 (NOLOCK)
+	LEFT JOIN	PROCESO_SIMBOLO (NOLOCK) ON PROCESO_SIMBOLO.K_PROCESO_SIMBOLO	= HOJA_EMPAQUE_PROCESO.K_PROCESO_SIMBOLO
+	WHERE	CUS_NO					= @PP_CUS_NO
+	AND		MODELNO					= @PP_MODELNO
+	AND		VERSIONNO				= @PP_VERSIONNO
+	AND		ITEM_P					= @PP_ITEM_P
+	AND		REVISION_HOJA_EMPAQUE	= @PP_REVISION_HOJA_EMPAQUE
+	ORDER	BY K_PROCESO
+GO
