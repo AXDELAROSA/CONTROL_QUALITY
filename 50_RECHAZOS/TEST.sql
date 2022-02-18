@@ -32,7 +32,7 @@ USE PPMS_PEARL
 	--	DEFECTO CRITICO: ( 'EE', 'ES', 'FL', 'LE', 'LM', 'MI', 'PF', 'PFL', 'PM', 'PSP', 'PS', 'PE', 'PSL', 'SB' )
 	SELECT * FROM DEF WHERE CRITICO = 1
 
-	SELECT * FROM [PPMS_PEARL].[dbo].DEF WHERE clave IN ('AC', 'AR' )
+	SELECT * FROM [PPMS_PEARL].[dbo].DEF WHERE defecto IN ( 'MAL ALINEADO' )
 
 	-- //////////PPMS DE PRD////////////////////////////////////////////////////
 	SELECT * FROM [DATA_02].dbo.ccjoblin_sql WHERE JOBNO IN ( '52816', '53401')
@@ -64,10 +64,10 @@ USE PPMS_PEARL
 
 	SELECT * FROM DATA_02.DBO.cccuthst_sql WHERE jobno IN ( '52638')
 
-	SELECT * FROM DATA_02.DBO.ccjobhdr_sql WHERE jobno IN ( '53400', '53401')
+	SELECT * FROM DATA_02.DBO.ccjobhdr_sql WHERE jobno IN ( '34867')
 	SELECT * FROM DATA_02.DBO.pearl_log WHERE jobno IN ( '53400', '53401')
 
-	SELECT * FROM [PPMS_PEARL].[dbo].rechazos WHERE orden = 52553
+	SELECT * FROM [PPMS_PEARL].[dbo].rechazos WHERE defecto = 'ML' AND fecha = '20220214' AND turno = 2
 
 	-- 339 + 1814 = 2,153
 	SELECT * --SUM(DEFECTOS) DEFECTO, SUM(MUESTRA) MUESTRA 
@@ -155,10 +155,62 @@ SELECT * FROM [DATA_02].dbo.ccjoblin_sql WHERE JOBNO IN ( '51877', '51878') ORDE
 
 SELECT * FROM [DATA_02].dbo.ccjobhdr_sql WHERE JOBNO IN ( '51877', '51878')
 
---UPDATE [DATA_02].dbo.ccjoblin_sql 
---	SET jobno = '51878'
---WHERE JOBNO = '51877' AND User_def_Fld1 = 'Y'
+--///////////////////////////////////////////////////////////////////////////////////////
 
---UPDATE [DATA_02].dbo.ccjoblin_sql 
---	SET Ser_No = 20
---WHERE JOBNO = '51878' AND Ser_No = 6 AND User_def_Fld1 IS NULL
+DECLARE @PP_F_INICIAL	DATE = '2022-02-14',
+		@PP_F_FIN		DATE  = '2022-02-14'
+
+SELECT	LTRIM(RTRIM(DEF.defecto)) AS DEFECTO,
+			COUNT(ID) AS TOTAL_DEFECTO 
+	FROM [PPMS_PEARL].DBO.Rechazos (NOLOCK)
+	INNER JOIN [PPMS_PEARL].[dbo].DEF (NOLOCK) ON Rechazos.defecto = clave
+	WHERE orden IN (	SELECT ORDEN 
+						FROM [PPMS_PEARL].DBO.[ORDEN_LIBERADA]  (NOLOCK)
+						WHERE  K_TIPO_ORDEN_LIBERADA = 1 --#1 NORMAL #2 FICTICIA --oRDEN = 39330 
+						AND F_LIBERACION >= @PP_F_INICIAL
+						AND F_LIBERACION <= @PP_F_FIN
+					)
+	AND DEF.clave = 'ML'
+	GROUP BY DEF.defecto
+	ORDER BY COUNT(ID) DESC
+
+SELECT	LTRIM(RTRIM(MESA)) AS MESA,
+			LTRIM(RTRIM(DEF.defecto)) AS DEFECTO,
+			COUNT(ID) AS CANTIDAD 
+	FROM [PPMS_PEARL].DBO.Rechazos (NOLOCK)
+	INNER JOIN [PPMS_PEARL].[dbo].DEF (NOLOCK) ON Rechazos.defecto = clave
+	WHERE orden IN (	SELECT ORDEN 
+						FROM [PPMS_PEARL].DBO.[ORDEN_LIBERADA]  (NOLOCK)
+						WHERE  K_TIPO_ORDEN_LIBERADA = 1 --#1 NORMAL #2 FICTICIA --oRDEN = 39330 
+						AND F_LIBERACION >= @PP_F_INICIAL
+						AND F_LIBERACION <= @PP_F_FIN
+					)
+	AND ( CASE WHEN TURNO = 3 THEN 3
+				WHEN TURNO = 2 THEN 2
+				ELSE 1 END ) = 3
+	AND DEF.clave = 'ML'
+	--AND mesa NOT IN ('Table 90', 'Table 91')
+	GROUP BY MESA, DEF.defecto
+	ORDER BY COUNT(ID) DESC
+
+	SELECT	[PPMS_PEARL].DBO.Rechazos.*,
+			--LTRIM(RTRIM(MESA)) AS MESA,
+			--LTRIM(RTRIM(DEF.defecto)) AS DEFECTO,
+			--COUNT(ID) AS CANTIDAD 
+			( SELECT LEFT(CHANGELEVEL, 3) FROM DATA_02.dbo.ccjoblin_sql WHERE CONCAT(LTRIM(RTRIM(ccjoblin_sql.jobno)) , RIGHT('000' + CONVERT(VARCHAR(5), ccjoblin_sql.Ser_No), 3)) = Rechazos.noserie) AS MODELO
+	FROM [PPMS_PEARL].DBO.Rechazos (NOLOCK)
+	INNER JOIN [PPMS_PEARL].[dbo].DEF (NOLOCK) ON Rechazos.defecto = clave
+	WHERE orden IN (	SELECT ORDEN 
+						FROM [PPMS_PEARL].DBO.[ORDEN_LIBERADA]  (NOLOCK)
+						WHERE  K_TIPO_ORDEN_LIBERADA = 1 --#1 NORMAL #2 FICTICIA --oRDEN = 39330 
+						AND F_LIBERACION >= @PP_F_INICIAL
+						AND F_LIBERACION <= @PP_F_FIN
+					)
+	AND ( CASE WHEN TURNO = 3 THEN 3
+				WHEN TURNO = 2 THEN 2
+				ELSE 1 END ) = 3
+	AND DEF.clave = 'ML'
+	--AND mesa NOT IN ('Table 90', 'Table 91')
+	--GROUP BY MESA, DEF.defecto
+	--ORDER BY COUNT(ID) DESC
+
