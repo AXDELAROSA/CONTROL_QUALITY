@@ -10,34 +10,34 @@
 		SELECT * --TOP 1  D_KIT_RUTA_EVENTO 
 		FROM KIT_RUTA (NOLOCK)
 		INNER JOIN KIT_RUTA_EVENTO (NOLOCK) ON KIT_RUTA_EVENTO.K_KIT_RUTA_EVENTO = KIT_RUTA.K_KIT_RUTA_EVENTO
-		WHERE KIT_RUTA.ITEM_NO = 'PWLERQCWLPAX7'
+		WHERE KIT_RUTA.ITEM_NO = 'P3MES2R810HE'
 		AND KIT_RUTA.MODELNO = 'WEC'
 		AND KIT_RUTA.VERSIONNO = '0009'		
 
 		--	SELECT * FROM DATA_02.[dbo].ccjobhdr_sql  WHERE JOBNO = '52822' 
-		SELECT * FROM DATA_02.[dbo].ccjoblin_sql WHERE jobno = '53466' ORDER BY ser_no
+		SELECT * FROM DATA_02.[dbo].ccjoblin_sql WHERE jobno = '54328' ORDER BY ser_no
 
 		--	SELECT * FROM [PPMS_PEARL].[dbo].Perforacion where orden = '52490' order by noserie
 		--	SELECT DISTINCT NOSERIE_CAJA FROM [PPMS_PEARL].[dbo].certificacion_rpt where orden = '52490' order by NOSERIE_CAJA
 
-		SELECT * FROM [PPMS_PEARL].[dbo].Perforacion where noserie = '53327001' AND [status] = 'FINALIZADO'
-		SELECT * FROM [PPMS_PEARL].[dbo].certificacion_rpt where noserie_caja = '53416002' 
+		SELECT * FROM [PPMS_PEARL].[dbo].Perforacion where noserie = '52929001' AND [status] = 'FINALIZADO'
+		SELECT * FROM [PPMS_PEARL].[dbo].certificacion_rpt where noserie_caja = '52929001' 
 
-		SELECT * FROM DATA_02.DBO.[MATERIAL_PROGRAMADO_LOG] (NOLOCK) WHERE SERIAL = '53327004'
-		SELECT * FROM DATA_02.DBO.[INVENTARIO_EMBARQUE] (NOLOCK) WHERE SERIAL_1 = '53327003'
+		SELECT * FROM DATA_02.DBO.[MATERIAL_PROGRAMADO_LOG] (NOLOCK) WHERE SERIAL = '52929002'
+		SELECT * FROM DATA_02.DBO.[INVENTARIO_EMBARQUE] (NOLOCK) WHERE SERIAL_1 = '52929002'
 
-		SELECT * FROM [PPMS_PEARL].DBO.[ORDEN_LIBERADA] (NOLOCK)  WHERE ORDEN IN ( '40885' )
-		SELECT * FROM DATA_02.[dbo].ccjobhdr_sql WHERE JOBNO IN ( '40885' )
-		SELECT * FROM [PPMS_PEARL].[dbo].[QC] WHERE Order_No IN ( '40885' ) 
+		SELECT * FROM [PPMS_PEARL].DBO.[ORDEN_LIBERADA] (NOLOCK)  WHERE ORDEN IN ( '45413' )
+		SELECT * FROM DATA_02.[dbo].ccjobhdr_sql (NOLOCK) WHERE JOBNO IN ( '45413' )
+		SELECT * FROM [PPMS_PEARL].[dbo].[QC] (NOLOCK) WHERE Order_No IN ( '45413' ) 
 
 		--insert into [PPMS_PEARL].[dbo].Perforacion
-		--select orden, '53327004', status, fecha, hora, '200432DTX7', estacion, sello, 'RUWALFBRWLCPX7,Q30-S53327004~53328*200432DTX7%MAGN02#WAL0014@450671!470321'
-		--from [PPMS_PEARL].[dbo].Perforacion where noserie = '53327001  '  AND [status] = 'FINALIZADO'
+		--select orden, '52929002', status, fecha, hora, '200432DTX7', estacion, sello, 'RUWALFBRWLCPX7,Q30-S52929002~52930*200432DTX7%MAGN02#WAL0014@450651!470321'
+		--from [PPMS_PEARL].[dbo].Perforacion where noserie = '52929001  '  AND [status] = 'FINALIZADO'
 
 	*/
 
-	--	El serial: 53327003 no ha pasado por Inspección de Perforación!
-	DECLARE @VP_RESULTADO	VARCHAR(300) = '', @PP_ORDEN VARCHAR(20) = '52846';
+	-- El serial: 52929002 no ha pasado por Inspección de Perforación!
+	DECLARE @VP_RESULTADO	VARCHAR(300) = '', @PP_ORDEN VARCHAR(20) = '52929';
 	DECLARE @VP_ORDEN_COMPLEMENTO VARCHAR(20)= '', @VP_VALIDAR_PROCESO INT = 1;
 
 	SELECT @VP_ORDEN_COMPLEMENTO = ISNULL(lotno, '') 
