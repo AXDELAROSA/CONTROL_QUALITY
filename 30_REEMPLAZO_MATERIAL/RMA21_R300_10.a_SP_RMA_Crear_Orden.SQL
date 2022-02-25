@@ -36,7 +36,9 @@ AS
 	DECLARE  @VP_MENSAJE		NVARCHAR(MAX)	= ''
 			,@VP_ORDEN			VARCHAR(10)		= ''
 			,@VP_K_USER			INT
-			,@VP_COMPUTER_NAME	VARCHAR(25)		= 'IT-002'
+			,@VP_D_USER			VARCHAR(50)
+			--,@VP_COMPUTER_NAME	VARCHAR(25)		= 'IT-002'
+			,@VP_COMPUTER_NAME	VARCHAR(25)		= 'MATERIALES'
 			,@VP_COMENTARIO		VARCHAR(250)	= ''--'Orden Generada automaticamente #RMA['+ CONVERT(VARCHAR(10),@PP_K_HEADER_RMA) +']'			
 			,@VP_CLIENTE		VARCHAR(10)
 			,@VP_NO_SECUENCIA	INT		= 0
@@ -214,7 +216,8 @@ AS
 			 @VP_DETAIL				VARCHAR(100) =	''
 	
 	-- //////SE OBTIENE EL NUMERO DE RELOJ DEL USUARIO PEARL/////////////////////////////////////
-		SELECT	@VP_NUMERO_RELOJ		= K_EMPLEADO_PEARL
+		SELECT	@VP_NUMERO_RELOJ		= K_EMPLEADO_PEARL,
+				@VP_D_USER				= D_USUARIO_PEARL
 		FROM	BD_GENERAL.DBO.USUARIO_PEARL	(NOLOCK)
 		WHERE	K_USUARIO_PEARL			= @VP_K_USER
 	
@@ -386,7 +389,7 @@ AS
 					-- /////////////////////////INGRESO EL LOG////////////////////////////////////////////
 					SET	@VP_DETAIL =	'Creacion de Orden: ' + @VP_ORDEN
 					EXECUTE [DATA_02].[dbo].[PG_IN_PEARL_LOG]	@PP_K_SISTEMA_EXE, @VP_K_USER,--@PP_K_USUARIO_ACCION,
-																@VP_K_USER,		@VP_COMPUTER_NAME,	'RMA',
+																@VP_D_USER,	@VP_COMPUTER_NAME,	'RMA',
 																@VP_ORDEN,		'Crear orden',		@VP_DETAIL, 
 																''
 					
@@ -521,7 +524,7 @@ AS
 					SET		@VP_DETAIL =	'Creacion de Orden: ' + @VP_ORDEN
 
 					EXECUTE [DATA_02].[dbo].[PG_IN_PEARL_LOG]		@PP_K_SISTEMA_EXE, @VP_K_USER,--@PP_K_USUARIO_ACCION,
-													@VP_K_USER, @VP_COMPUTER_NAME, 'RMA',
+													@VP_D_USER, @VP_COMPUTER_NAME, 'RMA',
 													@VP_ORDEN, 'Crear orden',
 													@VP_DETAIL, ''
 
