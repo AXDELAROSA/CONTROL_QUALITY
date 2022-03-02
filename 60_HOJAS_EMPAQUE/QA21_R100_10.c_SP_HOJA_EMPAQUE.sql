@@ -461,6 +461,8 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_
 GO
 --		 EXECUTE [DBO].[PG_LI_IMPRIMIR_HOJA_EMPAQUE_X_ORDEN] 0 ,0,  '53036' -- MAGN02
 --		 EXECUTE [DBO].[PG_LI_IMPRIMIR_HOJA_EMPAQUE_X_ORDEN] 0 ,0,  '53986'
+--		 EXECUTE [DBO].[PG_LI_IMPRIMIR_HOJA_EMPAQUE_X_ORDEN] 0 ,0,  '55086'	-- RMA
+--		 EXECUTE [DBO].[PG_LI_IMPRIMIR_HOJA_EMPAQUE_X_ORDEN] 0 ,0,  '52967'	--	U
 CREATE PROCEDURE [dbo].[PG_LI_IMPRIMIR_HOJA_EMPAQUE_X_ORDEN]
 	@PP_K_SISTEMA_EXE			INT,
 	@PP_K_USUARIO_ACCION		INT,
@@ -577,6 +579,20 @@ AS
 				-------- ===========================
 				LTRIM(RTRIM(ccjoblin_sql.KitDesc))							AS KIT_DESC,
 				-------- ===========================
+				--(	CASE	
+				--			WHEN	(	SELECT	TOP(1)
+				--								L_CAPAS_COMPLETAS
+				--						FROM	HOJA_EMPAQUE	(NOLOCK)
+				--						WHERE	CUS_NO		=	LTRIM(RTRIM(ccjoblin_sql.customer))				
+				--						AND		MODELNO		=	LEFT(LTRIM(RTRIM(ccjoblin_sql.ChangeLevel)),3)	
+				--						AND		VERSIONNO	=	RIGHT(LTRIM(RTRIM(ccjoblin_sql.ChangeLevel)),4)	
+				--						AND		( CASE
+				--									WHEN	(LTRIM(RTRIM(ccjoblin_sql.item_no))) LIKE 'U%' THEN	U_ITEM
+				--									ELSE	ITEM_NO
+				--								END)		=	LTRIM(RTRIM(ccjoblin_sql.item_no))
+				--						)	= 1	THEN 'SI'
+				--			ELSE	'NO'
+				--END) AS L_CAPAS_COMPLETAS
 				(	CASE	
 							WHEN	(	SELECT	TOP(1)
 												L_CAPAS_COMPLETAS
@@ -584,10 +600,14 @@ AS
 										WHERE	CUS_NO		=	LTRIM(RTRIM(ccjoblin_sql.customer))				
 										AND		MODELNO		=	LEFT(LTRIM(RTRIM(ccjoblin_sql.ChangeLevel)),3)	
 										AND		VERSIONNO	=	RIGHT(LTRIM(RTRIM(ccjoblin_sql.ChangeLevel)),4)	
-										AND		( CASE
-													WHEN	(LTRIM(RTRIM(ccjoblin_sql.item_no))) LIKE 'U%' THEN	U_ITEM
-													ELSE	ITEM_NO
-												END)		=	LTRIM(RTRIM(ccjoblin_sql.item_no))
+										AND		ITEM_NO		= (	CASE
+																	WHEN	LTRIM(RTRIM(ccjoblin_sql.item_no)) LIKE 'I%' THEN	(	SELECT	TOP(1)
+																																			ITEM_NO 
+																																	FROM	ccprdstr_sql (NOLOCK)
+																																	WHERE	comp_item_no	=	LTRIM(RTRIM(ccjoblin_sql.item_no))
+																																	AND		jobno			= 	@PP_ORDEN )
+																	ELSE	LTRIM(RTRIM(ccjoblin_sql.item_no))	
+																END	)
 										)	= 1	THEN 'SI'
 							ELSE	'NO'
 				END) AS L_CAPAS_COMPLETAS
@@ -665,14 +685,32 @@ AS
 				---------- ===========================
 				LTRIM(RTRIM(ccjoblin_sql.KitDesc))							AS KIT_DESC,
 				---------- ===========================
-				(	CASE	
+				--(	CASE	
+				--			WHEN	(	SELECT	TOP(1)
+				--								L_CAPAS_COMPLETAS
+				--						FROM	HOJA_EMPAQUE	(NOLOCK)
+				--						WHERE	CUS_NO		=	LTRIM(RTRIM(ccjoblin_sql.customer))				
+				--						AND		MODELNO		=	LEFT(LTRIM(RTRIM(ccjoblin_sql.ChangeLevel)),3)	
+				--						AND		VERSIONNO	=	RIGHT(LTRIM(RTRIM(ccjoblin_sql.ChangeLevel)),4)	
+				--						AND		ITEM_NO		=	LTRIM(RTRIM(ccjoblin_sql.item_no))			)	= 1	THEN 'SI'
+				--			ELSE	'NO'
+				--END) AS L_CAPAS_COMPLETAS
+			(	CASE	
 							WHEN	(	SELECT	TOP(1)
 												L_CAPAS_COMPLETAS
 										FROM	HOJA_EMPAQUE	(NOLOCK)
 										WHERE	CUS_NO		=	LTRIM(RTRIM(ccjoblin_sql.customer))				
 										AND		MODELNO		=	LEFT(LTRIM(RTRIM(ccjoblin_sql.ChangeLevel)),3)	
 										AND		VERSIONNO	=	RIGHT(LTRIM(RTRIM(ccjoblin_sql.ChangeLevel)),4)	
-										AND		ITEM_NO		=	LTRIM(RTRIM(ccjoblin_sql.item_no))			)	= 1	THEN 'SI'
+										AND		ITEM_NO		= (	CASE
+																	WHEN	LTRIM(RTRIM(ccjoblin_sql.item_no)) LIKE 'I%' THEN	(	SELECT	TOP(1)
+																																			ITEM_NO 
+																																	FROM	ccprdstr_sql (NOLOCK)
+																																	WHERE	comp_item_no	=	LTRIM(RTRIM(ccjoblin_sql.item_no))
+																																	AND		jobno			= 	@PP_ORDEN )
+																	ELSE	LTRIM(RTRIM(ccjoblin_sql.item_no))	
+																END	)
+										)	= 1	THEN 'SI'
 							ELSE	'NO'
 				END) AS L_CAPAS_COMPLETAS
 				-------- ===========================
@@ -770,7 +808,15 @@ AS
 										WHERE	CUS_NO		=	LTRIM(RTRIM(ccjoblin_sql.customer))				
 										AND		MODELNO		=	LEFT(LTRIM(RTRIM(ccjoblin_sql.ChangeLevel)),3)	
 										AND		VERSIONNO	=	RIGHT(LTRIM(RTRIM(ccjoblin_sql.ChangeLevel)),4)	
-										AND		ITEM_NO		=	LTRIM(RTRIM(ccjoblin_sql.item_no))			)	= 1	THEN 'SI'
+										AND		ITEM_NO		= (	CASE
+																	WHEN	LTRIM(RTRIM(ccjoblin_sql.item_no)) LIKE 'I%' THEN	(	SELECT	TOP(1)
+																																			ITEM_NO 
+																																	FROM	ccprdstr_sql (NOLOCK)
+																																	WHERE	comp_item_no	=	LTRIM(RTRIM(ccjoblin_sql.item_no))
+																																	AND		jobno			= 	@PP_ORDEN )
+																	ELSE	LTRIM(RTRIM(ccjoblin_sql.item_no))	
+																END	)
+										)	= 1	THEN 'SI'
 							ELSE	'NO'
 				END) AS L_CAPAS_COMPLETAS
 				-------- ===========================
@@ -807,7 +853,7 @@ AS
 		-- ===========================
 		INNER JOIN	cccusitm_sql	(NOLOCK)	ON ccjoblin_sql.Item_No = cccusitm_sql.item_no 
 		AND		ccjoblin_sql.customer	= cccusitm_sql.cus_no
-		AND		cccusitm_sql.versionno	= (	SELECT	MAX(CONVERT(INT, versionno)) 
+		AND		cccusitm_sql.versionno	=(	SELECT	MAX(CONVERT(INT, versionno)) 
 											FROM	cccusitm_sql (NOLOCK)
 											WHERE	cccusitm_sql.Item_No	= ccjoblin_sql.item_no  
 											AND		cccusitm_sql.cus_no		= ccjoblin_sql.customer)
@@ -1442,6 +1488,8 @@ GO
 --		 EXECUTE [DBO].[PG_LI_HOJA_EMPAQUE_CAPA_REPORTE] 0,139,	'WOOD01'	, 'RUP'	, '8',	'PRUPIL1NRULK5',0
 --		 EXECUTE [DBO].[PG_LI_HOJA_EMPAQUE_CAPA_REPORTE] 0,139,	'WOOD01'	, 'RUP'	, '9',	'PRUPIL1NRULK5',0
 --		 EXECUTE [DBO].[PG_LI_HOJA_EMPAQUE_CAPA_REPORTE] 0,139, 'MAGN02'	, 'WTL'	, '16',	'IWTL0085WLNPX7', 0
+-- ==================================================================================================================
+--		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_CAPA_REPORTE] 0,139, 'MAGN03'	, 'WD2'	, '16',	'UWD2FCLCNPJRR', 0
 CREATE PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_CAPA_REPORTE]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -1484,11 +1532,11 @@ AS
 	IF @PP_ITEM_NO LIKE 'I%'
 	BEGIN	
 		SET	@VP_ITEM_NO_DE_RMA		= 	ISNULL(	(	SELECT	TOP(1)	RTRIM(LTRIM(ITEM_NO))
-												FROM	CCPRDSTR_SQL (NOLOCK)
-												WHERE	CUS_NO			= @PP_CUS_NO		
-												AND		MODELNO			= @PP_MODELNO		
-												AND		VERSIONNO		= @PP_VERSIONNO	
-												AND		COMP_ITEM_NO	= @PP_ITEM_NO	),'')
+													FROM	CCPRDSTR_SQL (NOLOCK)
+													WHERE	CUS_NO			= @PP_CUS_NO		
+													AND		MODELNO			= @PP_MODELNO		
+													AND		VERSIONNO		= @PP_VERSIONNO	
+													AND		COMP_ITEM_NO	= @PP_ITEM_NO	),'')
 		IF @VP_ITEM_NO_DE_RMA	<>''
 		BEGIN
 			SELECT	@VP_REVISION_NO_DE_RMA	= ISNULL(REVISION_HOJA_EMPAQUE,-1)

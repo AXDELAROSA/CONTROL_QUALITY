@@ -263,6 +263,8 @@ AS
 			ITEM_NO						VARCHAR(100),
 			CUS_ITEM_NO					VARCHAR(100),
 			S_CUS_ITEM_NO				VARCHAR(100),
+			S_NIVEL						VARCHAR(250),
+			CUS_NO						VARCHAR(250),
 			D_ITEM_NO					VARCHAR(150),
 			PROD_CAT					VARCHAR(100),
 			QTY_SHIP					INT,
@@ -275,6 +277,7 @@ AS
 	INSERT INTO @TBL_DETALLE_PACKING
 	SELECT	DETAILS_RMA.ITEM_NO				AS ITEM_NO,
 			CUS_ITEM_NO						AS CUS_ITEM_NO,
+		--	====================================================================================================
 			(	CASE
 					WHEN	CUS_NO	= 'IRVI02'	THEN	(	SELECT  TOP (1)
 																	LTRIM(RTRIM(CUS_ITEM_NO))
@@ -288,6 +291,10 @@ AS
 					ELSE	''
 				END
 			)								AS	S_CUS_ITEM_NO,
+			RIGHT(LTRIM(RTRIM(DETAILS_RMA.CUS_ITEM_NO)),2)	AS	S_NIVEL,
+			DETAILS_RMA.CUS_NO				AS CUS_NO,
+		--	====================================================================================================
+
 			LTRIM(RTRIM(ITEM_DESC_1))		AS D_ITEM_NO,
 			MODELNO							AS PROD_CAT,
 			--SUM(CANTIDAD_ENVIADA)			AS QTY_SHIP,	-- SE CAMBIA PARA PODER MODIFICAR LA CANTIDAD Y TOMARLA DE INVENTARIO_EMBARQUE_RMA
@@ -314,7 +321,7 @@ AS
 	--===============================================================================================================================================================
 
 	INSERT INTO @TBL_DETALLE_PACKING
-	SELECT	' ','  ','', 'Totals:', '',
+	SELECT	' ','  ','', 'Totals:', '','','',
 			SUM(QTY_SHIP) AS QTY_SHIP, 
 			SUM(BOX) AS BOX, 
 			SUM(COST) AS COST,
@@ -323,17 +330,34 @@ AS
 	SET NOCOUNT ON
 
 	SELECT	K_DETALLE_PACKING,	
-		CONCAT(
-				CUS_ITEM_NO,
-				(	CASE
-						WHEN	S_CUS_ITEM_NO	LIKE '%BQW%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
-						WHEN	S_CUS_ITEM_NO	LIKE '%BQX%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
-						WHEN	S_CUS_ITEM_NO	LIKE '%C4X%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
-						WHEN	S_CUS_ITEM_NO	LIKE '%C6S%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
-						ELSE	''
-					END
-				)			)				AS CUS_ITEM_NO,
+		--CONCAT(
+		--		CUS_ITEM_NO,
+		--		(	CASE
+		--				WHEN	S_CUS_ITEM_NO	LIKE '%BQW%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
+		--				WHEN	S_CUS_ITEM_NO	LIKE '%BQX%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
+		--				WHEN	S_CUS_ITEM_NO	LIKE '%C4X%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
+		--				WHEN	S_CUS_ITEM_NO	LIKE '%C6S%'	THEN	RIGHT(S_CUS_ITEM_NO,6)
+		--				ELSE	''
+		--			END
+		--		)			)				AS CUS_ITEM_NO,
+		-- ========================================================
+			(	CASE
+				WHEN	CUS_NO	<> 'IRVI02' THEN	CUS_ITEM_NO
+				ELSE	--CONCAT(	--CUS_ITEM_NO,
+								(	CASE
+										WHEN		S_CUS_ITEM_NO	LIKE '%BQW%'	
+												OR	S_CUS_ITEM_NO	LIKE '%BQX%'
+												OR	S_CUS_ITEM_NO	LIKE '%C4X%'
+												OR	S_CUS_ITEM_NO	LIKE '%C6S%'THEN	( CASE 
+																							WHEN	ISNUMERIC(S_NIVEL) = 1	THEN	CONCAT(CUS_ITEM_NO,RIGHT(S_CUS_ITEM_NO,6))
+																							ELSE	CONCAT(	LEFT(CUS_ITEM_NO,LEN(LTRIM(RTRIM(CUS_ITEM_NO)))-2)	,RIGHT(S_CUS_ITEM_NO,6))
+																						END)
+										ELSE	''
+									END
+								)			
+			END ) AS CUS_ITEM_NO,
 			''								AS S_CUS_ITEM_NO,
+		-- ========================================================
 			D_ITEM_NO,
 			CONVERT(VARCHAR(20), QTY_SHIP)	AS QTY_SHIP,		
 		    CONVERT(VARCHAR(20), BOX )		AS BOX,					
@@ -1060,6 +1084,7 @@ GO
 --		 EXECUTE [DBO].[PG_SK_DETAILS_RMA_INVOICE] 0,0, 'XXXXXXXX',	'JL0728-1', 'IRVI02',1
 --		 EXECUTE [DBO].[PG_SK_DETAILS_RMA_INVOICE] 0,0, '558571',	'JL0728-1', 'IRVI02',1
 --		 EXECUTE [DBO].[PG_SK_DETAILS_RMA_INVOICE] 0,0, 'XXXXXXXX','S-JL0922-2','IRVI02',2
+--		 EXECUTE [DBO].[PG_SK_DETAILS_RMA_INVOICE] 0,0, 'XXXXXXXX','R-0922-5','IRVI02',2
 --		 EXECUTE [DBO].[PG_SK_DETAILS_RMA_INVOICE] 0,0, '559365','R-0922-5','IRVI02',2
 CREATE PROCEDURE [dbo].[PG_SK_DETAILS_RMA_INVOICE]
 	@PP_K_SISTEMA_EXE				INT,
@@ -1076,7 +1101,9 @@ AS
 			DECLARE  @VP_CU_CUS_PART_NO			VARCHAR(100)	= ''
 					,@VP_CU_ITEM_NO				VARCHAR(100)	= ''
 					,@VP_CU_QTY_SHIP			INT				= 0
-					,@VP_CU_SERIAL_2			INT				= 0
+					,@VP_CU_SERIAL_2			INT				= 0					
+					,@VP_CU_CUSTOMER				VARCHAR(100)	= ''
+					,@VP_CU_PROD_CAT				VARCHAR(100)	= ''
 
 			DECLARE @VP_TBL_DETALLE_INVOICE TABLE(
 				Item_No			VARCHAR(100),
@@ -1094,20 +1121,24 @@ AS
 				SELECT	CUS_PART_NO, 
 						ITEM_NO,
 						SUM(QTY)				AS QTY_SHIP,
-						SERIAL_2
+						SERIAL_2,
+						CUSTOMER,
+						PROD_CAT
 				FROM	INVENTARIO_EMBARQUE_RMA	(NOLOCK)
 				WHERE	PACKING_NO				= @PP_PACKING_NO
-				GROUP	BY CUS_PART_NO, ITEM_NO, SERIAL_2
+				GROUP	BY CUS_PART_NO, ITEM_NO, SERIAL_2, CUSTOMER, PROD_CAT
 				ORDER	BY SERIAL_2
 			OPEN CU_MATERIAL_A_FACTURAR
-			FETCH NEXT FROM CU_MATERIAL_A_FACTURAR INTO @VP_CU_CUS_PART_NO, @VP_CU_ITEM_NO, @VP_CU_QTY_SHIP, @VP_CU_SERIAL_2			
+			FETCH NEXT FROM CU_MATERIAL_A_FACTURAR INTO @VP_CU_CUS_PART_NO, @VP_CU_ITEM_NO, @VP_CU_QTY_SHIP, @VP_CU_SERIAL_2
+														,@VP_CU_CUSTOMER,	@VP_CU_PROD_CAT			
 			WHILE @@FETCH_STATUS = 0
 				BEGIN
 					DECLARE  @VP_ITEM_DESC_1	VARCHAR(150)	= ''
 							,@VP_BPO_NUMBER		VARCHAR(50)		= ''
+							,@VP_S_NIVEL		VARCHAR(50)		= ''
+							,@VP_S_CUS_ITEM_NO	VARCHAR(50)		= ''
 
-					SELECT	
-							@VP_ITEM_DESC_1		= --LTRIM(RTRIM(ITEM_DESC_1)),
+					SELECT	@VP_ITEM_DESC_1		= --LTRIM(RTRIM(ITEM_DESC_1)),
 							-- =========================================
 												CONCAT	(		LTRIM(RTRIM(ITEM_DESC_1)),
 																'   (',
@@ -1119,8 +1150,26 @@ AS
 							@VP_BPO_NUMBER		= LTRIM(RTRIM(ISNULL(filler_0003, '')))
 					FROM	IMITMIDX_SQL		(NOLOCK)
 					INNER JOIN	ccverhdr_sql	(NOLOCK) ON LTRIM(RTRIM(ccverhdr_sql.modelno))	= LTRIM(RTRIM(IMITMIDX_SQL.prod_cat))
-					WHERE	LTRIM(RTRIM(item_no)) = @VP_CU_ITEM_NO
-
+					WHERE	LTRIM(RTRIM(item_no)) = @VP_CU_ITEM_NO					
+					-- ===========================================================================================================================
+					SELECT	@VP_CU_CUSTOMER			= CUSTOMER,
+							@VP_CU_PROD_CAT			= PROD_CAT
+					FROM	INVENTARIO_EMBARQUE_RMA	(NOLOCK)
+					WHERE	PACKING_NO				= @PP_PACKING_NO
+										
+					SELECT  TOP (1)
+							@VP_S_CUS_ITEM_NO	=	ISNULL(LTRIM(RTRIM(CUS_ITEM_NO)),'')
+					FROM	CCCUSITM_SQL	(NOLOCK)
+					WHERE	LTRIM(RTRIM(ITEM_NO))	=	(	SELECT	S_KIT
+															FROM	DETAILS_RMA (NOLOCK)
+															WHERE	K_DETAILS_RMA	= @VP_CU_SERIAL_2 )
+					AND		CUS_NO					= @VP_CU_CUSTOMER
+					AND		MODELNO					= @VP_CU_PROD_CAT
+					ORDER BY 	VERSIONNO	DESC
+														
+					SELECT	@VP_S_NIVEL		= RIGHT(LTRIM(RTRIM(@VP_CU_CUS_PART_NO)),2)
+					-- ===========================================================================================================================
+					
 					-- ///////////////////////////////////////////
 					DECLARE  @VP_PRECIO_UNITARIO			DECIMAL(13,2) = 0				-- REVISAR CALCULOS PORQUE EL PRECIO ESTA A 6 DECIMALES
 							,@VP_PRECIO_MANUAL				DECIMAL(13,2) = 0				-- REVISAR CALCULOS PORQUE EL PRECIO ESTA A 6 DECIMALES
@@ -1189,13 +1238,43 @@ AS
 					END				
 
 
+					IF	LTRIM(RTRIM(@VP_ITEM_DESC_1))	= ''
+					BEGIN
+						SELECT	
+								@VP_ITEM_DESC_1		= LTRIM(RTRIM(ITEM_DESC_1))
+						FROM	IMITMIDX_SQL		(NOLOCK)
+						WHERE	LTRIM(RTRIM(item_no)) = @VP_CU_ITEM_NO
+						
+						DECLARE	@VP_D_PROD_CAT		VARCHAR(250)
+						SELECT	TOP(1)
+								@VP_D_PROD_CAT	= ISNULL(MODELDESC,'-')
+						FROM	CCVERHDR_SQL	(NOLOCK)
+						WHERE	MODELNO		= @VP_CU_PROD_CAT
+						ORDER	BY VERSIONNO DESC
+
+						SET	@VP_ITEM_DESC_1	= CONCAT(@VP_ITEM_DESC_1,'  (',@VP_D_PROD_CAT,')')
+					END
+
+
 					INSERT INTO @VP_TBL_DETALLE_INVOICE 
 					SELECT	@VP_CU_ITEM_NO AS Item_No,
 							@VP_ITEM_DESC_1 AS Item_Desc_1,
 							-- =========================================
-							( CASE WHEN @PP_CUSTOMER = 'FAUR01' THEN
+							( CASE 
+								WHEN	@PP_CUSTOMER = 'FAUR01' THEN
 										CONCAT(@VP_CU_CUS_PART_NO, ' (', @VP_BPO_NUMBER, ')') 
-									ELSE @VP_CU_CUS_PART_NO END ) AS Cus_Item_No,
+								WHEN	@PP_CUSTOMER = 'IRVI02' THEN	(	CASE
+																				WHEN		@VP_S_CUS_ITEM_NO	LIKE '%BQW%'	
+																						OR	@VP_S_CUS_ITEM_NO	LIKE '%BQX%'
+																						OR	@VP_S_CUS_ITEM_NO	LIKE '%C4X%'
+																						OR	@VP_S_CUS_ITEM_NO	LIKE '%C6S%'THEN	( CASE 
+																																		WHEN	ISNUMERIC(@VP_S_NIVEL) = 1	THEN	CONCAT(@VP_CU_CUS_PART_NO,RIGHT(@VP_S_CUS_ITEM_NO,6))
+																																		ELSE	CONCAT(	LEFT(@VP_CU_CUS_PART_NO,LEN(LTRIM(RTRIM(@VP_CU_CUS_PART_NO)))-2)	,RIGHT(@VP_S_CUS_ITEM_NO,6))
+																																	END	)
+																				ELSE	@VP_CU_CUS_PART_NO
+																		END		)
+								ELSE	@VP_CU_CUS_PART_NO
+							END ) AS Cus_Item_No,
 							-- =========================================
 							@VP_CU_QTY_SHIP AS Qty_To_Ship,
 							'EA' AS UOM_MANUAL,
@@ -1203,6 +1282,7 @@ AS
 							@VP_TOTAL_KIT		AS TOTAL_KIT
 
 					FETCH NEXT FROM CU_MATERIAL_A_FACTURAR INTO @VP_CU_CUS_PART_NO, @VP_CU_ITEM_NO, @VP_CU_QTY_SHIP, @VP_CU_SERIAL_2
+																,@VP_CU_CUSTOMER,	@VP_CU_PROD_CAT			
 				END
 				
 				CLOSE CU_MATERIAL_A_FACTURAR
@@ -1215,25 +1295,6 @@ AS
 		END
 	ELSE
 	BEGIN
-		--SELECT	
-		--		OELINHST_SQL.Item_No,
-		--		OELINHST_SQL.Item_Desc_1,
-		--		-- =========================================
-		--		( CASE WHEN @PP_CUSTOMER = 'FAUR01' THEN
-		--					CONCAT(LTRIM(RTRIM(OELINHST_SQL.Cus_Item_No)), ' (', LTRIM(RTRIM(ISNULL(filler_0003, ''))) , ')') 
-		--			ELSE LTRIM(RTRIM(OELINHST_SQL.Cus_Item_No)) END ) AS Cus_Item_No,
-		--		-- =========================================
-		--		OELINHST_SQL.Qty_To_Ship,
-		--		'EA'	AS UOM_MANUAL,
-		--		OELINHST_SQL.Unit_Price,
-		--		SLS_AMT	AS	TOTAL_KIT
-		---- =========================================-- =========================================
-		--FROM	OELINHST_SQL	(NOLOCK) 
-		--LEFT JOIN IMITMIDX_SQL	(NOLOCK) ON LTRIM(RTRIM(IMITMIDX_SQL.item_no)) = LTRIM(RTRIM(OELINHST_SQL.item_no))
-		--WHERE	OELINHST_SQL.Inv_No		= @PP_INVOICE_NO
-		--AND		LTRIM(RTRIM(CUS_NO))	= @PP_CUSTOMER
-		--ORDER BY OELINHST_SQL.Line_Seq_No
-
 		SELECT	
 				OELINHST_SQL.Item_No,
 				-- =========================================
