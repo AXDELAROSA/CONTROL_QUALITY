@@ -1673,6 +1673,57 @@ AS
 GO
 
 
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_HOJA_EMPAQUE_MODELO]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_MODELO]
+GO
+--		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_MODELO] 0,139,'FAUR01','FW2'
+--		 EXECUTE [dbo].[PG_LI_HOJA_EMPAQUE_MODELO] 0,139,'DAIM05','WDK'
+CREATE PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_MODELO]
+	@PP_K_SISTEMA_EXE				INT,
+	@PP_K_USUARIO_ACCION			INT,
+	-- ===========================
+	@PP_CUS_NO						VARCHAR(20),
+	@PP_MODELNO						VARCHAR(25)
+AS
+	SELECT	 CUS_NO
+			,MODELNO
+			,VERSIONNO
+			,ITEM_NO						AS ITEM_P
+			,LTRIM(RTRIM(D_ITEM_NO))		AS D_ITEM_NO
+			,REVISION_HOJA_EMPAQUE
+			,CAJA_HOJA_EMPAQUE
+			,(CASE
+					WHEN	HOJA_EMPAQUE.VERSIONNO	= ISNULL(	(	SELECT	DISTINCT
+																			CCVERHDR_SQL.VERSIONNO
+																	FROM	CCVERHDR_SQL		(NOLOCK)
+																	WHERE	CCVERHDR_SQL.STATUS			= 'L'
+																	AND		CCVERHDR_SQL.SPECSTATUS		= 'U'
+																	AND		CCVERHDR_SQL.CUS_NO			=	[HOJA_EMPAQUE].CUS_NO
+																	AND		CCVERHDR_SQL.MODELNO		=	[HOJA_EMPAQUE].MODELNO
+																	--ORDER	BY CUS_NO	,MODELNO	,VERSIONNO	
+																	),0)	THEN 1
+					ELSE	0
+			END)							AS L_LIVE
+			,L_REVISION_ACTIVA
+			,(	CASE	
+					WHEN	L_CAPAS_COMPLETAS	= 0	THEN 'NO'
+					WHEN	L_CAPAS_COMPLETAS	= 1	THEN 'SI'
+			END)							AS L_CAPAS_COMPLETAS
+			,(	CASE
+					WHEN	U_ITEM	<> ''	THEN	'SI'
+					ELSE	'NO'
+			END)							AS L_U_ITEM
+			,ISNULL(U_ITEM,'--------')		AS U_ITEM
+			,STANDAR_PACK
+			,C_HOJA_EMPAQUE
+	FROM	[HOJA_EMPAQUE]		(NOLOCK)
+	WHERE	( CUS_NO		= @PP_CUS_NO  )
+	AND		( MODELNO		= @PP_MODELNO )
+	ORDER	BY CUS_NO	,MODELNO	,VERSIONNO DESC, U_ITEM DESC, ITEM_P, L_REVISION_ACTIVA DESC
+--	-- /////////////////////////////////////////////////////////////////////
+GO
+
+
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> SELECT / FICHA
 -- //////////////////////////////////////////////////////////////
@@ -2423,7 +2474,7 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 
 				SELECT	---- ============================-- ============================
 						@VP_CAJA_HOJA_EMPAQUE			=	ISNULL([CAJA_HOJA_EMPAQUE]	,'')	,
-						@VP_REVISION_HOJA_EMPAQUE		=	[REVISION_HOJA_EMPAQUE]				,
+						@VP_REVISION_HOJA_EMPAQUE		=	ISNULL([REVISION_HOJA_EMPAQUE]	, 0),
 						---- ============================-- ============================
 						@VP_CANTIDAD_PATRONES			=	ISNULL([CANTIDAD_PATRONES]	,0)		,
 						@VP_AREA_NETA					=	ISNULL([AREA_NETA]			,0)		,
@@ -2532,7 +2583,7 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 						-- ============================
 						,@VP_CU_STANDAR_PACK		,@VP_CU_CANTIDAD_PATRONES		,@VP_CU_AREA_NETA				,@VP_CU_AREA_GROSS
 						-- ============================
-						,@VP_CU_C_HOJA_EMPAQUE		,@VP_CU_L_REVISION_ACTIVA				
+						,@VP_CU_C_HOJA_EMPAQUE		,@VP_CU_L_REVISION_ACTIVA	--SIEMPRE VA EN 1, PORQUE ES LA REVISIÓN QUE SE ESTÁ ACTIVANDO.
 						-- ============================
 						,@VP_CU_K_HOJA_EMPAQUE_CAPA_DIVISION
 						-- ============================
@@ -2655,32 +2706,6 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 					
 					DECLARE	@VP_RUTA_CAPA_NUEVA	NVARCHAR(MAX)	= LTRIM(RTRIM(@VP_CU_2_CUS_NO)) +'\'+ LTRIM(RTRIM(@VP_CU_2_MODELNO)) +'\'+ LTRIM(RTRIM(@VP_CU_2_VERSIONNO)) + '\'
 					DECLARE	@VP_RUTA_CAPA_ANTER	NVARCHAR(MAX)	= LTRIM(RTRIM(@VP_CU_2_CUS_NO)) +'\'+ LTRIM(RTRIM(@VP_CU_2_MODELNO)) +'\'+ LTRIM(RTRIM(@PP_NO_VERSION_ANTERIOR)) + '\'
-					--DECLARE	 @VP_REV			INT, 
-					--			 ,@VP_CAPA			INT
-					--			 ,@VP_CAPA_IMAGEN	NVARCHAR(MAX)	
-
-					--SELECT	@VP_REV		= REVISION_HOJA_EMPAQUE,
-					--		@VP_CAPA	= N_CAPA
-					--		--[RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR]
-					--		--[RUTA_HOJA_EMPAQUE_CAPA_MODELO]
-					--		--[RUTA_HOJA_EMPAQUE_CAPA_IMAGEN]
-					--		--[RUTA_HOJA_EMPAQUE_CAPA_EXTENSION]	
-					--FROM	[dbo].[HOJA_EMPAQUE_CAPA]	(NOLOCK)
-					--WHERE	CUS_NO					= @PP_S_CUSTOMER
-					--AND		MODELNO					= @PP_S_MODEL		
-					--AND		VERSIONNO				= @PP_NO_VERSION_ANTERIOR
-					--AND		REVISION_HOJA_EMPAQUE	= @VP_CU_2_REVISION_HOJA_EMPAQUE
-					----AND		ITEM_P					= @VP_CU_2_ITEM_P
-					--AND		ITEM_NO					= @VP_CU_2_ITEM_NO					
-					
-					--IF	@VP_CU_2_ITEM_U	<> ''
-					--BEGIN
-					--	SET	@VP_CAPA_IMAGEN	= LTRIM(RTRIM(@VP_CU_2_ITEM_U)) +'_'+FORMAT(@VP_REV,'000') +'_'+ CONVERT(VARCHAR(10),@VP_CAPA)
-					--END
-					--ELSE
-					--BEGIN
-					--	SET	@VP_CAPA_IMAGEN	= LTRIM(RTRIM(@VP_CU_2_ITEM_P)) +'_'+FORMAT(@VP_REV,'000') +'_'+ CONVERT(VARCHAR(10),@VP_CAPA)
-					--END
 
 					INSERT INTO [dbo].[HOJA_EMPAQUE_CAPA]
 					(		 [CUS_NO]	,[MODELNO]	,[VERSIONNO]
@@ -2742,14 +2767,6 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 							[RUTA_SERVR]	,	
 							[RUTA_LOCAL]	,
 							[CREAR_CARP]	)
-						--VALUES
-						--(	@PP_S_CUSTOMER	 ,
-						--	@PP_S_MODEL		 ,
-						--	@PP_NO_VERSION	 ,
-						---- ============================							
-						--	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR + @VP_RUTA_CAPA_NUEVA + @VP_CAPA_IMAGEN + '.PNG'	,		--'',
-						--	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR + @VP_RUTA_CAPA_ANTER + @VP_CAPA_IMAGEN + '.PNG'	,		--'',
-						--	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR	+ @VP_RUTA_CAPA_NUEVA	)									--'')
 						SELECT	@VP_CU_2_CUS_NO,	
 								@VP_CU_2_MODELNO,	
 								@VP_CU_2_VERSIONNO,
@@ -2763,7 +2780,8 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 						-- ========================================================================================================================================================================
 						[RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR] + @VP_RUTA_CAPA_ANTER +
 						( CASE	
-							WHEN	@VP_CU_2_MODELNO	= 'WL5'		THEN	LTRIM(RTRIM(@VP_CU_2_ITEM_NO)) +'_'+FORMAT(	ISNULL((	SELECT	TOP (1)	REVISION_HOJA_EMPAQUE
+							WHEN	@VP_CU_2_MODELNO	= 'WL5'		THEN	LTRIM(RTRIM(@VP_CU_2_ITEM_NO)) +'_'+FORMAT(	ISNULL((	SELECT	TOP (1)	
+																																			REVISION_HOJA_EMPAQUE
 																																	FROM	[dbo].[HOJA_EMPAQUE_CAPA]
 																																	WHERE	CUS_NO					= @PP_S_CUSTOMER
 																																	AND		MODELNO					= @PP_S_MODEL		
@@ -2773,7 +2791,8 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 																																	AND		ITEM_NO					= @VP_CU_2_ITEM_NO 
 																																	ORDER BY  REVISION_HOJA_EMPAQUE DESC ),0)									
 																			,'000') +'_'+ CONVERT(VARCHAR(10),HOJA_EMPAQUE_CAPA.N_CAPA)
-							WHEN	U_ITEM	<> ''					THEN	LTRIM(RTRIM(@VP_CU_2_ITEM_U)) +'_'+FORMAT(	ISNULL((	SELECT	TOP (1)	REVISION_HOJA_EMPAQUE
+							WHEN	U_ITEM	<> ''					THEN	LTRIM(RTRIM(@VP_CU_2_ITEM_U)) +'_'+FORMAT(	ISNULL((	SELECT	TOP (1)	
+																																			REVISION_HOJA_EMPAQUE
 																																	FROM	[dbo].[HOJA_EMPAQUE_CAPA]
 																																	WHERE	CUS_NO					= @PP_S_CUSTOMER
 																																	AND		MODELNO					= @PP_S_MODEL		
@@ -2782,7 +2801,8 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 																																	--AND		ITEM_P					= @VP_CU_2_ITEM_P
 																																	ORDER BY  REVISION_HOJA_EMPAQUE DESC ),0)									
 																			,'000') +'_'+ CONVERT(VARCHAR(10),HOJA_EMPAQUE_CAPA.N_CAPA)									
-							ELSE	LTRIM(RTRIM(@VP_CU_2_ITEM_P)) +'_'+FORMAT(	ISNULL((	SELECT	TOP (1)	REVISION_HOJA_EMPAQUE
+							ELSE	LTRIM(RTRIM(@VP_CU_2_ITEM_P)) +'_'+FORMAT(	ISNULL((	SELECT	TOP (1)	
+																									REVISION_HOJA_EMPAQUE
 																							FROM	[dbo].[HOJA_EMPAQUE_CAPA]
 																							WHERE	CUS_NO					= @PP_S_CUSTOMER
 																							AND		MODELNO					= @PP_S_MODEL		
@@ -2797,7 +2817,7 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 						WHERE	CUS_NO					= @PP_S_CUSTOMER
 						AND		MODELNO					= @PP_S_MODEL		
 						AND		VERSIONNO				= @VP_CU_2_VERSIONNO
-						AND		REVISION_HOJA_EMPAQUE	= 0
+						AND		REVISION_HOJA_EMPAQUE	= @VP_CU_2_REVISION_HOJA_EMPAQUE	--0
 						--AND		ITEM_P					= @VP_CU_2_ITEM_P
 						AND		ITEM_NO					= @VP_CU_2_ITEM_NO						
 						IF @@ROWCOUNT = 0
@@ -2815,14 +2835,6 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 							[RUTA_SERVR]	,	
 							[RUTA_LOCAL]	,
 							[CREAR_CARP]	)
-						--VALUES
-						--(	@PP_S_CUSTOMER	 ,
-						--	@PP_S_MODEL		 ,
-						--	@PP_NO_VERSION	 ,
-						---- ============================							
-						--	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE + @VP_RUTA_CAPA_NUEVA + @VP_CAPA_IMAGEN + '.PNG'	,		--'',
-						--	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE + @VP_RUTA_CAPA_ANTER + @VP_CAPA_IMAGEN + '.PNG'	,		--'',
-						--	@VP_RUTA_HOJA_EMPAQUE_CAPA_SERVIDOR_REPORTE	+ @VP_RUTA_CAPA_NUEVA	)									--'')
 						SELECT	@VP_CU_2_CUS_NO,	
 								@VP_CU_2_MODELNO,	
 								@VP_CU_2_VERSIONNO,
@@ -2870,7 +2882,7 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 						WHERE	CUS_NO					= @PP_S_CUSTOMER
 						AND		MODELNO					= @PP_S_MODEL		
 						AND		VERSIONNO				= @VP_CU_2_VERSIONNO
-						AND		REVISION_HOJA_EMPAQUE	= 0
+						AND		REVISION_HOJA_EMPAQUE	= @VP_CU_2_REVISION_HOJA_EMPAQUE	--0
 						--AND		ITEM_P					= @VP_CU_2_ITEM_P
 						AND		ITEM_NO					= @VP_CU_2_ITEM_NO	
 						IF @@ROWCOUNT = 0
@@ -2899,9 +2911,9 @@ DECLARE @VP_MENSAJE NVARCHAR(MAX)
 							,[K_USUARIO_CAMBIO]	,[F_CAMBIO]		)
 					SELECT	@VP_CU_2_CUS_NO,	@VP_CU_2_MODELNO,	@VP_CU_2_VERSIONNO,
 							@VP_CU_2_ITEM_P,	0,
-							@VP_CU_2_ITEM_NO,	@VP_CU_2_ITEM_U,
 							--[N_CAPA],		[N_PATRONES_CAPA],
 							1,			0,
+							@VP_CU_2_ITEM_NO,	@VP_CU_2_ITEM_U,
 							--==================================
 							'',	'',	'',	'',
 							--==================================
@@ -3090,12 +3102,16 @@ FROM	HOJA_EMPAQUE_PROCESO	(NOLOCK)
 WHERE	HOJA_EMPAQUE_PROCESO.CUS_NO		= @PP_S_CUSTOMER		--	
 AND		HOJA_EMPAQUE_PROCESO.MODELNO	= @PP_S_MODEL			--	
 AND		HOJA_EMPAQUE_PROCESO.VERSIONNO	= @VP_VERSION_ANTERIOR	--	
-AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	REVISION_HOJA_EMPAQUE
+AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	TOP(1)
+																	REVISION_HOJA_EMPAQUE
 															FROM	HOJA_EMPAQUE	
 															WHERE	HOJA_EMPAQUE.CUS_NO				= @PP_S_CUSTOMER		--	
 															AND		HOJA_EMPAQUE.MODELNO			= @PP_S_MODEL			--	
 															AND		HOJA_EMPAQUE.VERSIONNO			= @VP_VERSION_ANTERIOR	--
-															AND		HOJA_EMPAQUE.L_REVISION_ACTIVA	= 1		)
+															--AND		HOJA_EMPAQUE.L_REVISION_ACTIVA	= 1		)
+															ORDER BY REVISION_HOJA_EMPAQUE	DESC				)
+AND		K_PROCESO						<> 50
+ORDER	BY ITEM_NO	ASC, K_PROCESO	ASC
 
 -- ==============================================================================================================
 
@@ -3104,7 +3120,7 @@ AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	REVISION_HOJA_EMPAQU
 -- ==============================================================================================================
 	DECLARE CU_CURSOR	CURSOR LOCAL STATIC READ_ONLY FORWARD_ONLY FOR
 		--SELECT	DISTINCT	(LEFT(HOJA_EMPAQUE.ITEM_NO,7)) AS IT,
-		SELECT	HOJA_EMPAQUE.ITEM_NO AS IT,
+		SELECT	DISTINCT(HOJA_EMPAQUE.ITEM_NO) AS IT,
 			-- ============================
 				SPITMIDX_SQL.CUS_NO,
 				SPITMIDX_SQL.MODELNO,
@@ -3132,7 +3148,7 @@ AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	REVISION_HOJA_EMPAQU
 		AND		HOJA_EMPAQUE.ITEM_NO		= SPITMIDX_SQL.ITEM_NO_KIT
 		WHERE	SPITMIDX_SQL.CUS_NO			= @PP_S_CUSTOMER	--	'MAGN03'
 		AND		SPITMIDX_SQL.MODELNO		= @PP_S_MODEL		--	'WD2'
-		AND		SPITMIDX_SQL.VERSIONNO		= @PP_NO_VERSION	--	'0016'
+		AND		SPITMIDX_SQL.VERSIONNO		= FORMAT(@PP_NO_VERSION,'0000')	--	'0016'
 		ORDER BY	SPITMIDX_SQL.CUS_NO,
 					SPITMIDX_SQL.MODELNO,
 					SPITMIDX_SQL.VERSIONNO,
@@ -3275,6 +3291,7 @@ AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	REVISION_HOJA_EMPAQU
 			BEGIN
 				SET	@VP_CU_L_HOJA_EMPAQUE_PROCESO	= @VL_L_HOJA_EMPAQUE_PROCESO
 			END
+
 			IF	@VL_K_PROCESO_SIMBOLO	> 0
 			BEGIN
 				SET	@VP_CU_K_PROCESO_SIMBOLO	= @VL_K_PROCESO_SIMBOLO
@@ -3347,23 +3364,50 @@ AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	REVISION_HOJA_EMPAQU
 			[L_HOJA_EMPAQUE_PROCESO]			,
 			-- ============================
 			[D_HOJA_EMPAQUE_PROCESO]			)
-		SELECT	
-			TA_ITEM_NO							,
-			LEFT(TA_ITEM_NO,7)					,
-			-- ============================
-			TA_CUS_NO							,
-			TA_MODELNO							,
-			TA_VERSIONNO						,
-			TA_REVISION							,
-			-- ============================
-			TA_K_PROCESO						,
-			TA_K_PROCESO_SIMBOLO				,
-			-- ============================
-			TA_L_HOJA_EMPAQUE_PROCESO			,
-			-- ============================
-			TA_D_PROCESO								
-		FROM	@VP_TA_HOJA_PROCESO
-		WHERE	TA_K_PROCESO	>= 50
+			SELECT	ITEM_NO,		--	COUNT(K_HOJA_EMPAQUE_PROCESO)
+					LEFT(ITEM_NO,7),
+				-- ============================
+					CUS_NO,
+					MODELNO,
+					VERSIONNO,
+					REVISION_HOJA_EMPAQUE,
+				-- ============================
+					K_PROCESO,
+					K_PROCESO_SIMBOLO,
+					L_HOJA_EMPAQUE_PROCESO,
+				-- ============================
+					D_HOJA_EMPAQUE_PROCESO
+			FROM	HOJA_EMPAQUE_PROCESO	(NOLOCK)
+			WHERE	HOJA_EMPAQUE_PROCESO.CUS_NO		= @PP_S_CUSTOMER		--	
+			AND		HOJA_EMPAQUE_PROCESO.MODELNO	= @PP_S_MODEL			--	
+			AND		HOJA_EMPAQUE_PROCESO.VERSIONNO	= @VP_VERSION_ANTERIOR	--	
+			AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	TOP(1)
+																				REVISION_HOJA_EMPAQUE
+																		FROM	HOJA_EMPAQUE	
+																		WHERE	HOJA_EMPAQUE.CUS_NO				= @PP_S_CUSTOMER		--	
+																		AND		HOJA_EMPAQUE.MODELNO			= @PP_S_MODEL			--	
+																		AND		HOJA_EMPAQUE.VERSIONNO			= @VP_VERSION_ANTERIOR	--
+																		--AND		HOJA_EMPAQUE.L_REVISION_ACTIVA	= 1		)
+																		ORDER BY REVISION_HOJA_EMPAQUE	DESC				)
+			AND		K_PROCESO						= 50
+			ORDER	BY ITEM_NO	ASC, K_PROCESO	ASC
+		--SELECT	
+		--	TA_ITEM_NO							,
+		--	LEFT(TA_ITEM_NO,7)					,
+		--	-- ============================
+		--	TA_CUS_NO							,
+		--	TA_MODELNO							,
+		--	TA_VERSIONNO						,
+		--	TA_REVISION							,
+		--	-- ============================
+		--	TA_K_PROCESO						,
+		--	TA_K_PROCESO_SIMBOLO				,
+		--	-- ============================
+		--	TA_L_HOJA_EMPAQUE_PROCESO			,
+		--	-- ============================
+		--	TA_D_PROCESO								
+		--FROM	@VP_TA_HOJA_PROCESO
+		--WHERE	TA_K_PROCESO	>= 50
 	END
 	-- ================================================================================================================
 	-- ================================================================================================================
@@ -3375,18 +3419,22 @@ AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	REVISION_HOJA_EMPAQU
 					WHERE	HOJA_EMPAQUE_PROCESO.CUS_NO		= @PP_S_CUSTOMER		--	
 					AND		HOJA_EMPAQUE_PROCESO.MODELNO	= @PP_S_MODEL			--	
 					AND		HOJA_EMPAQUE_PROCESO.VERSIONNO	= @VP_VERSION_ANTERIOR	--	
-					AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	REVISION_HOJA_EMPAQUE
+					AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	TOP(1)
+																						REVISION_HOJA_EMPAQUE
 																				FROM	HOJA_EMPAQUE	
 																				WHERE	HOJA_EMPAQUE.CUS_NO				= @PP_S_CUSTOMER		--	
 																				AND		HOJA_EMPAQUE.MODELNO			= @PP_S_MODEL			--	
 																				AND		HOJA_EMPAQUE.VERSIONNO			= @VP_VERSION_ANTERIOR	--
-																				AND		HOJA_EMPAQUE.L_REVISION_ACTIVA	= 1		))	,0)	)	<>
+																				--AND		HOJA_EMPAQUE.L_REVISION_ACTIVA	= 1	))	,0)	)	<>
+																				ORDER BY REVISION_HOJA_EMPAQUE	DESC	))	,0)	)	
+	<>	--SON DIFERENTES, ES PORQUE EXISTEN CAMBIOS.
 	(ISNULL( (		SELECT	COUNT(K_HOJA_EMPAQUE_PROCESO)
 					FROM	HOJA_EMPAQUE_PROCESO	(NOLOCK)
 					WHERE	HOJA_EMPAQUE_PROCESO.CUS_NO		= @PP_S_CUSTOMER		--	
 					AND		HOJA_EMPAQUE_PROCESO.MODELNO	= @PP_S_MODEL			--	
 					AND		HOJA_EMPAQUE_PROCESO.VERSIONNO	= @PP_NO_VERSION	--	
-					AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	REVISION_HOJA_EMPAQUE
+					AND		HOJA_EMPAQUE_PROCESO.REVISION_HOJA_EMPAQUE	IN (	SELECT	TOP(1)
+																						REVISION_HOJA_EMPAQUE
 																				FROM	HOJA_EMPAQUE	
 																				WHERE	HOJA_EMPAQUE.CUS_NO				= @PP_S_CUSTOMER		--	
 																				AND		HOJA_EMPAQUE.MODELNO			= @PP_S_MODEL			--	
