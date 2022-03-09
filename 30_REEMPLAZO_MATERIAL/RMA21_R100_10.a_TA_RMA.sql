@@ -202,7 +202,6 @@ EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,11, 'ORDEN CERRADA-COMPLETA',				'', 'CPCER
 --EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,12, 'RMA PARA EMBARCAR',					'', 'PAEMB',	120,1
 EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,13, 'ORDEN LIBERADA QC',					'', 'LIBER',	130,1
 
-
 EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,20, 'ORDEN EMBARCADA',						'', 'EMBAR',	200,1
 EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,21, 'ORDEN FACTURADA',						'', 'FACTR',	210,1
 
@@ -214,6 +213,10 @@ EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,80, 'NO IMPRESA',							'', 'NO-IMPR',	800,
 EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,85, 'IMPRESA',								'', 'IMPRSA',	850,1
 EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,90, 'COMPLETA',							'', 'COMPLTA',	900,1
 EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,95, 'PARCIAL',								'', 'PARCIAL',	950,1
+
+---- =================================================================================
+EXECUTE [dbo].[PG_CI_STATUS_RMA] 0,0,100, 'BAJA POR INVENTARIO',				'', 'BAJA_INV',	1000,1
+
 SET NOCOUNT OFF
 GO
 

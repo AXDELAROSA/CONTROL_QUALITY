@@ -18,8 +18,10 @@ GO
 --	[PG_GET_DETALLE_PACKING_RMA_INFO]
 --	[PG_LI_HEADER_RMA_INVOICE]
 --	[PG_LI_HEADER_RMA_INVOICE_REALIZADA]
+--	[PG_LI_HEADER_RMA_BAJA]
 --	[PG_LI_DETAILS_RMA_INVOICE]
 --	[PG_LI_DETAILS_RMA_INVOICE_REALIZADA]
+--	[PG_LI_DETAILS_RMA_BAJA]
 --***************************************************	
 --ESTOS SP SIRVEN PARA GENERAR EL ARCHIVO PDF DE LA FACTURA
 --		[PG_LI_INVOICE_HEADER_RMA]
@@ -30,6 +32,7 @@ GO
 --	CON ESTOS SE INSERTAN LOS REGISTROS EN LAS TABLAS Y SE ACTUALIZAN LOS ESTATUS CORRESPONDIENTES.
 --		[PG_UP_INVENTARIO_EMBARQUE_PACKING_RMA]
 --		[PG_UP_INVENTARIO_EMBARQUE_INVOICE_RMA]
+--		[PG_UP_INVENTARIO_EMBARQUE_BAJA_RMA]
 --		[PG_IN_EVENTO_EMBARCADO_FACTURADO_KIT_PROGRAMADO_RMA]
 -- //////////////////////////////////////////////////////////////
 
@@ -519,6 +522,40 @@ AS
 GO
 
 
+-- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> SELECT / LISTADO
+-- //////////////////////////////////////////////////////////////
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_HEADER_RMA_BAJA]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_HEADER_RMA_BAJA]
+GO
+--		 EXECUTE [dbo].[PG_LI_HEADER_RMA_BAJA] 0,139, 'IRVI02'    , 2
+--		 EXECUTE [dbo].[PG_LI_HEADER_RMA_BAJA] 0,139, '( TODOS )' , 2
+CREATE PROCEDURE [dbo].[PG_LI_HEADER_RMA_BAJA]
+	@PP_K_SISTEMA_EXE				INT,
+	@PP_K_USUARIO_ACCION			INT,
+	-- ===========================
+	@PP_CUSTOMER					VARCHAR(25),
+	@PP_K_TIPO_RMA					INT
+AS
+	-- /////////////////////////////////////////////////////////////////////
+		SELECT  DISTINCT
+					PACKING_NO						AS PACKING_NO_BAJA
+					 --LEFT(LTRIM(RTRIM(SERIAL_1)),5)	AS JOBNO
+					,CUSTOMER						AS CUS_NO
+		FROM	INVENTARIO_EMBARQUE_RMA				(NOLOCK)
+		WHERE	SERIAL_1 IN (
+								SELECT	SERIAL
+								FROM	DETAILS_RMA		(NOLOCK)
+								INNER JOIN	HEADER_RMA	(NOLOCK)	ON HEADER_RMA.K_HEADER_RMA	= DETAILS_RMA.K_HEADER_RMA
+								INNER JOIN	TIPO_RMA	(NOLOCK)	ON HEADER_RMA.K_TIPO_RMA	= TIPO_RMA.K_TIPO_RMA
+								WHERE		HEADER_RMA.K_TIPO_RMA		= @PP_K_TIPO_RMA
+							)
+		AND	K_ESTATUS_INVENTARIO_EMBARQUE_RMA	= 0
+		AND	( CUSTOMER		= @PP_CUSTOMER	OR	@PP_CUSTOMER	= '( TODOS )' )
+-- /////////////////////////////////////////////////////////////////////
+GO
+
+
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_DETAILS_RMA_INVOICE]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_LI_DETAILS_RMA_INVOICE]
 GO
@@ -603,7 +640,9 @@ AS
 			QTY_TO_SHIP					INT,
 			UOM_MANUAL					VARCHAR(100),
 			Unit_Price					DECIMAL(13,2),
-			TOTAL_KIT					DECIMAL(13,2) )
+			TOTAL_KIT					DECIMAL(13,2),
+			JOBNO						VARCHAR(100),
+			K_HEADER_RMA				VARCHAR(100)	 )
 	SET NOCOUNT ON
 
 			DECLARE @VP_TOTAL_DETALLE DECIMAL(13,2) = 0
@@ -648,7 +687,9 @@ AS
 			--'DESCUENTO'			, 
 			''			, 
 			0,--@VP_SUBTOTAL_INVOICE,
-			@VP_TOTAL_INVOICE	
+			@VP_TOTAL_INVOICE,
+			'',
+			''
 
 -- ====================================================================================================================================================================
 -- ====================================================================================================================================================================
@@ -662,7 +703,9 @@ AS
 			QTY_TO_SHIP			,
 			UOM_MANUAL			,
 			CONVERT(DECIMAL(13,2),Unit_Price)	AS Unit_Price,
-			TOTAL_KIT
+			TOTAL_KIT			,
+			''					AS JOBNO,
+			''					AS K_HEADER_RMA
 	FROM @TBL_DETALLE_PACKING
 	UNION
 	SELECT	
@@ -685,6 +728,12 @@ AS
 			--OELINHST_SQL.Unit_Price,
 			CONVERT(DECIMAL(13,2),OELINHST_SQL.Unit_Price)	AS Unit_Price,
 			SLS_AMT	AS	 TOTAL_KIT
+			-- =========================================
+			,	(	SELECT	JOBNO
+					FROM	HEADER_RMA
+					WHERE	K_HEADER_RMA	IN (	LEFT(RIGHT(LTRIM(RTRIM(id_no)),LEN(LTRIM(RTRIM(id_no)))-1),6) )
+				)															AS JOBNO
+			,LEFT(RIGHT(LTRIM(RTRIM(id_no)),LEN(LTRIM(RTRIM(id_no)))-1),6)	AS K_HEADER_RMA
 	-- =========================================-- =========================================
 	FROM	OELINHST_SQL	 (NOLOCK) 
 	LEFT JOIN	IMITMIDX_SQL (NOLOCK) ON LTRIM(RTRIM(IMITMIDX_SQL.item_no)) = LTRIM(RTRIM(OELINHST_SQL.item_no))
@@ -692,10 +741,51 @@ AS
 	INNER JOIN	ccverhdr_sql (NOLOCK) ON LTRIM(RTRIM(ccverhdr_sql.modelno))	= LTRIM(RTRIM(IMITMIDX_SQL.prod_cat))
 	AND			ccverhdr_sql.[status]		= 'L'
 	AND			ccverhdr_sql.[specstatus]	= 'U'
-	WHERE	OELINHST_SQL.Inv_No		= @PP_INVOICE_NO
+	WHERE	OELINHST_SQL.Inv_No					= @PP_INVOICE_NO
 	AND		LTRIM(RTRIM(OELINHST_SQL.CUS_NO))	= @PP_CUSTOMER
 	ORDER BY Line_Seq_No
 
+	-- /////////////////////////////////////////////////////////////////////
+GO
+
+
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_DETAILS_RMA_BAJA]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_LI_DETAILS_RMA_BAJA]
+GO
+--		 EXECUTE [DBO].[PG_LI_DETAILS_RMA_BAJA] 0,0, 'JL0728-1', 'IRVI02'
+CREATE PROCEDURE [dbo].[PG_LI_DETAILS_RMA_BAJA]
+	@PP_K_SISTEMA_EXE				INT,
+	@PP_K_USUARIO_ACCION			INT,
+	-- ===========================
+	@PP_PACKING_NO_BAJA				VARCHAR(50),
+	@PP_CUSTOMER					VARCHAR(50)
+AS
+	-- =========================================	
+	--IF @PP_INVOICE_NO = 'XXXXXXXX'
+	--BEGIN
+		SELECT	K_TIPO_RMA,
+				D_STATUS_RMA,
+				LTRIM(RTRIM(prod_cat_desc))		AS D_MODELNO,
+				DETAILS_RMA.ITEM_NO				AS S_PATTERN,
+				LTRIM(RTRIM(SEARCH_DESC))		AS D_PATTERN,
+				S_KIT							AS KIT,
+				DETAILS_RMA.CANTIDAD_ORDENADA AS CANTIDAD_ENVIADA,
+				--ISNULL(PACKING_NO,'-')					AS PACKING_NO,
+				'-'								AS PACKING_NO,
+				--ISNULL(INVOICE_NO,'-')					AS INVOICE_NO,
+				'-'								AS INVOICE_NO,
+				[DETAILS_RMA].*
+		FROM	[DETAILS_RMA]				(NOLOCK)
+		INNER JOIN	IMITMIDX_SQL			(NOLOCK)	ON IMITMIDX_SQL.ITEM_NO		= DETAILS_RMA.ITEM_NO
+		INNER JOIN	STATUS_RMA				(NOLOCK)	ON STATUS_RMA.K_STATUS_RMA	= DETAILS_RMA.K_STATUS_RMA	
+		--INNER JOIN	ARCUSFIL_PROGRAM_MODEL	(NOLOCK)	ON ARCUSFIL_PROGRAM_MODEL.S_ARCUSFIL_PROGRAM_MODEL	= DETAILS_RMA.MODELNO
+		INNER JOIN	IMCATFIL_SQL			(NOLOCK)	ON IMCATFIL_SQL.PROD_CAT	= DETAILS_RMA.MODELNO
+		INNER JOIN	HEADER_RMA				(NOLOCK)	ON HEADER_RMA.K_HEADER_RMA	= DETAILS_RMA.K_HEADER_RMA
+		INNER JOIN	INVENTARIO_EMBARQUE_RMA	(NOLOCK)	ON INVENTARIO_EMBARQUE_RMA.SERIAL_2	= DETAILS_RMA.K_DETAILS_RMA
+		WHERE	DETAILS_RMA.K_DETAILS_RMA	IN	(	SELECT	SERIAL_2
+													FROM	INVENTARIO_EMBARQUE_RMA	(NOLOCK)
+													WHERE	PACKING_NO				= @PP_PACKING_NO_BAJA	)
+		ORDER BY MODELNO ASC, SERIAL ASC
 	-- /////////////////////////////////////////////////////////////////////
 GO
 
@@ -1892,7 +1982,7 @@ AS
 				-- /////////CREAR DATOS PARA EL DETALLE DE LA FACTURA////////////////////////////////////////////////////////////
 				DECLARE @VP_ORDEN	VARCHAR(15)	= CONVERT(VARCHAR(15),@VP_K_HEADER_RMA)
 
-				DECLARE  @VP_ID_NO			VARCHAR(150) = 'O' + RIGHT('000000' + @VP_ORDEN, 6) + RIGHT(  '00000000' + @VP_INVOICE , 8)  + RIGHT(  '0000' + @VP_LINE_NO , 4) + '0000000'
+				DECLARE  @VP_ID_NO			VARCHAR(150) = 'O' + RIGHT('000000' + @VP_ORDEN, 6) + RIGHT(  '00000000' + @VP_INVOICE , 8)  + FORMAT(  @VP_LINE_NO , '0000') + '0000000'
 						,@VP_ITEM_DESC_1	VARCHAR(40)
 						,@VP_ITEM_DESC_2	VARCHAR(40)
 
@@ -2141,6 +2231,291 @@ GO
 
 
 -- //////////////////////////////////////////////////////////////
+-- // STORED PROCEDURE ---> ACTUALIZAR / INFORMACIÓN PARA PACKING.
+-- //////////////////////////////////////////////////////////////
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_UP_INVENTARIO_EMBARQUE_BAJA_RMA]') AND type in (N'P', N'PC'))
+	DROP PROCEDURE [dbo].[PG_UP_INVENTARIO_EMBARQUE_BAJA_RMA]
+GO
+CREATE PROCEDURE [dbo].[PG_UP_INVENTARIO_EMBARQUE_BAJA_RMA]
+	@PP_K_SISTEMA_EXE					INT,
+	@PP_K_USUARIO_ACCION				INT,
+	-- ===========================
+	@PP_K_DETAILS_RMA_ARRAY				NVARCHAR(MAX),
+	@PP_TIPO_ORDEN						INT,
+	@PP_CODIGO_ETIQUETA					NVARCHAR(MAX)
+	-- ============================		
+AS
+	DECLARE  @VP_MENSAJE			NVARCHAR(MAX)	= ''
+	-- =========================================
+			,@VP_N_PACKING			INT				= 0
+			,@VP_PACKING_NUEVO		VARCHAR(50)		= '-1'
+			,@VP_DATE				DATE			= GETDATE()
+	----================================================================
+	BEGIN TRANSACTION 
+	BEGIN TRY
+
+	IF LTRIM(RTRIM(@PP_CODIGO_ETIQUETA)) = ''
+	BEGIN
+		RAISERROR ('Es necesario indicar un MOTIVO para realizar la BAJA del material.', 16, 1 )
+	END
+
+	-- /////////////SE VALIDA SI YA SE HA REALIZADO ALGUNA BAJA EN EL DIA //////////////////////////////
+	SELECT	@VP_N_PACKING					= COUNT(K_INVENTARIO_EMBARQUE_LOG_RMA)
+	FROM	INVENTARIO_EMBARQUE_LOG_RMA		(NOLOCK)
+	WHERE	K_ESTATUS_INVENTARIO_EMBARQUE	= 0 -- BAJA POR INVENTARIO
+	AND		CONVERT(DATE, F_INVENTARIO_EMBARQUE_LOG_RMA) = @VP_DATE
+		
+	IF @VP_N_PACKING IS NULL
+	BEGIN
+		SET @VP_N_PACKING = 0
+	END
+
+	SET @VP_PACKING_NUEVO = CONCAT(FORMAT(GETDATE(),'MMddyy'), FORMAT(@VP_N_PACKING,'0000') )
+
+	-- // SECCION#2 ////////////////////////////////////////////////////////// ACCION A REALIZAR	
+		IF	(	SELECT  COUNT(K_USUARIO_PEARL)
+				FROM	BD_GENERAL.dbo.USUARIO_PEARL AS USERS  (NOLOCK) 
+				INNER	JOIN	BD_GENERAL.dbo.GRUPO_APROBADOR (NOLOCK) ON GRUPO_APROBADOR.K_USUARIO	= USERS.K_USUARIO_PEARL
+				WHERE	GRUPO_APROBADOR.K_TIPO_GRUPO_APROBADOR			= 9706	-- @VP_K_TIPO_GRUPO_APROBADOR
+				AND		K_ESTATUS_GRUPO_APROBADOR						= 1
+				AND		GRUPO_APROBADOR.K_USUARIO						= @PP_K_USUARIO_ACCION	)	= 0
+		BEGIN
+			RAISERROR ('Usuario no válido para realizar la acción.', 16, 1 )
+		END
+		---==================================================================================================================================================================
+		---==================================================================================================================================================================
+		---==================================================================================================================================================================
+		---==================================================================================================================================================================				
+		-- /////////SE OBTIENE DE LOS ARRAY EL LOTE Y PIEL INGRESADOS///////////////////////////////////////////////////////////	
+		DECLARE @TBL_MATERIAL_SELECCIONADO  TABLE (
+				TBL_K_MATERIAL_SELECCIONADO		INT IDENTITY(1,1),
+				TBL_K_INVENTARIO_EMBARQUE		INT
+			)
+		SET NOCOUNT ON
+
+		DECLARE @TBL_MATERIAL_SELECCIONADO_HEADER_RMA  TABLE (
+				TBL_K_MATERIAL_SELECCIONADO_RMA		INT IDENTITY(1,1),
+				TBL_K_HEADER_RMA					INT
+			)
+		SET NOCOUNT ON
+				
+		DECLARE  @VP_POSICION_K_DETAILS_RMA		INT
+				,@VP_VALOR_K_DETAILS_RMA		VARCHAR(20)
+				,@VP_VALIDA_CLIENTE				VARCHAR(50)	= ''
+				,@VP_VALIDA_TIPO				INT
+				,@VP_VALIDA_L_COBRO				INT
+				,@VP_CONTA						INT			= 0
+								
+		--Colocamos un separador al final de los parametros para que funcione bien nuestro codigo
+		SET	@PP_K_DETAILS_RMA_ARRAY	= @PP_K_DETAILS_RMA_ARRAY		+ '/'		
+				
+		--Hacemos un bucle que se repite mientras haya separadores, patindex busca un patron en una cadena y nos devuelve su posicion
+		WHILE patindex('%/%' , @PP_K_DETAILS_RMA_ARRAY) <> 0
+		BEGIN		-- WHILE
+			SELECT @VP_POSICION_K_DETAILS_RMA	=	patindex('%/%' , @PP_K_DETAILS_RMA_ARRAY)
+						
+			--Buscamos la posicion de la primera y obtenemos los caracteres hasta esa posicion
+			SELECT @VP_VALOR_K_DETAILS_RMA	= LEFT(@PP_K_DETAILS_RMA_ARRAY, @VP_POSICION_K_DETAILS_RMA - 1)
+						
+			DECLARE  @VP_K_STATUS_RMA				INT		= 0
+					,@VP_K_INVENTARIO_EMBARQUE_RMA	INT		
+					,@VP_K_HEADER_RMA				INT
+					,@VP_WH_CLIENTE					VARCHAR(50)	= ''
+					,@VP_WH_TIPO					INT
+					,@VP_WH_APLICA_COBRO			INT
+						
+				SELECT	@VP_K_STATUS_RMA				= K_ESTATUS_INVENTARIO_EMBARQUE_RMA,
+						@VP_K_INVENTARIO_EMBARQUE_RMA	= K_INVENTARIO_EMBARQUE_RMA
+				FROM	INVENTARIO_EMBARQUE_RMA			(NOLOCK)
+				WHERE	SERIAL_2						= @VP_VALOR_K_DETAILS_RMA
+						
+				SELECT	@VP_K_HEADER_RMA	= DETAILS_RMA.K_HEADER_RMA,
+						@VP_WH_CLIENTE		= DETAILS_RMA.CUS_NO,
+						@VP_WH_TIPO			= K_TIPO_RMA,
+						@VP_WH_APLICA_COBRO	= L_APLICA_COBRO
+				FROM	DETAILS_RMA			(NOLOCK)
+				INNER JOIN HEADER_RMA		(NOLOCK) ON HEADER_RMA.K_HEADER_RMA	= DETAILS_RMA.K_HEADER_RMA
+				WHERE	K_DETAILS_RMA		= @VP_VALOR_K_DETAILS_RMA
+						
+				-- /////////VALIDACIÓN QUE SEAN DEL MISMO TIPO Y CLIENTE TODOS LOS REGISTROS.////////////////////////////////////////////////////////////
+				IF @VP_CONTA	= 0
+				BEGIN
+					SET	@VP_CONTA				= @VP_CONTA + 1
+					SET	@VP_VALIDA_CLIENTE		= @VP_WH_CLIENTE
+					SET	@VP_VALIDA_TIPO			= @VP_WH_TIPO
+					SET	@VP_VALIDA_L_COBRO		= @VP_WH_APLICA_COBRO
+				END
+				ELSE
+				BEGIN
+					IF @VP_VALIDA_CLIENTE		<> @VP_WH_CLIENTE
+						RAISERROR ('Las ordenes deben pertencer al mismo Cliente', 16, 1 ) 
+						
+					IF @VP_VALIDA_TIPO			<> @VP_WH_TIPO		
+						RAISERROR ('Las órdenes deben pertencer al mismo Tipo (Reemplazo ó Pedido especial)', 16, 1 )
+
+					IF @VP_VALIDA_L_COBRO		<> @VP_WH_APLICA_COBRO
+						RAISERROR ('Las órdenes deben pertencer al mismo Tipo de (Cobro o NO cobro)', 16, 1 ) 
+				END
+
+				-- /////////VALIDACIÓN DEL ESTATUS DEL REGISTRO.////////////////////////////////////////////////////////////
+				IF ( @VP_K_STATUS_RMA	= 0 ) OR ( @VP_K_STATUS_RMA IS NULL )
+				BEGIN
+					SET	@VP_MENSAJE	= 'No fue posible obtener el estatus del registro... Verifique. [' + CONVERT(VARCHAR(50),@VP_VALOR_K_DETAILS_RMA) + ']'
+					RAISERROR (@VP_MENSAJE, 16, 1 ) 
+				END
+				ELSE IF ( @VP_K_STATUS_RMA	<> 5 )	-- #5: REVISIÓN QC
+				BEGIN
+					SET	@VP_MENSAJE	= 'El estatus del registro, no permite realizar acción... Verifique. [' + CONVERT(VARCHAR(50),@VP_VALOR_K_DETAILS_RMA) + ']'
+					RAISERROR (@VP_MENSAJE, 16, 1 ) 
+				END
+
+				-- /////////INSERTAMOS LA PIEL EN UNA TABLA TEMPORAL////////////////////////////////////////////////////////////
+				INSERT	INTO	@TBL_MATERIAL_SELECCIONADO
+				VALUES	( @VP_K_INVENTARIO_EMBARQUE_RMA )--@VP_VALOR_K_DETAILS_RMA )
+				IF @@ROWCOUNT = 0
+				BEGIN
+					RAISERROR ('No fue posible encontrar el pattern a dar de BAJA [INVENTARIO_EMBARQUE].', 16, 1 ) 
+				END
+
+				-- /////////ACTUALIZAMOS EL ESTATUS DE LA TABLA DETAILS_RMA////////////////////////////////////////////////////////////
+				UPDATE	DETAILS_RMA
+				SET		K_STATUS_RMA	= 100	-- SE COLOCA EN ESTATUS BAJA POR INVENTARIO
+				WHERE	K_DETAILS_RMA		= @VP_VALOR_K_DETAILS_RMA
+				IF @@ROWCOUNT = 0
+				BEGIN
+					RAISERROR ('No fue posible actualizar el estatus del detalle, verifique...', 16, 1 )
+				END
+
+				-- /////////PARA INSERTAR LOS ENCABEZADOS DE LOS DETALLES QUE HAN SIDO EMBARCADOS////////////////////////////////////////////////////////////
+				IF ( SELECT COUNT(K_DETAILS_RMA) FROM DETAILS_RMA	(NOLOCK) WHERE K_HEADER_RMA	= @VP_K_HEADER_RMA)	= 
+					(SELECT COUNT(K_DETAILS_RMA) FROM DETAILS_RMA	(NOLOCK) WHERE K_HEADER_RMA	= @VP_K_HEADER_RMA AND	K_STATUS_RMA = 100 )
+				BEGIN
+					INSERT	INTO	@TBL_MATERIAL_SELECCIONADO_HEADER_RMA
+					VALUES	(	@VP_K_HEADER_RMA	)
+					IF @@ROWCOUNT = 0
+						RAISERROR ('No fue posible encontrar el encabezado del pattern a dar de BAJA [INVENTARIO_EMBARQUE].', 16, 1 ) 
+				END
+
+				--Reemplazamos lo procesado con nada con la funcion stuff
+				SELECT @PP_K_DETAILS_RMA_ARRAY	= STUFF(@PP_K_DETAILS_RMA_ARRAY, 1, @VP_POSICION_K_DETAILS_RMA, '')
+		END		-- WHILE
+		---==================================================================================================================================================================
+		---==================================================================================================================================================================
+		---==================================================================================================================================================================
+		---==================================================================================================================================================================
+		-- ///////SE VALIDA QUE EXISTA REGISTROS EN LA TABLA TEMPORAL///////////////////////////////////////////////////////
+		DECLARE @VP_N_MATERIAL_SELECCIONADO INT = 0
+		
+		SELECT	@VP_N_MATERIAL_SELECCIONADO		= COUNT(TBL_K_MATERIAL_SELECCIONADO)
+		FROM	@TBL_MATERIAL_SELECCIONADO
+
+		IF @VP_N_MATERIAL_SELECCIONADO IS NULL OR @VP_N_MATERIAL_SELECCIONADO = 0
+		BEGIN
+			RAISERROR ('ERROR: No hay material seleccionado para dar de Baja.', 16, 1 ) 
+		END
+
+		-- ///////SE ASIGNA EL PACKING AL MATERIAL SELECCIONADO///////////////////////////////////////////////////////		
+		UPDATE	INVENTARIO_EMBARQUE_RMA
+		SET		K_ESTATUS_INVENTARIO_EMBARQUE_RMA	= 0,		-- BAJA POR INVENTARIO
+				PACKING_NO							= @VP_PACKING_NUEVO,
+				N_EMBARQUE							= 0,		--@PP_NUMERO_EMBARQUE,
+				TOTAL_CAJAS							= 0,		--@PP_TOTAL_CAJAS,
+				F_INVENTARIO_EMBARQUE_RMA			= GETDATE(),
+				F_CAMBIO							= GETDATE()
+		WHERE	K_INVENTARIO_EMBARQUE_RMA IN (	SELECT	TBL_K_INVENTARIO_EMBARQUE	FROM	@TBL_MATERIAL_SELECCIONADO	)
+		IF @@ROWCOUNT = 0
+		BEGIN
+			RAISERROR ('No fue posible asignar el Packing al material seleccionado en [INVENTARIO_EMBARQUE].', 16, 1 )
+		END
+
+		IF (SELECT COUNT(TBL_K_HEADER_RMA) FROM @TBL_MATERIAL_SELECCIONADO_HEADER_RMA) > 0
+		BEGIN
+			UPDATE	HEADER_RMA
+			SET		K_STATUS_RMA		= 100	--	BAJA POR INVENTARIO
+			WHERE	K_HEADER_RMA		IN	( SELECT TBL_K_HEADER_RMA	FROM	@TBL_MATERIAL_SELECCIONADO_HEADER_RMA	)
+			AND		K_STATUS_RMA		<= 30
+			IF @@ROWCOUNT = 0
+			BEGIN
+				RAISERROR ('No fue posible asignar el Estatus al material seleccionado en [INVENTARIO_EMBARQUE].', 16, 1 )
+			END
+		END
+
+		-- /////////////SE INGRESA EL LOG EN INVENTARIO_EMBARQUE_LOG_RMA//////////////////////////////
+		INSERT INTO INVENTARIO_EMBARQUE_LOG_RMA	(	[K_ESTATUS_INVENTARIO_EMBARQUE], [ITEM_NO], [QTY], [CUBE_WIDTH], [SERIAL_1],		
+												[SERIAL_2],	[COLOR], [CUSTOMER], [CUS_PART_NO],	[PROD_CAT],
+												[D_PROD_CAT], [N_EMBARQUE], [PACKING_NO], [INVOICE_NO], [F_INVENTARIO_EMBARQUE_LOG_RMA],	
+												-- ===========================
+												[K_USUARIO_ALTA], [F_ALTA], [K_USUARIO_CAMBIO], [F_CAMBIO],
+												[L_BORRADO], [K_USUARIO_BAJA], [F_BAJA]  )	
+										SELECT	[K_ESTATUS_INVENTARIO_EMBARQUE_RMA], [ITEM_NO], [QTY], [CUBE_WIDTH], [SERIAL_1],		
+												[SERIAL_2],	[COLOR], [CUSTOMER], [CUS_PART_NO],	[PROD_CAT],
+												[D_PROD_CAT], N_EMBARQUE, [PACKING_NO], [INVOICE_NO], [F_INVENTARIO_EMBARQUE_RMA],
+												-- ===========================
+												@PP_K_USUARIO_ACCION, GETDATE(), @PP_K_USUARIO_ACCION, GETDATE(),
+												0, 0, NULL 
+										FROM	INVENTARIO_EMBARQUE_RMA				(NOLOCK)
+										WHERE	K_INVENTARIO_EMBARQUE_RMA IN (	SELECT	TBL_K_INVENTARIO_EMBARQUE	FROM	@TBL_MATERIAL_SELECCIONADO	)
+										--WHERE	PACKING_NO = @VP_PACKING_NUEVO
+		IF @@ROWCOUNT = 0
+		BEGIN
+			RAISERROR ('ERROR: No fue posible guardar el log de la Baja del inventario en [INVENTARIO_EMBARQUE_LOG] ', 16, 1 ) 
+		END
+
+		-- //////SE OBTIENE EL NUMERO DE RELOJ DEL USUARIO PEARL/////////////////////////////////////
+		DECLARE @VP_NUMERO_RELOJ		INT		= 0;
+		SELECT	@VP_NUMERO_RELOJ				= K_EMPLEADO_PEARL				
+		FROM	BD_GENERAL.DBO.USUARIO_PEARL	(NOLOCK)
+		WHERE	K_USUARIO_PEARL					= @PP_K_USUARIO_ACCION
+
+		-- ///////SE GUARDA EL LOG DEL MATERIAL EMBARCADO PARA EL RASTREO//////////////////////////////////////////////
+		EXECUTE [dbo].[PG_IN_EVENTO_EMBARCADO_FACTURADO_KIT_PROGRAMADO_RMA]	@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
+																			4, @VP_PACKING_NUEVO, 'BAJA POR INVENTARIO RMA', 
+																			@VP_NUMERO_RELOJ, @PP_CODIGO_ETIQUETA
+
+				-- //////////////////////////////////////////////////////////////
+				INSERT INTO [MATERIAL_PROGRAMADO_LOG]	
+					(	[K_TIPO_EVENTO_KIT], [SERIAL], [ITEM_NO], [USUARIO_EVENTO], [ESTACION], 
+						[K_RESPONSABLE], [CODIGO_ETIQUETA], [F_LOG],			
+						-- ===========================
+						[K_USUARIO_ALTA], [F_ALTA], [K_USUARIO_CAMBIO], [F_CAMBIO],
+						[L_BORRADO], [K_USUARIO_BAJA], [F_BAJA]  )	
+				SELECT	4, [SERIAL_1], [ITEM_NO], [PACKING_NO], 'BAJA POR INVENTARIO RMA',
+						@VP_NUMERO_RELOJ, @PP_CODIGO_ETIQUETA, GETDATE(),
+						-- ===========================
+						@PP_K_USUARIO_ACCION, GETDATE(), @PP_K_USUARIO_ACCION, GETDATE(),
+						0, 0, NULL 
+				FROM	INVENTARIO_EMBARQUE_RMA		(NOLOCK)
+				WHERE	PACKING_NO					= @VP_PACKING_NUEVO 
+
+				IF @@ROWCOUNT = 0
+					RAISERROR ('ERROR: No fue posible guardar el log de la BAJA en [MATERIAL_PROGRAMADO_LOG]', 16, 1 ) 
+				-- //////////////////////////////////////////////////////////////
+			COMMIT TRANSACTION 
+			END TRY
+	
+	BEGIN CATCH
+		/* Ocurrió un error, deshacemos los cambios*/ 
+		ROLLBACK TRANSACTION
+		DECLARE @VP_ERROR_TRANS NVARCHAR(4000);
+		SET @VP_ERROR_TRANS = ERROR_MESSAGE() 
+		SET @VP_MENSAJE = 'ERROR: //TRANSAC. PG_UP_INVENTARIO_EMBARQUE_BAJA_RMA // ' + @VP_ERROR_TRANS
+	END CATCH
+	-- // SECCION#3 ////////////////////////////////////////////////////////// MENSAJE DE SALIDA
+	
+	IF @VP_MENSAJE<>''
+		BEGIN		
+		--SET		@VP_MENSAJE = 'No es posible [Asignar] el Packing al material en [INVENTARIO_EMBARQUE]: ' + @VP_MENSAJE 
+		SET		@VP_MENSAJE = @VP_MENSAJE + ' ( '
+		SET		@VP_MENSAJE = @VP_MENSAJE + '[#PACKING. '+ @VP_PACKING_NUEVO + ']'
+		SET		@VP_MENSAJE = @VP_MENSAJE + ' )'
+		END
+	
+	SELECT	@VP_MENSAJE AS MENSAJE, @VP_PACKING_NUEVO AS CLAVE
+	-- //////////////////////////////////////////////////////////////	
+GO
+
+
+-- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> SELECT / LISTADO
 -- //////////////////////////////////////////////////////////////
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_EVENTO_EMBARCADO_FACTURADO_KIT_PROGRAMADO_RMA]') AND type in (N'P', N'PC'))
@@ -2151,7 +2526,7 @@ CREATE PROCEDURE [dbo].[PG_IN_EVENTO_EMBARCADO_FACTURADO_KIT_PROGRAMADO_RMA]
 	@PP_K_USUARIO_ACCION		INT,
 	-- ===========================
 	@PP_TIPO_EVENTO_KIT			INT,
-	@PP_USUARIO_EVENTO			VARCHAR(100),
+	@PP_USUARIO_EVENTO			VARCHAR(100),	--	PACKING_NO
 	@PP_ESTACION				VARCHAR(100),
 	@PP_K_RESPONSABLE			INT,
 	@PP_CODIGO_ETIQUETA			VARCHAR(255)
@@ -2160,16 +2535,16 @@ AS
 	DECLARE @VP_ITEM_NO VARCHAR(50) = ''
 	DECLARE @VP_SERIAL VARCHAR(50) = ''
 	
-	IF @PP_TIPO_EVENTO_KIT = 430 
+	IF @PP_TIPO_EVENTO_KIT IN ( 430 , 4 )
 		BEGIN
-			DECLARE CU_EVENTO_EMB_FACT CURSOR FOR 
+			DECLARE CU_EVENTO_EMB_FACT CURSOR LOCAL STATIC FOR 
 				SELECT  ITEM_NO, SERIAL_1
 				FROM	INVENTARIO_EMBARQUE_RMA		(NOLOCK) 
 				WHERE	PACKING_NO = @PP_USUARIO_EVENTO
 		END
 	ELSE
 		BEGIN
-			DECLARE CU_EVENTO_EMB_FACT CURSOR FOR 
+			DECLARE CU_EVENTO_EMB_FACT CURSOR LOCAL STATIC FOR 
 				SELECT  ITEM_NO, SERIAL_1
 				FROM	INVENTARIO_EMBARQUE_RMA			(NOLOCK)
 				WHERE	INVOICE_NO = @PP_USUARIO_EVENTO
@@ -2184,10 +2559,10 @@ AS
 
 			SELECT  @VP_N_SERIAL_EXISTE		= COUNT([K_MATERIAL_PROGRAMADO]) 
 			FROM	[MATERIAL_PROGRAMADO]	(NOLOCK)
-			WHERE	SERIAL = @VP_SERIAL
+			WHERE	SERIAL					= @VP_SERIAL
 
 			IF ( @VP_N_SERIAL_EXISTE IS NULL OR @VP_N_SERIAL_EXISTE = 0 )
-				BEGIN
+			BEGIN
 					INSERT INTO [MATERIAL_PROGRAMADO]	
 							(					
 								[K_TIPO_EVENTO_KIT],			
@@ -2213,8 +2588,7 @@ AS
 								GETDATE(),
 								-- ===========================				
 								@PP_K_USUARIO_ACCION, GETDATE(), @PP_K_USUARIO_ACCION, GETDATE(),
-								0, NULL, NULL )	
-				
+								0, NULL, NULL )
 					IF @@ROWCOUNT = 0
 						RAISERROR ('ERROR SP: PG_IN_EVENTO_EMBARCADO_FACTURADO_KIT_PROGRAMADO_LOG_RMA', 16, 1 ) --MENSAJE - Severity -State.
 				END
@@ -2232,7 +2606,7 @@ AS
 							-- ===========================
 							[K_USUARIO_CAMBIO]	= @PP_K_USUARIO_ACCION, 
 							[F_CAMBIO]			= GETDATE()
-					WHERE SERIAL = @VP_SERIAL
+					WHERE SERIAL				= @VP_SERIAL
 
 					IF @@ROWCOUNT = 0
 						RAISERROR ('ERROR SP: PG_IN_EVENTO_EMBARCADO_FACTURADO_KIT_PROGRAMADO_LOG_RMA', 16, 1 ) --MENSAJE - Severity -State.
@@ -2251,3 +2625,4 @@ GO
 -- ///////////////////////////////////////////////////////////////////////////////////////
 -- ///////////////////////////////////////////////////////////////////////////////////////
 -- ///////////////////////////////////////////////////////////////////////////////////////
+
