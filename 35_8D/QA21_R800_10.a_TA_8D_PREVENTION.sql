@@ -9,7 +9,7 @@
 -- // Fecha creación:	25/AGO/2021
 -- ////////////////////////////////////////////////////////////// 
 
-USE [DATA_02]
+USE [DATA_02Pruebas]
 GO
 
 -- //////////////////////////////////////////////////////////////
@@ -33,7 +33,8 @@ CREATE TABLE [dbo].[8D_PREVENTION] (
 	-- =================================
 	[K_8D]							[INT]			NOT NULL,
 	[DESCRIPTION]					VARCHAR(MAX)	NOT NULL,
-	[SIMILAR_PROCESS_PRODUCT]		VARCHAR(255)	NOT NULL
+	[SIMILAR_PROCESS_PRODUCT]		VARCHAR(255)	NOT NULL,
+	[DUE_DATE]						[DATE]			NOT NULL	
 )ON [PRIMARY]	
 GO
 

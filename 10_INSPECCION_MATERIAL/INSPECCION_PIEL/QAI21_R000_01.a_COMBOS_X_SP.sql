@@ -7,7 +7,7 @@
 -- // Fecha creación:	16/11/2020
 -- ////////////////////////////////////////////////////////////// 
 
-USE [DATA_02Pruebas]
+USE [DATA_02]
 GO
 
 -- //////////////////////////////////////////////////////////////
@@ -61,7 +61,7 @@ AS
 		SELECT	K_TIPO_INSPECCION_MATERIAL,
 					D_TIPO_INSPECCION_MATERIAL 
 			FROM	TIPO_INSPECCION_MATERIAL 
-		WHERE K_TIPO_INSPECCION_MATERIAL NOT IN (2, 3, 4)
+		WHERE K_TIPO_INSPECCION_MATERIAL NOT IN (2, 3) --, 4)
 
 	SELECT	TA_K_CATALOGO	AS K_COMBOBOX,
 				TA_D_CATALOGO	AS D_COMBOBOX 

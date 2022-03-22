@@ -321,7 +321,7 @@ GO
 -- // STORED PROCEDURE ---> INSERT
 -- //////////////////////////////////////////////////////////////
 
--- USE DATA_02
+-- USE DATA_02 --PRUEBAS
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_INSPECCION_MATERIAL]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_IN_INSPECCION_MATERIAL]
 GO
@@ -379,9 +379,13 @@ AS
 		BEGIN
 			BEGIN TRANSACTION 
 			BEGIN TRY
+				-- COMANDO PARA OBTENER LA BASE DE DATOS ACTUAL
+				DECLARE @VP_BD_NAME VARCHAR(100) = DB_NAME();
+
 				EXECUTE BD_GENERAL.dbo.[PG_SK_CATALOGO_K_MAX_GET]	@PP_K_SISTEMA_EXE,
 																	--'DATA_02PRUEBAS', 
-																	'DATA_02', 
+																	--'DATA_02', 
+																	@VP_BD_NAME,
 																	'INSPECCION_MATERIAL', 'K_INSPECCION_MATERIAL',
 																	@OU_K_TABLA_DISPONIBLE = @VP_K_INSPECCION_MATERIAL	OUTPUT
 
@@ -419,7 +423,8 @@ AS
 				DECLARE @VP_K_INSPECCION_OPCION	INT = 0
 				EXECUTE BD_GENERAL.dbo.[PG_SK_CATALOGO_K_MAX_GET]	@PP_K_SISTEMA_EXE,
 																	--'DATA_02PRUEBAS', 
-																	'DATA_02', 
+																	--'DATA_02', 
+																	@VP_BD_NAME,
 																	'INSPECCION_OPCION', 'K_INSPECCION_OPCION',
 																	@OU_K_TABLA_DISPONIBLE = @VP_K_INSPECCION_OPCION	OUTPUT
 

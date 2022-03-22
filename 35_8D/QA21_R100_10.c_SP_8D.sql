@@ -17,13 +17,13 @@ GO
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> SELECT / LISTADO
 -- //////////////////////////////////////////////////////////////
-
+-- USE [DATA_02Pruebas]
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_8D]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_LI_8D]
 GO
 
 /*
- EXEC	[dbo].[PG_LI_8D] 0,0,  '' , ''
+ EXEC	[dbo].[PG_LI_8D] 0,0,   '' , '( TODOS )' , '' 
 */
 
 CREATE PROCEDURE [dbo].[PG_LI_8D]
@@ -32,13 +32,15 @@ CREATE PROCEDURE [dbo].[PG_LI_8D]
 	-- ===========================
 	@PP_BUSCAR							VARCHAR(200),
 	-- ===========================
+	@PP_CLIENTE							VARCHAR(100),
 	@PP_DATE							DATE
 AS
 	
 	-- ///////////////////////////////////////////
 	SELECT	[8D].[K_8D],				
 			-- =================
-			[K_8D_PEARL],		
+			[K_8D_PEARL],	
+			ISNULL([CUSTOMER], '') AS CUSTOMER,	
 			[K_8D_CUSTOMER],		
 			[K_RMA],				
 			[K_ESTATUS_8D],		
@@ -56,7 +58,11 @@ AS
 			( CASE WHEN [DATE_CLOSED] IS NULL THEN 'N/A'
 				ELSE  CONVERT(VARCHAR(10),[DATE_CLOSED], 105)  END ) AS [DATE_CLOSED],
 			-- =============================
-			D_USUARIO_PEARL
+			D_USUARIO_PEARL,
+			-- =============================
+			( CASE WHEN [DATE_CLOSED] IS NULL THEN 'OPEN'
+				ELSE  'CLOSED'  END ) AS ESTATUS,
+			COMMENT
 			-- =============================
 	FROM	[8D] (NOLOCK)
 	INNER JOIN  BD_GENERAL.DBO.USUARIO_PEARL (NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL = [8D].[K_USUARIO_ALTA]
@@ -65,6 +71,8 @@ AS
 	WHERE 	( [K_RMA]					LIKE '%'+@PP_BUSCAR+'%'
 			OR	[TITLE]					LIKE '%'+@PP_BUSCAR+'%'
 			OR	[PRODUCT_PROCESS]		LIKE '%'+@PP_BUSCAR+'%' )
+	-- =============================
+	AND		( @PP_CLIENTE = '( TODOS )'		OR	[8D].CUSTOMER = @PP_CLIENTE )
 	-- =============================
 	AND		( [DATE_OPENED] = CASE WHEN @PP_DATE = '' THEN [DATE_OPENED]		ELSE	 @PP_DATE END
 				OR	[LAST_UPDATE] = CASE WHEN @PP_DATE = '' THEN [LAST_UPDATE]	ELSE	 @PP_DATE END
@@ -84,7 +92,7 @@ GO
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> SELECT / FICHA
 -- //////////////////////////////////////////////////////////////
-
+--	USE [DATA_02Pruebas]
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_8D]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_SK_8D]
 GO
@@ -104,6 +112,7 @@ AS
 	SELECT	[K_8D],				
 			-- =================
 			[K_8D_PEARL],
+			ISNULL([CUSTOMER], '') AS CUSTOMER,	
 			[K_8D_CUSTOMER],		
 			[K_RMA],				
 			[K_ESTATUS_8D],		
@@ -117,8 +126,11 @@ AS
 			[DUE_DATE],			
 			( CASE WHEN [DATE_CLOSED] IS NULL THEN 'N/A'
 				ELSE  CONVERT(VARCHAR(10),[DATE_CLOSED], 105)  END ) AS [DATE_CLOSED],
-			D_USUARIO_PEARL
+			D_USUARIO_PEARL,
 			-- =============================
+			( CASE WHEN [DATE_CLOSED] IS NULL THEN 'OPEN'
+				ELSE  'CLOSED'  END ) AS ESTATUS,
+			COMMENT
 	FROM	[8D] (NOLOCK)
 	INNER JOIN  BD_GENERAL.DBO.USUARIO_PEARL (NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL = [8D].[K_USUARIO_ALTA]
 	-- =============================
@@ -206,7 +218,7 @@ GO
 -- // STORED PROCEDURE ---> INSERT
 -- //////////////////////////////////////////////////////////////
 
--- USE DATA_02
+-- USE [DATA_02Pruebas]
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_UP_8D]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_IN_UP_8D]
 GO
@@ -219,6 +231,7 @@ CREATE PROCEDURE [dbo].[PG_IN_UP_8D]
 	@PP_K_USUARIO_ACCION				INT,
 	-- ===========================	
 	@PP_K_8D							INT,
+	@PP_CUSTOMER						VARCHAR(100),
 	@PP_K_8D_CUSTOMER					VARCHAR(150),
 	@PP_K_RMA							INT,
 	-- ===========================	
@@ -249,10 +262,14 @@ AS
 			BEGIN TRY
 				IF @PP_K_8D = 0
 					BEGIN
+						-- COMANDO PARA OBTENER LA BASE DE DATOS ACTUAL
+						DECLARE @VP_BD_NAME VARCHAR(100) = DB_NAME();
+
 						-- ///////SE OBTIENE EL NUEVO CONSECUTIVO DE LA 8D///////////////////////////////////////////////////////
 						EXECUTE BD_GENERAL.dbo.[PG_SK_CATALOGO_K_MAX_GET]	@PP_K_SISTEMA_EXE,
 																			--'DATA_02PRUEBAS', 
-																			'DATA_02', 
+																			--'DATA_02', 
+																			@VP_BD_NAME,
 																			'[8D]', '[K_8D]',
 																			@OU_K_TABLA_DISPONIBLE = @PP_K_8D	OUTPUT
 
@@ -298,6 +315,7 @@ AS
 							(	[K_8D],			
 								-- =================
 								[K_8D_PEARL],
+								[CUSTOMER],
 								[K_8D_CUSTOMER],		
 								[K_RMA],			
 								-- =================
@@ -315,7 +333,8 @@ AS
 						VALUES	
 							(	@PP_K_8D,	
 							-- =================
-								@VP_8D_INTERNO_NUEVO,		
+								@VP_8D_INTERNO_NUEVO,
+								@PP_CUSTOMER,		
 								@PP_K_8D_CUSTOMER,
 								@PP_K_RMA,
 								-- =================
@@ -379,7 +398,8 @@ AS
 
 						-- ///////SE ACTUALIZA EL ENCABEZADO DEL 8D///////////////////////////////////////////////////////
 						UPDATE [8D]
-							SET [K_8D_CUSTOMER]	= @PP_K_8D_CUSTOMER,		
+							SET [K_8D_CUSTOMER]	= @PP_K_8D_CUSTOMER,
+								[CUSTOMER]		= @PP_CUSTOMER, 		
 								[K_RMA]				= @PP_K_RMA,
 								-- =================
 								[EXTERNAL_FORMAT]	= @PP_EXTERNAL_FORMAT,	

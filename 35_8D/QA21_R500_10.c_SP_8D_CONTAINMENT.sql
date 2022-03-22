@@ -21,7 +21,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_
 GO
 
 /*
- EXEC	[dbo].[PG_SK_8D_CONTAINMENT_ACTION] 0,144,3
+ EXEC	[dbo].[PG_SK_8D_CONTAINMENT_ACTION] 0, 144, 1
 */
 
 CREATE PROCEDURE [dbo].[PG_SK_8D_CONTAINMENT_ACTION]
@@ -33,14 +33,21 @@ AS
 
 	-- ///////////////////////////////////////////
 	-- ///////////////////////////////////////////
-	SELECT	[K_8D_CONTAINMENT_ACTION],	
+	SELECT	[8D_CONTAINMENT_ACTION].[K_8D_CONTAINMENT_ACTION],	
 			-- =================
 			[K_8D],				
 			-- =================								
 			[ACCION],			
 			[PORCENTAJE],			
 			D_USUARIO_PEARL,
-			CONVERT(DATE, [8D_CONTAINMENT_ACTION].[F_CAMBIO]) AS [DATE]
+			CONVERT(DATE, [8D_CONTAINMENT_ACTION].[F_CAMBIO]) AS [DATE],
+			( CASE WHEN [DUE_DATE] IS NULL THEN CONVERT(DATE, [8D_CONTAINMENT_ACTION].[F_ALTA])
+				ELSE [DUE_DATE] END )	 AS [DUE_DATE],
+			-- =================
+			ISNULL((	SELECT TOP 1 (CASE WHEN [8D_CONTAINMENT_EVIDENCE].K_8D_CONTAINMENT_ACTION IS NULL THEN 'NO'
+								  	ELSE 'YES' END)
+				FROM [8D_CONTAINMENT_EVIDENCE] (NOLOCK) 
+				WHERE K_8D_CONTAINMENT_ACTION = [8D_CONTAINMENT_ACTION].K_8D_CONTAINMENT_ACTION ), 'NO') AS EVIDENCIA
 			-- =================
 	FROM	[8D_CONTAINMENT_ACTION] (NOLOCK)
 	INNER JOIN  BD_GENERAL.DBO.USUARIO_PEARL (NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL = [8D_CONTAINMENT_ACTION].[K_USUARIO_CAMBIO]
@@ -98,7 +105,7 @@ GO
 -- // STORED PROCEDURE ---> INSERT
 -- //////////////////////////////////////////////////////////////
 
--- USE DATA_02
+-- USE [DATA_02Pruebas]
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_UP_8D_CONTAINMENT_ACTION]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_IN_UP_8D_CONTAINMENT_ACTION]
 GO
@@ -114,6 +121,7 @@ CREATE PROCEDURE [dbo].[PG_IN_UP_8D_CONTAINMENT_ACTION]
 	@PP_K_CONTAINMENT_ACTION			INT,
 	-- ============================		
 	@PP_ACCION							VARCHAR(MAX),	
+	@PP_DUE_DATE						DATE,	
 	@PP_PORCENTAJE						INT	
 	--- =================
 AS			
@@ -139,6 +147,7 @@ AS
 								-- =================		
 								[ACCION],
 								[PORCENTAJE],
+								[DUE_DATE],
 								-- ===========================
 								[K_USUARIO_ALTA], [F_ALTA], [K_USUARIO_CAMBIO], [F_CAMBIO],
 								[L_BORRADO], [K_USUARIO_BAJA], [F_BAJA]  )
@@ -146,7 +155,8 @@ AS
 							(	@PP_K_8D,
 								--- =================
 								@PP_ACCION,		
-								@PP_PORCENTAJE,						
+								@PP_PORCENTAJE,	
+								@PP_DUE_DATE,					
 								-- ===========================
 								@PP_K_USUARIO_ACCION, GETDATE(), @PP_K_USUARIO_ACCION, GETDATE(),
 								0, NULL, NULL )
@@ -158,6 +168,7 @@ AS
 					BEGIN
 						UPDATE [8D_CONTAINMENT_ACTION]
 							SET [ACCION] = @PP_ACCION,
+								[DUE_DATE] = @PP_DUE_DATE,
 								[PORCENTAJE] = @PP_PORCENTAJE,
 								[K_USUARIO_CAMBIO] = @PP_K_USUARIO_ACCION,
 								[F_CAMBIO] = GETDATE()

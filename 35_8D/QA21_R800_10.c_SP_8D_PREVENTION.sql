@@ -9,7 +9,7 @@
 -- // Fecha creación:	25/AGO/2021
 -- //////////////////////////////////////////////////////////////  
 
-USE [DATA_02]
+USE [DATA_02Pruebas]
 GO
 
 -- //////////////////////////////////////////////////////////////
@@ -21,7 +21,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_
 GO
 
 /*
- EXEC	[dbo].[PG_SK_8D_PREVENTION] 0,0,3
+ EXEC	[dbo].[PG_SK_8D_PREVENTION] 0,0,1
 */
 
 CREATE PROCEDURE [dbo].[PG_SK_8D_PREVENTION]
@@ -39,12 +39,13 @@ AS
 			[DESCRIPTION],			
 			[SIMILAR_PROCESS_PRODUCT],			
 			D_USUARIO_PEARL,
-			[8D_PREVENTION].[F_CAMBIO]			
+			[8D_PREVENTION].[DUE_DATE],
+			[8D_PREVENTION].[F_CAMBIO]
 			-- =================
 	FROM	[8D_PREVENTION] (NOLOCK)
 	INNER JOIN  BD_GENERAL.DBO.USUARIO_PEARL (NOLOCK) ON USUARIO_PEARL.K_USUARIO_PEARL = [8D_PREVENTION].[K_USUARIO_CAMBIO]
 	-- =============================
-	WHERE 	[K_8D] = @PP_K_8D
+	WHERE 	[8D_PREVENTION].[K_8D] = @PP_K_8D
 	
 	-- ////////////////////////////////////////////////
 	-- ////////////////////////////////////////////////
@@ -99,7 +100,7 @@ GO
 -- // STORED PROCEDURE ---> INSERT
 -- //////////////////////////////////////////////////////////////
 
--- USE DATA_02
+-- USE [DATA_02Pruebas]
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_UP_8D_PREVENTION]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_IN_UP_8D_PREVENTION]
 GO
@@ -114,6 +115,7 @@ CREATE PROCEDURE [dbo].[PG_IN_UP_8D_PREVENTION]
 	@PP_K_8D							INT,
 	-- ============================		
 	@PP_DESCRIPTION						VARCHAR(MAX),
+	@PP_DUE_DATE						DATE,
 	@PP_SIMILAR_PROCESS_PRODUCT			VARCHAR(255)
 	-- ============================	
 AS			
@@ -148,6 +150,7 @@ AS
 								-- =================
 								[DESCRIPTION],
 								[SIMILAR_PROCESS_PRODUCT],
+								[DUE_DATE],
 								-- ===========================
 								[K_USUARIO_ALTA], [F_ALTA], [K_USUARIO_CAMBIO], [F_CAMBIO],
 								[L_BORRADO], [K_USUARIO_BAJA], [F_BAJA]  )
@@ -155,7 +158,8 @@ AS
 							(	@PP_K_8D,	
 								-- =================
 								@PP_DESCRIPTION,	
-								@PP_SIMILAR_PROCESS_PRODUCT,							
+								@PP_SIMILAR_PROCESS_PRODUCT,	
+								@PP_DUE_DATE,						
 								-- ===========================
 								@PP_K_USUARIO_ACCION, GETDATE(), @PP_K_USUARIO_ACCION, GETDATE(),
 								0, NULL, NULL )
@@ -168,6 +172,7 @@ AS
 						UPDATE [8D_PREVENTION]
 							SET [DESCRIPTION] = @PP_DESCRIPTION,
 								[SIMILAR_PROCESS_PRODUCT] = @PP_SIMILAR_PROCESS_PRODUCT,
+								[DUE_DATE] = @PP_DUE_DATE,
 								[K_USUARIO_CAMBIO] = @PP_K_USUARIO_ACCION,
 								[F_CAMBIO] = GETDATE()
 						WHERE [K_8D] = @PP_K_8D

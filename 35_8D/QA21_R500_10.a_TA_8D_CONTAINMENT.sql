@@ -9,7 +9,7 @@
 -- // Fecha creación:	23/AGO/2021
 -- ////////////////////////////////////////////////////////////// 
 
-USE [DATA_02]
+USE [DATA_02PRUEBAS]
 GO
 
 -- //////////////////////////////////////////////////////////////
@@ -34,7 +34,8 @@ CREATE TABLE [dbo].[8D_CONTAINMENT_ACTION] (
 	[K_8D]							[INT]			NOT NULL,
 	-- =================================			
 	[ACCION]						VARCHAR(MAX)	NOT NULL,
-	[PORCENTAJE]					[INT]			NOT NULL
+	[PORCENTAJE]					[INT]			NOT NULL,
+	[DUE_DATE]						[DATE]			NOT NULL	
 	-- =================================	
 )ON [PRIMARY]	
 GO

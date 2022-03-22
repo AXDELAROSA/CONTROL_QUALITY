@@ -89,7 +89,7 @@ GO
 -- //////////////////////////////////////////////////////////////
 -- // STORED PROCEDURE ---> INSERT / UPDATE
 -- //////////////////////////////////////////////////////////////
-
+-- USE [PPMS_PEARL]
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_IN_UP_DEFECTO_CALIDAD]') AND type in (N'P', N'PC'))
 	DROP PROCEDURE [dbo].[PG_IN_UP_DEFECTO_CALIDAD]
 GO
@@ -104,7 +104,7 @@ CREATE PROCEDURE [dbo].[PG_IN_UP_DEFECTO_CALIDAD]
 	@PP_DEFECTO							VARCHAR(255),
 	@PP_TRADUCCION						VARCHAR(255),
 	@PP_TIPO							VARCHAR(100),
-	@PP_CLASIFICACION					VARCHAR(100),
+	--@PP_CLASIFICACION					VARCHAR(100),
 	@PP_CRITICO							INT,
 	-- ===========================
 	@PP_USER							VARCHAR(50),
@@ -116,8 +116,8 @@ AS
 		BEGIN
 			BEGIN TRANSACTION 
 			BEGIN TRY	
-				IF @PP_CLASIFICACION = '( S/C )'
-					SET @PP_CLASIFICACION = NULL
+				--IF @PP_CLASIFICACION = '( S/C )'
+				--	SET @PP_CLASIFICACION = NULL
 					
 				DECLARE @VP_N_CLAVE INT = 0
 				SELECT	@VP_N_CLAVE = COUNT(CLAVE)	
@@ -139,7 +139,7 @@ AS
 										VALUES	(	UPPER(@PP_CLAVE),		
 													UPPER(@PP_DEFECTO),			
 													UPPER(@PP_TIPO),
-													UPPER(@PP_CLASIFICACION),
+													NULL,	--UPPER(@PP_CLASIFICACION),
 													UPPER(@PP_TRADUCCION),
 													UPPER(@PP_CRITICO)
 												)
@@ -157,7 +157,7 @@ AS
 						UPDATE [DEF]
 							SET DEFECTO	= UPPER(@PP_DEFECTO),
 								TIPODEF = UPPER(@PP_TIPO),
-								descripcion = UPPER(@PP_CLASIFICACION),
+								--descripcion = UPPER(@PP_CLASIFICACION),
 								TRADUCCION = UPPER(@PP_TRADUCCION),
 								CRITICO	= UPPER(@PP_CRITICO)
 						WHERE CLAVE = @PP_CLAVE
