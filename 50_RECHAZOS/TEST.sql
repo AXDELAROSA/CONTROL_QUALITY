@@ -29,7 +29,7 @@ USE PPMS_PEARL
 
 	SELECT * FROM BD_GENERAL.dbo.USUARIO_PEARL WHERE D_USUARIO_PEARL = 'CERTIFICACION'
 
-	SELECT * FROM [PPMS_PEARL].[dbo].DEF WHERE clave IN ( 'DL' )
+	SELECT * FROM [PPMS_PEARL].[dbo].DEF WHERE clave IN ( 'gb' )
 
 	-- //////////PPMS DE PRD////////////////////////////////////////////////////
 	SELECT * FROM [DATA_02].dbo.ccjoblin_sql WHERE JOBNO IN ( '52816', '53401')
@@ -38,7 +38,7 @@ USE PPMS_PEARL
 
 	SELECT * FROM [PPMS_PEARL].[dbo].certificacion_rpt where orden = '52795' AND noserie_caja = '52318001' 
 
-	SELECT * FROM [DATA_02].dbo.pearl_log WHERE JOBNO = '51823'
+	SELECT * FROM [DATA_02].dbo.pearl_log WHERE screen_opt = 'Modificar defecto' and  movement = 'DL' AND hideno = 'GB'
 
 	SELECT * FROM [DATA_02].dbo.ccjobhdr_sql WHERE jobno = '51823'
 
@@ -64,11 +64,12 @@ USE PPMS_PEARL
 	SELECT * FROM DATA_02.DBO.ccjobhdr_sql WHERE jobno IN ( '34867')
 	SELECT * FROM DATA_02.DBO.pearl_log WHERE jobno IN ( '53400', '53401')
 
-	SELECT * FROM [PPMS_PEARL].[dbo].rechazos WHERE  fecha >= '20220101' AND mesa = ''
+	SELECT DISTINCT(tipodef) FROM [PPMS_PEARL].[dbo].DEF WHERE tipodef IN ( 'PERFORADORA' )
+	SELECT * FROM [PPMS_PEARL].[dbo].rechazos WHERE  fecha = '20220328' AND Status = 'L' AND defecto = 'MP'
 
 	-- 339 + 1814 = 2,153
 	SELECT * --SUM(DEFECTOS) DEFECTO, SUM(MUESTRA) MUESTRA 
-	FROM [PPMS_PEARL].DBO.[ORDEN_LIBERADA]  WHERE ORDEN IN ( 53400 , 53401 ) 
+	FROM [PPMS_PEARL].DBO.[ORDEN_LIBERADA]  WHERE F_LIBERACION = '2022-03-28' --ORDEN IN ( 53400 , 53401 ) 
 	--AND 
 	F_LIBERACION = '2022-02-07' --and K_TIPO_ORDEN_LIBERADA = 2
 	ORDER BY F_ALTA DESC 	
@@ -89,10 +90,12 @@ USE PPMS_PEARL
 	FROM [PPMS_PEARL].[dbo].rechazos 
 	WHERE orden IN (	SELECT ORDEN
 						FROM [PPMS_PEARL].DBO.[ORDEN_LIBERADA]  
-						WHERE K_TIPO_ORDEN_LIBERADA = 1 --ORDEN = 50011
-						AND MESA = 'Table 79'
+						WHERE F_LIBERACION = '2022-03-28'
+						-- K_TIPO_ORDEN_LIBERADA = 1 --ORDEN = 50011
+						--AND MESA = 'Table 79'
 						--AND F_LIBERACION = '2022-01-24'
 					)
+	AND DEFECTO = 'MP'
 
 	SELECT * 
 	FROM [PPMS_PEARL].DBO.[ORDEN_LIBERADA]  

@@ -130,7 +130,7 @@ WHERE	jobno in ('47978'))
 
 	SELECT * FROM [BD_GENERAL].[dbo].USUARIO_PEARL 
 
-	SELECT * FROM DATA_02.dbo.pearl_log WHERE  screen_opt = 'RECHAZOS'
+	SELECT * FROM DATA_02.dbo.pearl_log WHERE  screen_opt = 'Modificar defecto' and movement = 'dl'
 
 	SELECT * FROM DATA_02.dbo.pearl_log WHERE jobno = '48336'
 

@@ -460,7 +460,8 @@ AS
 				FROM [PPMS_PEARL].[dbo].Rechazos (NOLOCK) 
 				INNER JOIN [PPMS_PEARL].[dbo].DEF (NOLOCK) ON Rechazos.defecto = clave
 				WHERE ORDEN = @PP_ORDEN
-				AND tipodef = 'PERFORADO'
+				AND tipodef = 'PERFORADORA'
+				--AND tipodef = 'PERFORADO'
 
 				IF @VP_CANTIDAD_DEFECTO_PERFORADO IS NULL
 					SET @VP_CANTIDAD_DEFECTO_PERFORADO = 0
@@ -470,7 +471,8 @@ AS
 				FROM [PPMS_PEARL].[dbo].Rechazos (NOLOCK) 
 				INNER JOIN [PPMS_PEARL].[dbo].DEF (NOLOCK) ON Rechazos.defecto = clave
 				WHERE ORDEN = @PP_ORDEN
-				AND tipodef = 'QUILTY'
+				AND tipodef = 'QUILTING'
+				--AND tipodef = 'QUILTY'
 
 				IF @VP_CANTIDAD_DEFECTO_QUILTY IS NULL
 					SET @VP_CANTIDAD_DEFECTO_QUILTY = 0
