@@ -2306,8 +2306,11 @@ BEGIN TRY
 		BEGIN
 			IF ( SELECT K_TIPO_RMA FROM HEADER_RMA (NOLOCK)	WHERE K_HEADER_RMA	= @PP_K_HEADER_RMA )	= 1
 			BEGIN
-				SET @VP_MENSAJE='La [Orden#'+CONVERT(VARCHAR(10),@PP_K_HEADER_RMA)+'] no puede ser eliminada, verifique...'
-				RAISERROR (@VP_MENSAJE, 16, 1 )
+				IF @PP_K_USUARIO_ACCION	NOT IN (98)	-- MONICAG
+				BEGIN
+					SET @VP_MENSAJE='La [Orden#'+CONVERT(VARCHAR(10),@PP_K_HEADER_RMA)+'] no puede ser eliminada, verifique...'
+					RAISERROR (@VP_MENSAJE, 16, 1 )
+				END
 			END
 			ELSE
 			BEGIN					
@@ -2329,9 +2332,10 @@ BEGIN TRY
 						FETCH NEXT FROM CU_JOBNO INTO @PP_CU_JOBNO
 						WHILE @@FETCH_STATUS = 0
 						BEGIN
+							DECLARE @PP_COMPUTER_NAME	VARCHAR(25) = CONCAT('USUARIO',' ',CONVERT(VARCHAR(10),@PP_K_USUARIO_ACCION)) --@PP_COMPUTER_NAME		
 						--==============================================================
 							EXECUTE	[DBO].[PG_PR_PLANNING_ELIMINAR_ORDER_X_RMA]	@PP_K_SISTEMA_EXE,	@PP_K_USUARIO_ACCION,
-																				@PP_CU_JOBNO,		'PEARL-SIS'--@PP_COMPUTER_NAME		
+																				@PP_CU_JOBNO,	@PP_COMPUTER_NAME		
 						--==============================================================
 						FETCH NEXT FROM CU_JOBNO INTO @PP_CU_JOBNO
 						END
