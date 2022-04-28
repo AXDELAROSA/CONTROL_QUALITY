@@ -2105,6 +2105,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_
 GO
 --		 EXECUTE [dbo].[PG_SK_VERIFICAR_DATOS] 0,139,	'2' , 'MAGN02' , 'WAL' , '0014' , '27606' , '27606005' , 'PWALBRRWLCPX7' , '200432DTX7' , '30' 
  --		 EXECUTE [dbo].[PG_SK_VERIFICAR_DATOS] 0,139,	'2' , 'MAGN02' , 'WDL' , '0019' , '58481' , '58481008' , 'PWLDFCLWLCPX7' , '200769CTX7' , '30' 
+ --		 EXECUTE [dbo].[PG_SK_VERIFICAR_DATOS] 0,139,	'1' , 'MAGN03' , 'WPL' , '0009' , '59351' , '59351001' , 'PWPFBRHCNPDX9' , '186538A' , '30' 
 CREATE PROCEDURE [dbo].[PG_SK_VERIFICAR_DATOS]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -2140,25 +2141,25 @@ BEGIN TRY
 												@PP_VALOR_JOB_NO	,	@VP_SERIE_CORTA			,--@PP_VALOR_SERIAL	,
 												@PP_VALOR_CANTID	,	@PP_VALOR_ITEMNO
 
-	----	# 3 VERIFICAR DUPLICADOS
-	--	SELECT	@VP_DUPLICADO		= COUNT(NO_PARTE)
-	--	FROM	PPMS_PEARL.DBO.CERTIFICACION_RPT 	(NOLOCK)
-	--	WHERE	NOSERIE_CAJA		= @PP_VALOR_SERIAL
-	--	IF @@ROWCOUNT = 0
-	--	BEGIN
-	--		SET @VP_MENSAJE =	'No fue posible obtener la información de la caja (BD) '		+ CHAR(13)	+	CHAR(10) + 
-	--							@PP_VALOR_ITEMNO	+	' - '	+	CONVERT(VARCHAR(50),@PP_VALOR_SERIAL)	+	' '	+ CHAR(13)	+	CHAR(10) + 
-	--							' Verifique....'
-	--		RAISERROR (@VP_MENSAJE, 16, 1 ) 
-	--	END	
-	--	IF @VP_DUPLICADO > 0
-	--	BEGIN
-	--		SET @VP_MENSAJE =	'Esta caja ya ha pasado por certificación (BD) '				+ CHAR(13)	+	CHAR(10) + 
-	--							@PP_VALOR_ITEMNO	+	' - '	+	CONVERT(VARCHAR(50),@PP_VALOR_SERIAL)	+	' '	+ CHAR(13)	+	CHAR(10) + 
-	--							' Verifique....'
-	--		RAISERROR (@VP_MENSAJE, 16, 1 ) 
-	--	END
-	--END
+	--	# 3 VERIFICAR DUPLICADOS
+		SELECT	@VP_DUPLICADO		= COUNT(NO_PARTE)
+		FROM	PPMS_PEARL.DBO.CERTIFICACION_RPT 	(NOLOCK)
+		WHERE	NOSERIE_CAJA		= @PP_VALOR_SERIAL
+		IF @@ROWCOUNT = 0
+		BEGIN
+			SET @VP_MENSAJE =	'No fue posible obtener la información de la caja (BD) '		+ CHAR(13)	+	CHAR(10) + 
+								@PP_VALOR_ITEMNO	+	' - '	+	CONVERT(VARCHAR(50),@PP_VALOR_SERIAL)	+	' '	+ CHAR(13)	+	CHAR(10) + 
+								' Verifique....'
+			RAISERROR (@VP_MENSAJE, 16, 1 ) 
+		END	
+		IF @VP_DUPLICADO > 0
+		BEGIN
+			SET @VP_MENSAJE =	'Esta caja ya ha pasado por certificación (BD) '				+ CHAR(13)	+	CHAR(10) + 
+								@PP_VALOR_ITEMNO	+	' - '	+	CONVERT(VARCHAR(50),@PP_VALOR_SERIAL)	+	' '	+ CHAR(13)	+	CHAR(10) + 
+								' Verifique....'
+			RAISERROR (@VP_MENSAJE, 16, 1 ) 
+		END
+	END
 	
 	--	# 4	VERIFICA PROCESOS	(SI ES PERFORADO)
 	IF @PP_TIPO_PROCESO	IN ( 1,	2, 3 )		--	#1: CERTIFICACIÓN, #2: PERFORACIÓN, #3: INSPECCIÓN
@@ -2176,7 +2177,7 @@ BEGIN TRY
 												--AND		SER_NO	=	@PP_VALOR_SERIAL	)	) > 0
 												AND		SER_NO	=	@VP_SERIE_CORTA	)	) > 0
 		BEGIN
-			-- ESTÁ LÍNEA ES PARA EVITAR QUE LAS CAJAS QUE LLEVAN PATRONES CON PROCESOS PASE POR LA ESTACIÓN DE INPSECCIÓN.
+			-- ESTÁ LÍNEA ES PARA EVITAR QUE LAS CAJAS QUE LLEVAN PATRONES CON PROCESOS PASE POR LA ESTACIÓN DE INSPECCIÓN.
 			--IF		@PP_TIPO_PROCESO	IN (3)
 			--BEGIN
 			--	SET @VP_MENSAJE =	'Esta caja no requiere pasar por la estación de [INSPECCIÓN], se debe liberar en [PERFORACIÓN]'			+ CHAR(13)	+	CHAR(10) + 
@@ -2205,7 +2206,7 @@ BEGIN TRY
 												END	)
 			END														 			 
 			-- =============================================================================================
-			IF @PP_TIPO_PROCESO	IN ( 2 )
+			IF @PP_TIPO_PROCESO	IN ( 2 )	-- PERFORACIÓN
 			BEGIN
 				IF	@VP_STATUS_VALOR		= 0
 				BEGIN
@@ -2216,7 +2217,7 @@ BEGIN TRY
 				END
 			END
 			-- =============================================================================================
-			IF @PP_TIPO_PROCESO	IN ( 1 )
+			IF @PP_TIPO_PROCESO	IN ( 1 )	-- CERTIFICACIÓN
 			BEGIN
 				IF	@VP_STATUS_VALOR		= 1
 				BEGIN
@@ -2238,7 +2239,7 @@ BEGIN TRY
 		ELSE
 		BEGIN
 			-- =============================================================================================
-			IF @PP_TIPO_PROCESO	IN ( 2 )
+			IF @PP_TIPO_PROCESO	IN ( 2 )	-- PERFORACIÓN
 			BEGIN
 					SET @VP_MENSAJE =	'Esta caja no requiere pasar por la estación de [PERFORADO]'				+ CHAR(13)	+	CHAR(10) + 
 										@PP_VALOR_ITEMNO	+	' - '	+	CONVERT(VARCHAR(50),@PP_VALOR_SERIAL)	+	' '			+ CHAR(13)	+	CHAR(10) + 
@@ -2264,7 +2265,7 @@ BEGIN TRY
 												END	)
 			END														 			 
 
-			IF @PP_TIPO_PROCESO	IN ( 3 )
+			IF @PP_TIPO_PROCESO	IN ( 3 )	-- INSPECCIÓN
 			BEGIN
 				IF	@VP_STATUS_VALOR		= 0
 				BEGIN
@@ -2275,6 +2276,25 @@ BEGIN TRY
 				END
 			END
 			-- =============================================================================================
+			IF @PP_TIPO_PROCESO	IN ( 1 )	-- CERTIFICACIÓN
+			BEGIN
+				IF	@VP_STATUS_VALOR		= 1
+				BEGIN
+					SET @VP_MENSAJE =	'Esta caja no pasó por [INSPECCIÓN], debe pasar por la estación (BD) '	+ CHAR(13)	+	CHAR(10) + 
+										@PP_VALOR_ITEMNO	+	' - '	+	CONVERT(VARCHAR(50),@PP_VALOR_SERIAL)	+	' '			+ CHAR(13)	+	CHAR(10) + 
+										' Verifique....'
+					RAISERROR (@VP_MENSAJE, 16, 1 ) 
+				END
+				ELSE IF @VP_STATUS_VALOR	= 2
+				BEGIN
+					SET @VP_MENSAJE =	'Esta caja si pasó por [INSPECCIÓN], pero no esta liberada (BD) '		+ CHAR(13)	+	CHAR(10) + 
+										@PP_VALOR_ITEMNO	+	' - '	+	CONVERT(VARCHAR(50),@PP_VALOR_SERIAL)	+	' '			+ CHAR(13)	+	CHAR(10) + 
+										' Verifique....'
+					RAISERROR (@VP_MENSAJE, 16, 1 ) 
+				END
+			END
+			-- =============================================================================================
+
 		END
 		-- =============================================================================================
 		-- =============================================================================================
@@ -2876,7 +2896,7 @@ DECLARE		 @VP_ENCABEZADO_MENSAJE			NVARCHAR(MAX)	= ''--'Paquete Guardado'
 			,@VP_HORA						INT
 			,@VP_MINUTOS					INT
 			,@VP_SEGUNDO					INT
-			,@VP_L_TIEMPO_EXTRA				INT
+			,@VP_L_TIEMPO_EXTRA				INT				= 0
 			-- ===================================================
 			,@VP_ORDEN_LIGADA				VARCHAR(50)		= ''
 			,@VP_COLOR						NVARCHAR(MAX)
@@ -2934,13 +2954,13 @@ BEGIN TRY
 									END		)
 	IF @VP_HORA	< 6
 	BEGIN
-		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	DATEADD(DAY, -1, GETDATE()) ,112 )
-		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE())) ,112 )
+		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	DATEADD(DAY, -1, GETDATE()) ,112 )
+		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE())) ,112 )
 	END
 	ELSE
 	BEGIN
-		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	GETDATE()					,112 )
-		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE()))	,112 )		
+		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	GETDATE()					,112 )
+		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE()))	,112 )		
 	END
 	----		#4	OBTENER EL COLOR DEL ITEM
 	--EXECUTE [dbo].[PG_RN_OBTENER_COLOR]		@PP_K_SISTEMA_EXE,				@PP_K_USUARIO_ACCION,
@@ -3019,7 +3039,7 @@ BEGIN TRY
 		TURNO, 									-- 
 		MEZCLADA,			EXTRA												-- 0, l_extra
 	)	VALUES	(
-		@PP_CUS_NO,			@PP_MODELNO,		@PP_VERSIONNO,		@VP_COLOR,
+		@PP_CUS_NO,			@PP_MODELNO,		FORMAT(@PP_VERSIONNO,'0000'),		@VP_COLOR,
 		@PP_JOB_NO,			@VP_MESA,
 		@VP_D_MODEL,		@PP_CUS_ITEM_NO,	@PP_ESTACION,
 		@PP_SERIAL,			@PP_ITEM_NO,
@@ -3117,7 +3137,7 @@ DECLARE		 @VP_ENCABEZADO_MENSAJE			NVARCHAR(MAX)	= 'Defecto Guardado'
 			,@VP_HORA						INT
 			,@VP_MINUTOS					INT
 			,@VP_SEGUNDO					INT
-			,@VP_L_TIEMPO_EXTRA				INT
+			,@VP_L_TIEMPO_EXTRA				INT				= 0
 			-- ===================================================
 			,@VP_ORDEN_LIGADA				VARCHAR(50)		= ''
 			,@VP_COLOR						NVARCHAR(MAX)
@@ -3175,13 +3195,13 @@ BEGIN TRY
 									END		)
 	IF @VP_HORA	< 6
 	BEGIN
-		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	DATEADD(DAY, -1, GETDATE()) ,112 )
-		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE())) ,112 )
+		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	DATEADD(DAY, -1, GETDATE()) ,112 )
+		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE())) ,112 )
 	END
 	ELSE
 	BEGIN
-		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	GETDATE()					,112 )
-		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE()))	,112 )		
+		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	GETDATE()					,112 )
+		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE()))	,112 )		
 	END
 
 	----		#4	OBTENER EL COLOR DEL ITEM
@@ -3251,7 +3271,7 @@ BEGIN TRY
 		TURNO, 									-- 
 		MEZCLADA,			EXTRA												-- 0, l_extra
 	)	VALUES	(
-		@PP_CUS_NO,			@PP_MODELNO,		@PP_VERSIONNO,		@VP_COLOR,
+		@PP_CUS_NO,			@PP_MODELNO,		FORMAT(@PP_VERSIONNO,'0000'),		@VP_COLOR,
 		@PP_JOB_NO,			@VP_MESA,
 		@VP_D_MODEL,		@PP_CUS_ITEM_NO,	@PP_ESTACION,
 		@PP_SERIAL,			@PP_ITEM_NO,
@@ -3358,7 +3378,7 @@ DECLARE		 @VP_ENCABEZADO_MENSAJE			NVARCHAR(MAX)	= 'Defecto(s) Guardado(s)'
 			,@VP_FECHA						VARCHAR(50)			--= CONVERT ( VARCHAR(50),GETDATE(),112)
 			,@VP_HORA						INT
 			,@VP_MINUTOS					INT
-			,@VP_L_TIEMPO_EXTRA				INT
+			,@VP_L_TIEMPO_EXTRA				INT				= 0
 			-- ===================================================
 			,@VP_COLOR						NVARCHAR(MAX)
 			-- ===================================================
@@ -3451,13 +3471,13 @@ BEGIN
  
 	IF @VP_HORA	< 6
 	BEGIN
-		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	DATEADD(DAY, -1, GETDATE()) ,112 )
-		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE())) ,112 )
+		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	DATEADD(DAY, -1, GETDATE()) ,112 )
+		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE())) ,112 )
 	END
 	ELSE
 	BEGIN
-		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	GETDATE()					,112 )
-		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE()))	,112 )		
+		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	GETDATE()					,112 )
+		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE()))	,112 )		
 	END
 
 	SELECT	@VP_COLOR	= COLOUR
@@ -4383,15 +4403,15 @@ AS
 	DECLARE  @VP_SUBJECT				VARCHAR(255) = '[IMAGEN_PATRON] FALTANTE'
 			,@VP_RECIPIENTS				NVARCHAR(MAX)  = ''
 			,@VP_BODY_HTML				NVARCHAR(MAX) 
-			--,@VP_K_TIPO_GRUPO_APROBADOR	VARCHAR(15)	=	7000
+			,@VP_K_TIPO_GRUPO_APROBADOR	VARCHAR(15)	=	7010
 
-	--SELECT  @VP_RECIPIENTS	=	@VP_RECIPIENTS + ';' + CORREO_USUARIO_PEARL
-	--FROM	BD_GENERAL.dbo.USUARIO_PEARL AS USERS  (NOLOCK) 
-	--INNER	JOIN	BD_GENERAL.dbo.GRUPO_APROBADOR (NOLOCK) ON GRUPO_APROBADOR.K_USUARIO	= USERS.K_USUARIO_PEARL
-	--WHERE	GRUPO_APROBADOR.K_TIPO_GRUPO_APROBADOR			= @VP_K_TIPO_GRUPO_APROBADOR
-	--AND		K_ESTATUS_GRUPO_APROBADOR						= 1
+	SELECT  @VP_RECIPIENTS	=	@VP_RECIPIENTS + ';' + CORREO_USUARIO_PEARL
+	FROM	BD_GENERAL.dbo.USUARIO_PEARL AS USERS  (NOLOCK) 
+	INNER	JOIN	BD_GENERAL.dbo.GRUPO_APROBADOR (NOLOCK) ON GRUPO_APROBADOR.K_USUARIO	= USERS.K_USUARIO_PEARL
+	WHERE	GRUPO_APROBADOR.K_TIPO_GRUPO_APROBADOR			= @VP_K_TIPO_GRUPO_APROBADOR
+	AND		K_ESTATUS_GRUPO_APROBADOR						= 1
 
-	--SET @VP_RECIPIENTS = SUBSTRING(@VP_RECIPIENTS,2,LEN(@VP_RECIPIENTS))
+	SET @VP_RECIPIENTS = SUBSTRING(@VP_RECIPIENTS,2,LEN(@VP_RECIPIENTS))
 	
 	SET @VP_BODY_HTML = 
 		N'<html>'+
@@ -4408,13 +4428,13 @@ AS
 		N'<br>'
 
 		EXEC msdb.dbo.sp_send_dbmail 
-		--@recipients=@VP_RECIPIENTS,
+		@recipients		= @VP_RECIPIENTS,
 		--@blind_copy_recipients='ALEJANDROD@PEARLLEATHER.COM.MX',
-		@recipients	=	'ALEJANDROD@PEARLLEATHER.COM.MX',
-		@subject = @VP_SUBJECT,
-		@body = @VP_BODY_HTML,  
-		@body_format = 'HTML',
-		@importance= 'NORMAL'--@VP_IMPORTANCE
+		--@recipients	=	'ALEJANDROD@PEARLLEATHER.COM.MX',
+		@subject		= @VP_SUBJECT,
+		@body			= @VP_BODY_HTML,  
+		@body_format	= 'HTML',
+		@importance		= 'NORMAL'--@VP_IMPORTANCE
 	----- ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	----- ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 GO
