@@ -1426,7 +1426,7 @@ GO
 --		 EXECUTE [DBO].[PG_LI_HOJA_EMPAQUE_CAPA] 0,139, 'MAGN03' , 'WD2' , '0016' , 'PWD2TBLCNPLV5' , '0'  
 -- ===================================================================================================
 --		EXECUTE [DBO].[PG_LI_HOJA_EMPAQUE_CAPA]  0,139, 'IRVI02' , 'JSU' , '0015' , 'PMJSFSCNPJSA5' , '0'  
---		EXECUTE [DBO].[PG_LI_HOJA_EMPAQUE_CAPA]  0,139, 'IRVI02' , 'JSU' , '0015' , 'PMJSFSCNPJSA5' , '1'  
+--		EXECUTE [DBO].[PG_LI_HOJA_EMPAQUE_CAPA]  0,139, 'MAGN02' , 'WAL' , '15' , 'PWALBR2WLROX7  ' , '0'  
 CREATE PROCEDURE [dbo].[PG_LI_HOJA_EMPAQUE_CAPA]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -1810,7 +1810,8 @@ GO
 --		 EXECUTE [dbo].[PG_SK_HOJA_EMPAQUE] 0,139, 'YANG02' , 'WL5' , '0004' , 'PYFRBOLYPATX7' , '0' 
 --		 EXECUTE [DBO].[PG_SK_HOJA_EMPAQUE] 0,139, 'MAGN02' , 'WAL' , '0014' , 'PWALBR2WLROX7' , '0'
 -- ===================================================================================================
---		 EXECUTE [DBO].[PG_SK_HOJA_EMPAQUE] 0,139, 'IRVI02' , 'JSU' , '0015' , 'PMJSFSCNPJSA5' , '0'  
+--		 EXECUTE [DBO].[PG_SK_HOJA_EMPAQUE] 0,139, 'IRVI02' , 'JSU' , '0015' , 'PMJSFSCNPJSA5' , '0'
+--		 EXECUTE [DBO].[PG_SK_HOJA_EMPAQUE] 0,139, 'MAGN02' , 'WAL' , '15' , 'PWALBR2WLROX7  ' , '0'   
 CREATE PROCEDURE [dbo].[PG_SK_HOJA_EMPAQUE]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,

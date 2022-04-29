@@ -709,6 +709,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_
 	DROP PROCEDURE [dbo].[PG_LI_PATRONES_X_ITEM_NO_PERFORACION]
 GO
 --		 EXECUTE [dbo].[PG_LI_PATRONES_X_ITEM_NO_PERFORACION] 0,139, 2,	'WS3', '22', '58392', 'PWSURBLWSPAX7', 'FAUR01', '30'
+
 CREATE PROCEDURE [dbo].[PG_LI_PATRONES_X_ITEM_NO_PERFORACION]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -878,7 +879,9 @@ BEGIN TRY
 	SELECT	@VP_CANTIDAD_REGISTROS	= COUNT(TA_K_TABLA) 
 	FROM	@VP_TA_PATRONES_CANTIDAD
 	WHERE	TA_TIPO_PROCESO		IN ('P','Q')
-	IF ( @VP_CANTIDAD_REGISTROS	) <= 0
+	
+	
+	IF ( @VP_CANTIDAD_REGISTROS	) <= 0	AND @PP_TIPO_PROCESO	IN (2)
 	BEGIN
 		SET @VP_MENSAJE = 'No se encontraron [PATRONES] con proceso de Perforado/Quilty (BD) '+ CHAR(13) + CHAR(10)
 		RAISERROR (@VP_MENSAJE, 16, 1 )
@@ -1354,6 +1357,7 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_LI_
 	DROP PROCEDURE [dbo].[PG_LI_DEFECTOS_X_PATRON_PERFORACION]
 GO												 
 --		 EXECUTE [dbo].[PG_LI_DEFECTOS_X_PATRON_PERFORACION] 0,139,	'1' , 'MAGN02' , 'WAL' , '0014' , '27606' , '27606005' , '200432DTX7' , '11063960R'
+--		 EXECUTE [dbo].[PG_LI_DEFECTOS_X_PATRON_PERFORACION] 0,139,	'1' , 'MAGN02' , 'WAL' , '0014' , '27606' , '58196002' , '200527CTX7' , '11063960L'
 CREATE PROCEDURE [dbo].[PG_LI_DEFECTOS_X_PATRON_PERFORACION]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -1384,7 +1388,8 @@ BEGIN TRY
 			TA_A4GL					INTEGER,
 			TA_CODIGO				NVARCHAR(MAX),
 			TA_D_DEFECTO			NVARCHAR(MAX),
-			--TA_CANTIDAD				INTEGER,
+			TA_SIGLAS				NVARCHAR(MAX),
+			TA_TURNO				INT,
 			TA_MENSAJE				NVARCHAR(MAX),
 			TA_ENCABEZADO_MENSAJE	NVARCHAR(MAX)		)
 	-- ==========================================================================================================
@@ -1403,6 +1408,8 @@ BEGIN TRY
 					WHEN	DEFECTO	= 'HMI'							THEN	'HOJAEMP'
 					ELSE	'Descripción del defecto NO econtrada...'
 				END ),
+				INSPPROD,
+				TURNO,
 				'',
 				''
 		FROM	PPMS_PEARL.DBO.RECHAZOS	(NOLOCK)
@@ -1428,10 +1435,11 @@ END
 ELSE
 BEGIN
 	SELECT	TA_K_TABLA					,
-			TA_A4GL						,
+			TA_A4GL						AS ID,
 			TA_CODIGO					AS CODIGO,
 			TA_D_DEFECTO				AS D_DEFECTO,
-			--TA_CANTIDAD					AS CANTIDAD,
+			TA_SIGLAS					AS INICIAL,
+			TA_TURNO					AS TURNO,
 			TA_MENSAJE					,
 			TA_ENCABEZADO_MENSAJE		
 	FROM	@VP_TA_TEMPORAL_DEFECTOS
@@ -2104,8 +2112,10 @@ IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PG_SK_
 	DROP PROCEDURE [dbo].[PG_SK_VERIFICAR_DATOS]
 GO
 --		 EXECUTE [dbo].[PG_SK_VERIFICAR_DATOS] 0,139,	'2' , 'MAGN02' , 'WAL' , '0014' , '27606' , '27606005' , 'PWALBRRWLCPX7' , '200432DTX7' , '30' 
- --		 EXECUTE [dbo].[PG_SK_VERIFICAR_DATOS] 0,139,	'2' , 'MAGN02' , 'WDL' , '0019' , '58481' , '58481008' , 'PWLDFCLWLCPX7' , '200769CTX7' , '30' 
- --		 EXECUTE [dbo].[PG_SK_VERIFICAR_DATOS] 0,139,	'1' , 'MAGN03' , 'WPL' , '0009' , '59351' , '59351001' , 'PWPFBRHCNPDX9' , '186538A' , '30' 
+--		 EXECUTE [dbo].[PG_SK_VERIFICAR_DATOS] 0,139,	'2' , 'MAGN02' , 'WDL' , '0019' , '58481' , '58481008' , 'PWLDFCLWLCPX7' , '200769CTX7' , '30' 
+--		 EXECUTE [dbo].[PG_SK_VERIFICAR_DATOS] 0,139,	'1' , 'MAGN03' , 'WPL' , '0009' , '59351' , '59351001' , 'PWPFBRHCNPDX9' , '186538A' , '30' 
+--		 EXECUTE [dbo].[PG_SK_VERIFICAR_DATOS] 0,139,	'1' , 'MAGN03' , 'RDL' , '0021' , '59580' , '59580017' , 'PRURC40NRULK5' , '200284A' , '30' 
+--		 EXECUTE [dbo].[PG_SK_VERIFICAR_DATOS] 0,139,	'2' , 'MAGN02' , 'WDL' , '0019' , '58383' , '58383004' , 'UWLDFBRWLCPX7' , '200766DTX7' , '15' 
 CREATE PROCEDURE [dbo].[PG_SK_VERIFICAR_DATOS]
 	@PP_K_SISTEMA_EXE				INT,
 	@PP_K_USUARIO_ACCION			INT,
@@ -2210,7 +2220,7 @@ BEGIN TRY
 			BEGIN
 				IF	@VP_STATUS_VALOR		= 0
 				BEGIN
-					SET @VP_MENSAJE =	'Esta caja no requiere pasar por la estación de [PERFORADO]'			+ CHAR(13)	+	CHAR(10) + 
+					SET @VP_MENSAJE =	'Esta caja no requiere pasar por la estación de [PERFORADO], ya fue [LIBERADA] en perforación.'			+ CHAR(13)	+	CHAR(10) + 
 										@PP_VALOR_ITEMNO	+	' - '	+	CONVERT(VARCHAR(50),@PP_VALOR_SERIAL)	+	' '			+ CHAR(13)	+	CHAR(10) + 
 										' Verifique....'
 					RAISERROR (@VP_MENSAJE, 16, 1 ) 
@@ -2241,10 +2251,13 @@ BEGIN TRY
 			-- =============================================================================================
 			IF @PP_TIPO_PROCESO	IN ( 2 )	-- PERFORACIÓN
 			BEGIN
+				IF	@PP_VALOR_ITEMNO NOT LIKE 'U%'
+				BEGIN
 					SET @VP_MENSAJE =	'Esta caja no requiere pasar por la estación de [PERFORADO]'				+ CHAR(13)	+	CHAR(10) + 
 										@PP_VALOR_ITEMNO	+	' - '	+	CONVERT(VARCHAR(50),@PP_VALOR_SERIAL)	+	' '			+ CHAR(13)	+	CHAR(10) + 
 										' Verifique....'
 					RAISERROR (@VP_MENSAJE, 16, 1 )
+				END
 			END
 			-- =============================================================================================
 			SELECT	@VP_STATUS					= ISNULL([STATUS],'')
@@ -2260,6 +2273,7 @@ BEGIN TRY
 				
 				SET		@VP_STATUS_VALOR	= (	CASE
 													WHEN	LTRIM(RTRIM(@VP_STATUS))	=  'FINAL_INSP'	THEN	0
+													WHEN	LTRIM(RTRIM(@VP_STATUS))	=  'FINALIZADO'	THEN	3
 													WHEN	LTRIM(RTRIM(@VP_STATUS))	<> 'FINAL_INSP'	THEN	2
 													--ELSE	1
 												END	)
@@ -2269,7 +2283,7 @@ BEGIN TRY
 			BEGIN
 				IF	@VP_STATUS_VALOR		= 0
 				BEGIN
-					SET @VP_MENSAJE =	'Esta caja no requiere pasar por la estación de [INSPECCIÓN], ya fue FINALIZADA.'			+ CHAR(13)	+	CHAR(10) + 
+					SET @VP_MENSAJE =	'Esta caja no requiere pasar por la estación de [INSPECCIÓN], ya fue [LIBERADA] en inspección.'			+ CHAR(13)	+	CHAR(10) + 
 										@PP_VALOR_ITEMNO	+	' - '	+	CONVERT(VARCHAR(50),@PP_VALOR_SERIAL)	+	' '			+ CHAR(13)	+	CHAR(10) + 
 										' Verifique....'
 					RAISERROR (@VP_MENSAJE, 16, 1 ) 
@@ -2278,7 +2292,17 @@ BEGIN TRY
 			-- =============================================================================================
 			IF @PP_TIPO_PROCESO	IN ( 1 )	-- CERTIFICACIÓN
 			BEGIN
-				IF	@VP_STATUS_VALOR		= 1
+				IF	@PP_VALOR_ITEMNO LIKE 'U%'
+				BEGIN
+					IF @VP_STATUS_VALOR		NOT IN  (0,3)
+					BEGIN
+						SET @VP_MENSAJE =	'Esta caja pasó por [PERFORADO]/[INSPECCIÓN], pero no está liberada (BD) '	+ CHAR(13)	+	CHAR(10) + 
+											@PP_VALOR_ITEMNO	+	' - '	+	CONVERT(VARCHAR(50),@PP_VALOR_SERIAL)	+	' '			+ CHAR(13)	+	CHAR(10) + 
+											' Verifique....'
+						RAISERROR (@VP_MENSAJE, 16, 1 )
+					END
+				END
+				ELSE IF	@VP_STATUS_VALOR		= 1
 				BEGIN
 					SET @VP_MENSAJE =	'Esta caja no pasó por [INSPECCIÓN], debe pasar por la estación (BD) '	+ CHAR(13)	+	CHAR(10) + 
 										@PP_VALOR_ITEMNO	+	' - '	+	CONVERT(VARCHAR(50),@PP_VALOR_SERIAL)	+	' '			+ CHAR(13)	+	CHAR(10) + 
@@ -3005,7 +3029,7 @@ BEGIN TRY
     -- ============================================================================================================
     -- ============================================================================================================
     -- ============================================================================================================
-	DECLARE	@VP_HORA_HHMMSS		AS VARCHAR(10) --= convert(char(8), getdate(), 108)
+	DECLARE	@VP_HORA_HHMMSS		AS VARCHAR(20) --= convert(char(8), getdate(), 108)
 
 		--		#3	OBTENER FECHA Y TIEMPO PARA GUARDAR EL DEFECTO
 	SET	 @VP_HORA		=			LEFT((	CONVERT(TIME(0), GETDATE()	)) ,2)
@@ -3831,8 +3855,8 @@ CREATE PROCEDURE [dbo].[PG_IN_PATRON_DEFECTO_PERFO]
 	@PP_INS_PRODUCCION				NVARCHAR(MAX),
 	@PP_D_JEFE_GRUPO				NVARCHAR(MAX),
 	-- ===========================
-	@PP_ARRAY_DEFECTO				NVARCHAR(MAX)
-	--@PP_ARRAY_CANTIDA				NVARCHAR(MAX)
+	@PP_ARRAY_DEFECTO				NVARCHAR(MAX)--,
+	--@PP_ARRAY_ID					NVARCHAR(MAX)
 AS
 DECLARE		 @VP_ENCABEZADO_MENSAJE			NVARCHAR(MAX)	= ''
 			,@VP_MENSAJE					NVARCHAR(MAX)	= ''
@@ -3847,17 +3871,25 @@ DECLARE		 @VP_ENCABEZADO_MENSAJE			NVARCHAR(MAX)	= ''
 			-- ===================================================
 			--,@VP_ITEM_NO		VARCHAR(250)	= ''
 			,@VP_POSICION_DEFECTO		INT
-			--,@VP_POSICION_CANTIDA		INT
+			,@VP_POSICION_ID			INT
 			-- ============================	
 			,@VP_VALOR_DEFECTO			NVARCHAR(MAX)
-			--,@VP_VALOR_CANTIDA			NVARCHAR(MAX)	
+			,@VP_VALOR_ID				NVARCHAR(MAX)	
 			-- ===================================================
 BEGIN TRANSACTION 
 BEGIN TRY
-    -- ============================================================================================================
-    -- ============================================================================================================
+	EXECUTE [DATA_02].[dbo].[PG_RN_CCJOBHDR_SQL_VALIDA_ESTATUS]		@PP_K_SISTEMA_EXE, @PP_K_USUARIO_ACCION,
+																	@PP_JOB_NO,
+																	@OU_RESULTADO_VALIDACION = @VP_MENSAJE		OUTPUT
+
+	IF @VP_MENSAJE <> ''
+	BEGIN
+	   RAISERROR (@VP_MENSAJE, 16, 1 ) 
+	END
+-----------------------------
 IF @PP_ARRAY_DEFECTO = ''
 BEGIN
+    -- ============================================================================================================
 		IF (	SELECT	COUNT(noparte)
 				FROM	PPMS_PEARL.DBO.RECHAZOS	(NOLOCK)
 				WHERE	NOSERIE			= @PP_SERIAL
@@ -3902,13 +3934,13 @@ BEGIN
 
 	IF @VP_HORA	< 6
 	BEGIN
-		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	DATEADD(DAY, -1, GETDATE()) ,112 )
-		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE())) ,112 )
+		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	DATEADD(DAY, -1, GETDATE()) ,112 )
+		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE())) ,112 )
 	END
 	ELSE
 	BEGIN
-		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	GETDATE()					,112 )
-		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE()))	,112 )		
+		SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	GETDATE()					,112 )
+		--SET	@VP_FECHA	= CONVERT ( VARCHAR(50),	(DATEADD(yy, -1, GETDATE()))	,112 )		
 	END
     -- ============================================================================================================
     -- ============================================================================================================
@@ -3926,16 +3958,36 @@ BEGIN
     -- ============================================================================================================
     -- ============================================================================================================
 	--Colocamos un separador al final de los parametros para que funcione bien nuestro codigo
-	SET	@PP_ARRAY_DEFECTO		= @PP_ARRAY_DEFECTO	+ '/'	
-	--SET	@PP_ARRAY_CANTIDA		= @PP_ARRAY_CANTIDA	+ '/'	
+	SET	@PP_ARRAY_DEFECTO		= @PP_ARRAY_DEFECTO	+ '/'
+	--SET	@PP_ARRAY_ID			= @PP_ARRAY_ID		+ '/'
 	--Hacemos un bucle que se repite mientras haya separadores, patindex busca un patron en una cadena y nos devuelve su posicion
 	WHILE patindex('%/%' , @PP_ARRAY_DEFECTO) <> 0
 	BEGIN
 		SELECT @VP_POSICION_DEFECTO	=	patindex('%/%' , @PP_ARRAY_DEFECTO		)
-		--SELECT @VP_POSICION_CANTIDA	=	patindex('%/%' , @PP_ARRAY_CANTIDA		)
+		--SELECT @VP_POSICION_ID		=	patindex('%/%' , @PP_ARRAY_ID			)
 		--Buscamos la posicion de la primera y obtenemos los caracteres hasta esa posicion
 		SELECT @VP_VALOR_DEFECTO	= LEFT(@PP_ARRAY_DEFECTO	, @VP_POSICION_DEFECTO	- 1)
-		--SELECT @VP_VALOR_CANTIDA	= LEFT(@PP_ARRAY_CANTIDA	, @VP_POSICION_CANTIDA	- 1)
+		--SELECT @VP_VALOR_ID			= LEFT(@PP_ARRAY_ID			, @VP_POSICION_ID		- 1)
+
+		-- ============================================================================================================
+		--	PARA ACTUALIZAR UN REGISTRO DE LOS DEFECTOS DE RECHAZOS			
+		--IF @VP_VALOR_ID	> 0
+		--BEGIN
+		--		DECLARE @VP_LIBERADO INT = 0
+		--		SELECT	@VP_LIBERADO	= COUNT(ID)
+		--		FROM	[PPMS_PEARL].[dbo].rechazos (NOLOCK)
+		--		WHERE	ID				= @VP_VALOR_ID
+		--		AND		[Status]		= 'L'
+
+		--		IF @VP_LIBERADO IS NULL
+		--			SET @VP_LIBERADO = 0
+
+		--		IF @VP_LIBERADO > 0
+		--		BEGIN
+		--			SET @VP_MENSAJE = 'El rechazo que intenta modificar ya esta liberado...'
+		--			RAISERROR (@VP_MENSAJE, 16, 1 ) 
+		--		END
+		--END
 
 		SET	 @VP_HORA		=			LEFT((	CONVERT(TIME(0), GETDATE()	)) ,2)
 		SET  @VP_MINUTOS	= RIGHT	(	LEFT((	CONVERT(TIME(0), GETDATE()	)) ,5)	,2)
@@ -3981,8 +4033,8 @@ BEGIN
 			END
 		
 		--Reemplazamos lo procesado con nada con la funcion stuff
-		SELECT @PP_ARRAY_DEFECTO	= STUFF(@PP_ARRAY_DEFECTO	, 1, @VP_POSICION_DEFECTO , '')			
-		--SELECT @PP_ARRAY_CANTIDA	= STUFF(@PP_ARRAY_CANTIDA	, 1, @VP_POSICION_CANTIDA , '')
+		SELECT @PP_ARRAY_DEFECTO	= STUFF(@PP_ARRAY_DEFECTO	, 1, @VP_POSICION_DEFECTO	, '')			
+		--SELECT @PP_ARRAY_ID			= STUFF(@PP_ARRAY_ID		, 1, @VP_POSICION_ID		, '')
 	END
 END
     -- ============================================================================================================
